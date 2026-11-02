@@ -67,7 +67,7 @@ export const partyInputSchema = z.object({
     (v) => (typeof v === 'string' ? (v.trim() === '' ? null : v.trim().toUpperCase()) : v),
     z
       .string()
-      .regex(/^[A-Z]{3}$/, 'FEC party codes are three letters, like DEM or LIB.')
+      .regex(/^[A-Z]{1,3}$/, 'FEC party codes are one to three letters, like DEM, UN or W.')
       .nullable()
       .optional(),
   ),
