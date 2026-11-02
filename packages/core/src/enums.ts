@@ -208,3 +208,25 @@ export const VERIFICATION_STATUSES = [
   'outdated',
 ] as const;
 export type VerificationStatus = (typeof VERIFICATION_STATUSES)[number];
+
+/**
+ * Fields that imports and ingestion may write. When someone changes one of these by
+ * hand, it is locked: later imports record what their source says but cannot
+ * overwrite it, and a difference opens a conflict for review instead.
+ */
+export const LOCKABLE_FIELDS = {
+  candidacy: ['ballotName', 'partyId', 'isIncumbent', 'campaignUrl', 'fecCommitteeId', 'status'],
+} as const;
+export type LockableEntity = keyof typeof LOCKABLE_FIELDS;
+export type LockableField<E extends LockableEntity = LockableEntity> =
+  (typeof LOCKABLE_FIELDS)[E][number];
+
+export const IMPORT_KINDS = ['candidates'] as const;
+export type ImportKind = (typeof IMPORT_KINDS)[number];
+
+/** preview: uploaded and checkable; applied: written in one transaction; discarded: abandoned. */
+export const IMPORT_STATES = ['preview', 'applied', 'discarded'] as const;
+export type ImportState = (typeof IMPORT_STATES)[number];
+
+export const CONFLICT_STATES = ['open', 'accepted', 'rejected'] as const;
+export type ConflictState = (typeof CONFLICT_STATES)[number];

@@ -124,6 +124,11 @@ export default async function RacePage({ params }: { params: Promise<{ id: strin
             </tbody>
           </table>
         )}
+        {can(user.role, 'data:import') && !archived && (
+          <p>
+            <Link href={`/admin/imports?race=${id}`}>Import candidates from a CSV file</Link>
+          </p>
+        )}
         {can(user.role, 'content:edit') && !archived && (
           <details className="add-form">
             <summary>Add a candidate</summary>

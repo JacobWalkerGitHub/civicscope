@@ -258,3 +258,49 @@ export function CheckboxField({
     </div>
   );
 }
+
+/** A file picker. Browsers never refill these, so after an error the user picks again. */
+export function FileField({
+  name,
+  label,
+  accept,
+  hint,
+  required,
+}: {
+  name: string;
+  label: string;
+  accept?: string;
+  hint?: string;
+  required?: boolean;
+}) {
+  const { error, id } = useField(name);
+  return (
+    <div className="field">
+      <label htmlFor={id}>
+        {label}
+        {required && <span aria-hidden="true"> *</span>}
+      </label>
+      {hint && (
+        <p id={`${id}-hint`} className="hint">
+          {hint}
+        </p>
+      )}
+      <input
+        id={id}
+        name={name}
+        type="file"
+        accept={accept}
+        required={required}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={
+          [hint && `${id}-hint`, error && `${id}-error`].filter(Boolean).join(' ') || undefined
+        }
+      />
+      {error && (
+        <p id={`${id}-error`} className="field-error">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}

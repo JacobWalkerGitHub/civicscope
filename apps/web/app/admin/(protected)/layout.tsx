@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { countReviewQueue } from '@civicscope/cms';
+import { countOpenConflicts, countReviewQueue } from '@civicscope/cms';
 import { can } from '@civicscope/core';
 import { getDb } from '@/lib/db';
 import { requirePermission } from '@/lib/session';
@@ -8,7 +8,11 @@ import { signOutAction } from '../actions';
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const user = await requirePermission('admin:view', { allowWithoutTwoStep: true });
-  const waiting = await countReviewQueue(getDb());
+  const [entries, conflicts] = await Promise.all([
+    countReviewQueue(getDb()),
+    countOpenConflicts(getDb()),
+  ]);
+  const waiting = entries + conflicts;
   return (
     <div className="admin">
       <header className="admin-header">
@@ -22,6 +26,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           <Link href="/admin/parties">Parties</Link>
           <Link href="/admin/sources">Sources</Link>
           <Link href="/admin/issues">Issues</Link>
+          <Link href="/admin/imports">Imports</Link>
           <Link href="/admin/review">
             Review
             {waiting > 0 && (
