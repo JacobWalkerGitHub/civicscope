@@ -1,0 +1,26 @@
+{
+  "name": "@civicscope/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "generate": "drizzle-kit generate",
+    "migrate": "tsx src/scripts/migrate.ts",
+    "seed": "tsx src/scripts/seed.ts"
+  },
+  "dependencies": {
+    "@civicscope/core": "workspace:*",
+    "drizzle-orm": "^0.45.0",
+    "mysql2": "^3.15.0"
+  },
+  "devDependencies": {
+    "@testcontainers/mysql": "^12.2.0",
+    "drizzle-kit": "^0.31.0",
+    "tsx": "^4.20.0"
+  }
+}

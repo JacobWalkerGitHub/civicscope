@@ -1,0 +1,21 @@
+services:
+  mysql:
+    image: mysql:8.4
+    # Same setting RDS needs in its parameter group so migrations can create triggers.
+    command: ['--log-bin-trust-function-creators=1']
+    environment:
+      MYSQL_DATABASE: civicscope
+      MYSQL_USER: civicscope
+      MYSQL_PASSWORD: civicscope
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - '3306:3306'
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', '127.0.0.1']
+      interval: 5s
+      retries: 20
+
+volumes:
+  mysql-data:
