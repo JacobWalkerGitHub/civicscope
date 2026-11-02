@@ -8,18 +8,19 @@
  */
 import { parseArgs } from 'node:util';
 import { createInterface } from 'node:readline';
+import { Writable } from 'node:stream';
 import { USER_ROLES, type UserRole } from '@civicscope/core';
 import { createDb, createPool } from '@civicscope/db';
+import { explainDatabaseError, requireDatabaseUrl } from '@civicscope/db/env';
 import { createUser, UserInputError } from '../users';
 
+/** Prompts for a password without echoing what is typed. */
 function promptHidden(question: string): Promise<string> {
+  process.stdout.write(question);
+  const output = new Writable({ write: (_chunk, _encoding, done) => done() });
+  const rl = createInterface({ input: process.stdin, output, terminal: true });
   return new Promise((resolve) => {
-    const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: true });
-    const write = (rl as unknown as { _writeToOutput: (s: string) => void })._writeToOutput;
-    (rl as unknown as { _writeToOutput: (s: string) => void })._writeToOutput = (s: string) => {
-      if (s.startsWith(question)) write.call(rl, s);
-    };
-    rl.question(question, (answer) => {
+    rl.question('', (answer) => {
       rl.close();
       process.stdout.write('\n');
       resolve(answer);
@@ -45,9 +46,11 @@ if (!USER_ROLES.includes(values.role as UserRole)) {
   console.error(`Role must be one of: ${USER_ROLES.join(', ')}`);
   process.exit(1);
 }
-const url = process.env.DATABASE_URL;
-if (!url) {
-  console.error('DATABASE_URL is not set.');
+let url: string;
+try {
+  url = requireDatabaseUrl();
+} catch (error) {
+  console.error((error as Error).message);
   process.exit(1);
 }
 
@@ -61,12 +64,10 @@ try {
   );
   console.log(`Created ${values.role} ${values.email} (id ${id}).`);
 } catch (error) {
-  if (error instanceof UserInputError) {
-    console.error(error.message);
-    process.exitCode = 1;
-  } else {
-    throw error;
-  }
+  const message = error instanceof UserInputError ? error.message : explainDatabaseError(error);
+  if (!message) throw error;
+  console.error(message);
+  process.exitCode = 1;
 } finally {
   await pool.end();
 }

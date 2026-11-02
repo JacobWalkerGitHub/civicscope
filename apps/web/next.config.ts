@@ -1,4 +1,10 @@
+import { existsSync } from 'node:fs';
 import type { NextConfig } from 'next';
+
+// Use the repository's root .env in development (Next.js only reads apps/web/.env).
+// Variables already set in the environment win.
+const rootEnv = new URL('../../.env', import.meta.url);
+if (existsSync(rootEnv)) process.loadEnvFile(rootEnv);
 
 const securityHeaders = [
   { key: 'X-Content-Type-Options', value: 'nosniff' },

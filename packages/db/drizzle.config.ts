@@ -1,4 +1,7 @@
 import { defineConfig } from 'drizzle-kit';
+import { loadRootEnv } from './src/scripts/env';
+
+loadRootEnv();
 
 export default defineConfig({
   dialect: 'mysql',
