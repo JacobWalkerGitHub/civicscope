@@ -30,3 +30,21 @@ Admin sign-in uses email + password with server-side sessions, implemented in
 
 - TOTP two-factor sign-in for owner and reviewer accounts (before public launch).
 - Invite, disable and change-role screens in the admin (users are created by CLI for now).
+
+## Addendum: invitations, user management and two-step sign-in (Phase 1, part 5)
+
+- **Invitations.** Owners create a one-time link (random token, hash stored, 3-day expiry,
+  revocable). The invitee picks their own name and password; email and role come from
+  the invitation. There is no email service yet, so the owner sends the link themselves.
+- **User management** is owner-only and audited: change role, disable or re-enable,
+  reset two-step sign-in. Nobody can change their own role or disable themselves, and
+  CivicScope always keeps at least one active owner. Disabling or a role change signs
+  the user out everywhere.
+- **Two-step sign-in** uses standard authenticator-app codes (RFC 6238 TOTP,
+  implemented with `node:crypto`, checked against the RFC test vectors). Secrets are
+  encrypted at rest with AES-256-GCM using `AUTH_ENCRYPTION_KEY`. A code is never
+  accepted twice. After a correct password, a short-lived challenge (5 minutes, 5 tries)
+  stands between the password and the session; wrong codes count toward the account
+  lockout. Ten single-use recovery codes are issued (only hashes stored).
+- **Policy.** With `ADMIN_REQUIRE_TWO_STEP=true` (production), owners and reviewers
+  can't use anything but their account page until two-step sign-in is on.

@@ -54,6 +54,8 @@ describe('migrations', () => {
        ORDER BY table_name`,
     );
     expect((rows as { name: string }[]).map((r) => r.name)).toEqual([
+      'admin_invite',
+      'admin_recovery_code',
       'admin_session',
       'admin_user',
       'audit_log',
@@ -75,6 +77,7 @@ describe('migrations', () => {
       'race',
       'revision',
       'sign_in_attempt',
+      'sign_in_challenge',
       'source',
     ]);
   });

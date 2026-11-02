@@ -2,6 +2,7 @@ import { and, eq, gt, sql } from 'drizzle-orm';
 import { recordAudit, schema, type Db } from '@civicscope/db';
 import { getDummyHash, MAX_PASSWORD_LENGTH, verifyPassword } from './password';
 import { createSession, type CreatedSession, type SessionUser } from './sessions';
+import { createChallenge } from './two-step';
 import { normalizeEmail } from './users';
 
 /** Lockout policy: too many failures in this window block further attempts. */
@@ -11,6 +12,8 @@ export const MAX_FAILURES_PER_IP = 20;
 
 export type SignInResult =
   | { ok: true; user: SessionUser; session: CreatedSession }
+  /** Password was right; the user must now enter an authenticator or recovery code. */
+  | { ok: 'two_step'; challenge: { token: string; expiresAt: Date } }
   | { ok: false; reason: 'invalid' | 'locked' };
 
 export interface SignInInput {
@@ -68,6 +71,11 @@ export async function signIn(db: Db, input: SignInInput, now = new Date()): Prom
     return { ok: false, reason: 'invalid' };
   }
 
+  if (user.totpEnabledAt) {
+    // Not a completed sign-in yet: the attempt is recorded once the code checks out.
+    return { ok: 'two_step', challenge: await createChallenge(db, user.id, ipAddress, now) };
+  }
+
   await record(true);
   await db
     .update(schema.adminUser)
@@ -84,7 +92,13 @@ export async function signIn(db: Db, input: SignInInput, now = new Date()): Prom
   const session = await createSession(db, user.id, { ipAddress, userAgent: input.userAgent }, now);
   return {
     ok: true,
-    user: { id: user.id, email: user.email, name: user.name, role: user.role },
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      twoStep: Boolean(user.totpEnabledAt),
+    },
     session,
   };
 }

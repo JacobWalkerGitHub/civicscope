@@ -106,6 +106,7 @@ test('a reviewer sends it back with a note, and the editor sees why', async ({ p
   await expect(badges(page)).toContainText('Not yet reviewed');
 
   await page.getByRole('button', { name: 'Sign out' }).click();
+  await expect(page).toHaveURL(/\/admin\/sign-in$/);
   await signIn(page, E2E_USERS.editor.email);
   await page.goto(entryUrl);
   await expect(page.getByRole('note')).toContainText('Quote the full sentence');
