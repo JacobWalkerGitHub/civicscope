@@ -1,0 +1,1 @@
+ALTER TABLE `party` MODIFY COLUMN `fec_code` varchar(3);

@@ -168,6 +168,12 @@ describe('partyInputSchema', () => {
       false,
     );
   });
+
+  it('accepts the FEC’s shorter codes for unaffiliated and write-in', () => {
+    expect(partyInputSchema.parse({ name: 'Unaffiliated', fecCode: 'un' }).fecCode).toBe('UN');
+    expect(partyInputSchema.parse({ name: 'Write-in', fecCode: 'W' }).fecCode).toBe('W');
+    expect(partyInputSchema.safeParse({ name: 'Test Party', fecCode: 'D1' }).success).toBe(false);
+  });
 });
 
 describe('slugify', () => {

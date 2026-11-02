@@ -1,4 +1,4 @@
-import { char, index, int, mysqlTable, uniqueIndex, varchar } from 'drizzle-orm/mysql-core';
+import { index, int, mysqlTable, uniqueIndex, varchar } from 'drizzle-orm/mysql-core';
 import { softDelete, timestamps } from './columns';
 import { jurisdiction } from './geography';
 
@@ -13,8 +13,8 @@ export const party = mysqlTable(
     slug: varchar('slug', { length: 100 }).notNull(),
     name: varchar('name', { length: 200 }).notNull(),
     shortName: varchar('short_name', { length: 50 }),
-    /** Three-letter FEC party code (DEM, REP, LIB, ...), when the FEC uses one. */
-    fecCode: char('fec_code', { length: 3 }),
+    /** FEC party code (DEM, REP, LIB, UN, W, ...), when the FEC uses one. */
+    fecCode: varchar('fec_code', { length: 3 }),
     /** Null for national parties; set for state-only parties. */
     jurisdictionId: int('jurisdiction_id').references(() => jurisdiction.id),
     ...timestamps,

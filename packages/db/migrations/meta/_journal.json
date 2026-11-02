@@ -71,6 +71,13 @@
       "when": 1793652322104,
       "tag": "0009_imports_locks",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1793653740143,
+      "tag": "0010_party_fec_code_varchar",
+      "breakpoints": true
     }
   ]
 }

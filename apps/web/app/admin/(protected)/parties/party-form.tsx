@@ -30,7 +30,7 @@ export function PartyForm({
         name="fecCode"
         label="FEC party code"
         defaultValue={party?.fecCode}
-        hint="Three letters used by the Federal Election Commission, if any."
+        hint="The Federal Election Commission's code, if any: usually three letters (DEM, LIB), but UN for unaffiliated and W for write-in."
       />
       <SelectField
         name="jurisdictionId"
