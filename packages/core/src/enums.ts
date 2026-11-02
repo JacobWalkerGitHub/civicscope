@@ -120,3 +120,47 @@ export const AUDIT_ACTIONS = [
   'role_change',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
+
+/**
+ * Kinds of source documents. Each maps to a reliability tier (see sourceTier): primary
+ * official records first, then independent reporting, then a candidate's own words.
+ */
+export const SOURCE_TYPES = [
+  'official_election_authority',
+  'government_record',
+  'legislative_record',
+  'court_record',
+  'news',
+  'campaign_site',
+  'reference',
+  'other',
+] as const;
+export type SourceType = (typeof SOURCE_TYPES)[number];
+
+/** External ID systems used to recognize the same person across data sources. */
+export const PERSON_IDENTIFIER_SCHEMES = [
+  'fec_candidate_id',
+  'bioguide',
+  'openstates',
+  'state_filing',
+  'ballotpedia',
+  'wikidata',
+] as const;
+export type PersonIdentifierScheme = (typeof PERSON_IDENTIFIER_SCHEMES)[number];
+
+/** Where a candidacy stands. Each change is a dated, sourced event. */
+export const CANDIDACY_STATUSES = [
+  'announced',
+  'filed',
+  'qualified',
+  'withdrawn',
+  'disqualified',
+  'advanced',
+  'won',
+  'lost',
+] as const;
+export type CandidacyStatus = (typeof CANDIDACY_STATUSES)[number];
+
+/** Record types a citation can point at. Claims are added in a later phase. */
+export const CITATION_SUBJECTS = ['person', 'candidacy'] as const;
+export type CitationSubject = (typeof CITATION_SUBJECTS)[number];

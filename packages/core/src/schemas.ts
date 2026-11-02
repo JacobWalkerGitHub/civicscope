@@ -1,11 +1,15 @@
 import { z } from 'zod';
 import {
+  CANDIDACY_STATUSES,
+  CITATION_SUBJECTS,
   ELECTION_TYPES,
   LEGISLATIVE_CHAMBERS,
   OFFICE_BRANCHES,
   OFFICE_LEVELS,
+  PERSON_IDENTIFIER_SCHEMES,
   PRIMARY_SYSTEMS,
   RACE_STATUSES,
+  SOURCE_TYPES,
 } from './enums';
 import { isValidPrimarySystem, racePartyError } from './race-rules';
 
@@ -137,6 +141,124 @@ export function validateRaceForElection(
   if (partyError) errors.push(partyError);
   return errors;
 }
+
+const optionalDate = z.preprocess(blankToNull, isoDate.nullable().optional());
+
+/** Today's date as YYYY-MM-DD in UTC; the admin forms only ever need day precision. */
+export const todayIso = () => new Date().toISOString().slice(0, 10);
+
+const notInFuture = (label: string) =>
+  isoDate.refine((d) => d <= todayIso(), `${label} can't be in the future.`);
+
+const webUrl = z.url({
+  protocol: /^https?$/,
+  error: 'Enter the full web address, starting with https:// (or http://).',
+});
+
+export const personInputSchema = z.object({
+  fullName: requiredText('a full name', 2, 200),
+  preferredName: optionalText(100),
+  /** Blank means "work it out from the full name". */
+  sortName: optionalText(200),
+  birthYear: z.preprocess(
+    blankToNull,
+    z.coerce
+      .number({ error: 'Enter a four-digit year.' })
+      .int()
+      .min(1900, 'Enter a four-digit year.')
+      .max(new Date().getUTCFullYear() - 18, 'Candidates must be adults.')
+      .nullable()
+      .optional(),
+  ),
+});
+export type PersonInput = z.infer<typeof personInputSchema>;
+
+/** Format checks for the ID systems that have a fixed shape. */
+const IDENTIFIER_FORMATS: Partial<Record<string, [RegExp, string]>> = {
+  fec_candidate_id: [/^[HSP][0-9A-Z]{8}$/, 'FEC candidate IDs look like H8VA07094 or P80001571.'],
+  bioguide: [/^[A-Z][0-9]{6}$/, 'Bioguide IDs look like K000394.'],
+  wikidata: [/^Q[0-9]+$/, 'Wikidata IDs look like Q22686.'],
+};
+
+export const personIdentifierInputSchema = z
+  .object({
+    scheme: z.enum(PERSON_IDENTIFIER_SCHEMES, { error: 'Choose an ID type.' }),
+    value: z
+      .string({ error: 'Enter the ID.' })
+      .trim()
+      .min(1, 'Enter the ID.')
+      .max(100, 'Keep the ID under 100 characters.'),
+  })
+  .transform((v) => (IDENTIFIER_FORMATS[v.scheme] ? { ...v, value: v.value.toUpperCase() } : v))
+  .superRefine((v, ctx) => {
+    const format = IDENTIFIER_FORMATS[v.scheme];
+    if (format && !format[0].test(v.value)) {
+      ctx.addIssue({ code: 'custom', path: ['value'], message: format[1] });
+    }
+  });
+export type PersonIdentifierInput = z.infer<typeof personIdentifierInputSchema>;
+
+export const candidacyInputSchema = z.object({
+  personId: id('a person'),
+  raceId: id('a race'),
+  partyId: optionalId,
+  /** Blank means "use the person's full name". */
+  ballotName: optionalText(200),
+  isIncumbent: checkbox,
+  campaignUrl: httpsUrl,
+  fecCommitteeId: z.preprocess(
+    (v) => (typeof v === 'string' ? (v.trim() === '' ? null : v.trim().toUpperCase()) : v),
+    z
+      .string()
+      .regex(/^C[0-9]{8}$/, 'FEC committee IDs look like C00123456.')
+      .nullable()
+      .optional(),
+  ),
+});
+export type CandidacyInput = z.infer<typeof candidacyInputSchema>;
+
+/**
+ * The source behind a citation. Give the URL of the document; if CivicScope already
+ * knows that URL the existing source is reused, otherwise title, publisher and type
+ * are needed to create it.
+ */
+export const sourceRefSchema = z.object({
+  sourceUrl: z.preprocess(blankToNull, webUrl.max(2048)),
+  sourceTitle: optionalText(500),
+  sourcePublisher: optionalText(200),
+  sourceType: z.preprocess(blankToNull, z.enum(SOURCE_TYPES).nullable().optional()),
+  sourcePublishedAt: optionalDate,
+});
+export type SourceRefInput = z.infer<typeof sourceRefSchema>;
+
+export const citationInputSchema = sourceRefSchema.extend({
+  subjectType: z.enum(CITATION_SUBJECTS),
+  subjectId: id('a record'),
+  /** Which field the source supports, e.g. "fullName"; blank means the record as a whole. */
+  field: optionalText(64),
+  excerpt: optionalText(2000),
+  locator: optionalText(200),
+});
+export type CitationInput = z.infer<typeof citationInputSchema>;
+
+export const sourceInputSchema = z.object({
+  url: webUrl.max(2048),
+  title: requiredText('a title', 2, 500),
+  publisher: requiredText('a publisher', 2, 200),
+  sourceType: z.enum(SOURCE_TYPES, { error: 'Choose a source type.' }),
+  publishedAt: optionalDate,
+  retrievedAt: notInFuture('The date you checked it'),
+  archiveUrl: httpsUrl,
+});
+export type SourceInput = z.infer<typeof sourceInputSchema>;
+
+export const statusEventInputSchema = sourceRefSchema.extend({
+  status: z.enum(CANDIDACY_STATUSES, { error: 'Choose a status.' }),
+  effectiveDate: notInFuture('The status date'),
+  note: optionalText(500),
+  excerpt: optionalText(2000),
+});
+export type StatusEventInput = z.infer<typeof statusEventInputSchema>;
 
 /** URL-safe identifier from a display name: "Governor of Kentucky" -> "governor-of-kentucky". */
 export function slugify(text: string): string {

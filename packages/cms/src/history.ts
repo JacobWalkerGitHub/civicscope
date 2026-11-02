@@ -5,6 +5,9 @@ import { CmsError, NotFoundError } from './errors';
 import { ELECTION_EDITABLE, RACE_EDITABLE, updateElection, updateRace } from './elections';
 import { OFFICE_EDITABLE, updateOffice } from './offices';
 import { PARTY_EDITABLE, updateParty } from './parties';
+import { CANDIDACY_EDITABLE, updateCandidacy } from './candidacies';
+import { PERSON_EDITABLE, updatePerson } from './people';
+import { SOURCE_EDITABLE, updateSource } from './sources';
 
 /** Entities whose versions can be restored, with their editable fields and updater. */
 const RESTORABLE = {
@@ -12,6 +15,9 @@ const RESTORABLE = {
   office: { fields: OFFICE_EDITABLE, update: updateOffice },
   election: { fields: ELECTION_EDITABLE, update: updateElection },
   race: { fields: RACE_EDITABLE, update: updateRace },
+  person: { fields: PERSON_EDITABLE, update: updatePerson },
+  candidacy: { fields: CANDIDACY_EDITABLE, update: updateCandidacy },
+  source: { fields: SOURCE_EDITABLE, update: updateSource },
 } as const;
 export type RestorableEntity = keyof typeof RESTORABLE;
 
@@ -85,8 +91,9 @@ export async function restoreRevision(
   const snapshot = row.snapshot as Record<string, unknown>;
   const input: Record<string, unknown> = {};
   for (const field of config.fields) input[field] = snapshot[field];
-  if (input.isPartisan !== undefined) input.isPartisan = Boolean(input.isPartisan);
-  if (input.isSpecial !== undefined) input.isSpecial = Boolean(input.isSpecial);
+  for (const flag of ['isPartisan', 'isSpecial', 'isIncumbent']) {
+    if (input[flag] !== undefined) input[flag] = Boolean(input[flag]);
+  }
   try {
     await config.update(db, actor, entityId, input, {
       action: 'restore',

@@ -57,6 +57,9 @@ describe('migrations', () => {
       'admin_session',
       'admin_user',
       'audit_log',
+      'candidacy',
+      'candidacy_status_event',
+      'citation',
       'district',
       'election',
       'election_cycle',
@@ -65,9 +68,12 @@ describe('migrations', () => {
       'office',
       'official_resource',
       'party',
+      'person',
+      'person_identifier',
       'race',
       'revision',
       'sign_in_attempt',
+      'source',
     ]);
   });
 

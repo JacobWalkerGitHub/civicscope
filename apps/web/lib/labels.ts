@@ -1,4 +1,7 @@
 import type {
+  CandidacyStatus,
+  PersonIdentifierScheme,
+  SourceType,
   ElectionType,
   OfficeBranch,
   OfficeLevel,
@@ -77,3 +80,41 @@ export function formatDate(iso: string): string {
     new Date(Date.UTC(y!, m! - 1, d!)),
   );
 }
+
+export const SOURCE_TYPE_LABELS: Record<SourceType, string> = {
+  official_election_authority: 'Official election authority',
+  government_record: 'Government record',
+  legislative_record: 'Legislative record',
+  court_record: 'Court record',
+  news: 'News reporting',
+  campaign_site: 'Candidate or campaign material',
+  reference: 'Reference work',
+  other: 'Other',
+};
+
+export const TIER_LABELS = {
+  1: 'Tier 1 · official record',
+  2: 'Tier 2 · independent reporting',
+  3: 'Tier 3 · candidate or reference',
+  4: 'Tier 4 · other',
+} as const;
+
+export const IDENTIFIER_SCHEME_LABELS: Record<PersonIdentifierScheme, string> = {
+  fec_candidate_id: 'FEC candidate ID',
+  bioguide: 'Congressional Bioguide ID',
+  openstates: 'Open States person ID',
+  state_filing: 'State filing ID',
+  ballotpedia: 'Ballotpedia page name',
+  wikidata: 'Wikidata ID',
+};
+
+export const CANDIDACY_STATUS_LABELS: Record<CandidacyStatus, string> = {
+  announced: 'Announced',
+  filed: 'Filed',
+  qualified: 'Qualified for the ballot',
+  withdrawn: 'Withdrew',
+  disqualified: 'Disqualified',
+  advanced: 'Advanced to the next round',
+  won: 'Won',
+  lost: 'Lost',
+};

@@ -10,7 +10,7 @@ import { recordChange, type Actor, type Tx, type UpdateOptions } from './changes
 import { CmsError, mysqlErrorCode, NotFoundError } from './errors';
 import { parseInput } from './parse';
 
-const { election, electionCycle, race, jurisdiction, office, party, district } = schema;
+const { election, electionCycle, race, jurisdiction, office, party, district, candidacy } = schema;
 export type Election = typeof election.$inferSelect;
 export type Race = typeof race.$inferSelect;
 
@@ -208,6 +208,27 @@ export async function updateRace(
 
 type Publishable = 'election' | 'race';
 
+/** Keeps the public site consistent: a parent can't be hidden while its children are public. */
+async function assertNoPublishedChildren(tx: Tx, entityType: Publishable, id: number) {
+  const [row] =
+    entityType === 'election'
+      ? await tx
+          .select({ n: sql<number>`count(*)` })
+          .from(race)
+          .where(and(eq(race.electionId, id), eq(race.publishState, 'published')))
+      : await tx
+          .select({ n: sql<number>`count(*)` })
+          .from(candidacy)
+          .where(and(eq(candidacy.raceId, id), eq(candidacy.publishState, 'published')));
+  if (Number(row?.n) > 0) {
+    throw new CmsError(
+      entityType === 'election'
+        ? 'Unpublish this election’s races first.'
+        : 'Unpublish this race’s candidates first.',
+    );
+  }
+}
+
 /**
  * Publishes or unpublishes an election or race. A race can only be published once its
  * election is published, so the public site never shows a race without its election.
@@ -228,6 +249,9 @@ export async function setPublishState(
       if (parent.publishState !== 'published' || parent.deletedAt) {
         throw new CmsError('Publish the election first; a race cannot appear without it.');
       }
+    }
+    if (state === 'unpublished' && before.publishState === 'published') {
+      await assertNoPublishedChildren(tx, entityType, id);
     }
     if (before.publishState === state) return;
     await tx.update(table).set({ publishState: state }).where(eq(table.id, id));
@@ -260,6 +284,15 @@ export async function setArchived(
         .where(and(eq(race.electionId, id), isNull(race.deletedAt)));
       if (Number(row?.n) > 0) {
         throw new CmsError('Archive this election’s races first.');
+      }
+    }
+    if (entityType === 'race' && archived) {
+      const [row] = await tx
+        .select({ n: sql<number>`count(*)` })
+        .from(candidacy)
+        .where(and(eq(candidacy.raceId, id), isNull(candidacy.deletedAt)));
+      if (Number(row?.n) > 0) {
+        throw new CmsError('Archive this race’s candidates first.');
       }
     }
     await tx

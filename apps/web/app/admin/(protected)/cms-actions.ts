@@ -2,6 +2,21 @@
 
 import { redirect } from 'next/navigation';
 import {
+  addCitation,
+  addPersonIdentifier,
+  addStatusEvent,
+  createCandidacy,
+  createPerson,
+  removeCitation,
+  removePersonIdentifier,
+  setCandidacyArchived,
+  setCandidacyPublishState,
+  setPersonArchived,
+  setPersonPublishState,
+  setSourceArchived,
+  updateCandidacy,
+  updatePerson,
+  updateSource,
   createElection,
   createOffice,
   createParty,
@@ -103,25 +118,117 @@ export async function updateRaceAction(id: number, _: FormState, formData: FormD
   );
 }
 
+type PublishableEntity = 'election' | 'race' | 'person' | 'candidacy';
+
 export async function publishAction(
-  entityType: 'election' | 'race',
+  entityType: PublishableEntity,
   id: number,
   publish: boolean,
   _: FormState,
 ) {
-  return runButtonAction('content:publish', (actor) =>
-    setPublishState(getDb(), actor, entityType, id, publish ? 'published' : 'unpublished'),
-  );
+  const state = publish ? 'published' : 'unpublished';
+  return runButtonAction('content:publish', (actor) => {
+    const db = getDb();
+    switch (entityType) {
+      case 'person':
+        return setPersonPublishState(db, actor, id, state);
+      case 'candidacy':
+        return setCandidacyPublishState(db, actor, id, state);
+      default:
+        return setPublishState(db, actor, entityType, id, state);
+    }
+  });
 }
 
 export async function archiveAction(
-  entityType: 'election' | 'race',
+  entityType: PublishableEntity | 'source',
   id: number,
   archived: boolean,
   _: FormState,
 ) {
-  return runButtonAction('content:archive', (actor) =>
-    setArchived(getDb(), actor, entityType, id, archived),
+  return runButtonAction('content:archive', (actor) => {
+    const db = getDb();
+    switch (entityType) {
+      case 'person':
+        return setPersonArchived(db, actor, id, archived);
+      case 'candidacy':
+        return setCandidacyArchived(db, actor, id, archived);
+      case 'source':
+        return setSourceArchived(db, actor, id, archived);
+      default:
+        return setArchived(db, actor, entityType, id, archived);
+    }
+  });
+}
+
+// People and candidacies
+
+export async function createPersonAction(_: FormState, formData: FormData) {
+  let id = 0;
+  const state = await runFormAction('content:edit', formData, async (actor, values) => {
+    id = await createPerson(getDb(), actor, values);
+  });
+  if (state.saved) redirect(`/admin/candidates/${id}?created=1`);
+  return state;
+}
+
+export async function updatePersonAction(id: number, _: FormState, formData: FormData) {
+  return runFormAction('content:edit', formData, (actor, values) =>
+    updatePerson(getDb(), actor, id, values),
+  );
+}
+
+export async function addIdentifierAction(personId: number, _: FormState, formData: FormData) {
+  return runFormAction('content:edit', formData, async (actor, values) => {
+    await addPersonIdentifier(getDb(), actor, personId, values);
+  });
+}
+
+export async function removeIdentifierAction(id: number, _: FormState) {
+  return runButtonAction('content:edit', (actor) => removePersonIdentifier(getDb(), actor, id));
+}
+
+export async function createCandidacyAction(raceId: number, _: FormState, formData: FormData) {
+  let id = 0;
+  const state = await runFormAction('content:edit', formData, async (actor, values) => {
+    id = await createCandidacy(getDb(), actor, { ...values, raceId });
+  });
+  if (state.saved) redirect(`/admin/candidacies/${id}?created=1`);
+  return state;
+}
+
+export async function updateCandidacyAction(id: number, _: FormState, formData: FormData) {
+  return runFormAction('content:edit', formData, (actor, values) =>
+    updateCandidacy(getDb(), actor, id, values),
+  );
+}
+
+export async function addStatusEventAction(candidacyId: number, _: FormState, formData: FormData) {
+  return runFormAction('content:edit', formData, (actor, values) =>
+    addStatusEvent(getDb(), actor, candidacyId, values),
+  );
+}
+
+// Sources and citations
+
+export async function addCitationAction(
+  subjectType: 'person' | 'candidacy',
+  subjectId: number,
+  _: FormState,
+  formData: FormData,
+) {
+  return runFormAction('content:edit', formData, async (actor, values) => {
+    await addCitation(getDb(), actor, { ...values, subjectType, subjectId });
+  });
+}
+
+export async function removeCitationAction(id: number, _: FormState) {
+  return runButtonAction('content:edit', (actor) => removeCitation(getDb(), actor, id));
+}
+
+export async function updateSourceAction(id: number, _: FormState, formData: FormData) {
+  return runFormAction('content:edit', formData, (actor, values) =>
+    updateSource(getDb(), actor, id, values),
   );
 }
 
