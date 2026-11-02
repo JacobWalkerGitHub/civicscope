@@ -15,11 +15,13 @@
     "@civicscope/core": "workspace:*",
     "@civicscope/db": "workspace:*",
     "next": "^16.0.0",
+    "qrcode": "1.5.4",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "server-only": "^0.0.1"
   },
   "devDependencies": {
+    "@types/qrcode": "1.5.5",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0"
   }

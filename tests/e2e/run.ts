@@ -3,6 +3,7 @@
  * Requires a production build of the web app (`pnpm --filter @civicscope/web build`).
  */
 import { spawn } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { createUser } from '@civicscope/auth';
 import { seedIssues, seedJurisdictions } from '@civicscope/db';
@@ -27,7 +28,15 @@ try {
     const child = spawn(
       'pnpm',
       ['exec', 'playwright', 'test', '-c', config, ...process.argv.slice(2)],
-      { stdio: 'inherit', env: { ...process.env, DATABASE_URL: database.url } },
+      {
+        stdio: 'inherit',
+        env: {
+          ...process.env,
+          DATABASE_URL: database.url,
+          // The app runs as a production build, which needs a real encryption key.
+          AUTH_ENCRYPTION_KEY: randomBytes(32).toString('base64'),
+        },
+      },
     );
     child.on('exit', (code) => resolve(code ?? 1));
   });

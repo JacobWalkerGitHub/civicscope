@@ -15,6 +15,8 @@ export interface SessionUser {
   email: string;
   name: string;
   role: UserRole;
+  /** Whether two-step sign-in is on for this account. */
+  twoStep: boolean;
 }
 
 export interface CreatedSession {
@@ -55,6 +57,7 @@ export async function validateSession(
       name: schema.adminUser.name,
       role: schema.adminUser.role,
       disabledAt: schema.adminUser.disabledAt,
+      totpEnabledAt: schema.adminUser.totpEnabledAt,
       expiresAt: schema.adminSession.expiresAt,
     })
     .from(schema.adminSession)
@@ -64,7 +67,13 @@ export async function validateSession(
     );
 
   if (!row || row.disabledAt) return null;
-  return { id: row.id, email: row.email, name: row.name, role: row.role };
+  return {
+    id: row.id,
+    email: row.email,
+    name: row.name,
+    role: row.role,
+    twoStep: Boolean(row.totpEnabledAt),
+  };
 }
 
 export async function invalidateSession(db: Db, token: string): Promise<void> {

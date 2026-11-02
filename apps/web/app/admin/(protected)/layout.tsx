@@ -7,7 +7,7 @@ import { requirePermission } from '@/lib/session';
 import { signOutAction } from '../actions';
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
-  const user = await requirePermission('admin:view');
+  const user = await requirePermission('admin:view', { allowWithoutTwoStep: true });
   const waiting = await countReviewQueue(getDb());
   return (
     <div className="admin">
@@ -34,7 +34,8 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         </nav>
         <div className="who">
           <span>
-            {user.name} · <span className="role">{user.role}</span>
+            <Link href="/admin/account">{user.name}</Link> ·{' '}
+            <span className="role">{user.role}</span>
           </span>
           <form action={signOutAction}>
             <button type="submit" className="link-button">

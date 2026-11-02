@@ -70,7 +70,7 @@ describe('signIn', () => {
       ipAddress: '10.0.0.1',
     });
     expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    if (result.ok !== true) return;
     expect(result.user.role).toBe('owner');
     expect(await validateSession(db, result.session.token)).toMatchObject({
       email: 'owner@example.com',
