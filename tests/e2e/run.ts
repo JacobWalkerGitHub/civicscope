@@ -6,7 +6,13 @@ import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { createUser } from '@civicscope/auth';
-import { seedIssues, seedJurisdictions } from '@civicscope/db';
+import {
+  applyAppGrants,
+  createDb,
+  createPool,
+  seedIssues,
+  seedJurisdictions,
+} from '@civicscope/db';
 import { startTestDatabase } from '@civicscope/db/testing';
 import { E2E_PASSWORD, E2E_USERS } from './users';
 
@@ -23,6 +29,19 @@ try {
     );
   }
 
+  // Run the app as the least-privilege account production uses, so a write the
+  // grants don't allow fails here rather than in production.
+  const appPassword = randomBytes(18).toString('base64url');
+  const rootPool = createPool(database.container.getConnectionUri(true));
+  try {
+    await applyAppGrants(createDb(rootPool), { user: 'civicscope_app', password: appPassword });
+  } finally {
+    await rootPool.end();
+  }
+  const appUrl = new URL(database.url);
+  appUrl.username = 'civicscope_app';
+  appUrl.password = appPassword;
+
   const config = fileURLToPath(new URL('./playwright.config.ts', import.meta.url));
   exitCode = await new Promise<number>((resolve) => {
     const child = spawn(
@@ -32,7 +51,7 @@ try {
         stdio: 'inherit',
         env: {
           ...process.env,
-          DATABASE_URL: database.url,
+          DATABASE_URL: appUrl.toString(),
           // The app runs as a production build, which needs a real encryption key.
           AUTH_ENCRYPTION_KEY: randomBytes(32).toString('base64'),
         },
