@@ -15,6 +15,9 @@ export default async function DashboardPage() {
       </p>
       <ul>
         <li>
+          <Link href="/admin/candidates">Candidates</Link>
+        </li>
+        <li>
           <Link href="/admin/elections">Elections and races</Link>
         </li>
         <li>
@@ -23,8 +26,10 @@ export default async function DashboardPage() {
         <li>
           <Link href="/admin/parties">Parties</Link>
         </li>
+        <li>
+          <Link href="/admin/sources">Sources</Link>
+        </li>
       </ul>
-      <p className="muted">Candidate and source management arrives in the next part of Phase 1.</p>
     </>
   );
 }

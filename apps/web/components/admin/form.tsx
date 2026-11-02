@@ -16,12 +16,15 @@ export function ActionForm({
   action,
   submitLabel,
   savedMessage = 'Saved.',
+  resetOnSave = false,
   children,
   className = 'stack form',
 }: {
   action: Action;
   submitLabel: string;
   savedMessage?: string;
+  /** Clear the fields after a successful save (for "add another" forms). */
+  resetOnSave?: boolean;
   children: ReactNode;
   className?: string;
 }) {
@@ -39,7 +42,11 @@ export function ActionForm({
           {savedMessage}
         </p>
       )}
-      <FormContext.Provider value={{ ...state, idPrefix }}>{children}</FormContext.Provider>
+      <FormContext.Provider
+        value={{ ...state, values: resetOnSave && state.saved ? {} : state.values, idPrefix }}
+      >
+        {children}
+      </FormContext.Provider>
       <div>
         <button type="submit" disabled={pending}>
           {pending ? 'Saving…' : submitLabel}
@@ -122,6 +129,46 @@ export function TextField({
         defaultValue={value}
         key={value}
         required={required}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={
+          [hint && `${id}-hint`, error && `${id}-error`].filter(Boolean).join(' ') || undefined
+        }
+      />
+      {error && (
+        <p id={`${id}-error`} className="field-error">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+export function TextAreaField({
+  name,
+  label,
+  defaultValue,
+  hint,
+}: {
+  name: string;
+  label: string;
+  defaultValue?: string | null;
+  hint?: string;
+}) {
+  const { value, error, id } = useField(name, defaultValue);
+  return (
+    <div className="field">
+      <label htmlFor={id}>{label}</label>
+      {hint && (
+        <p id={`${id}-hint`} className="hint">
+          {hint}
+        </p>
+      )}
+      <textarea
+        id={id}
+        name={name}
+        rows={3}
+        defaultValue={value}
+        key={value}
         aria-invalid={error ? true : undefined}
         aria-describedby={
           [hint && `${id}-hint`, error && `${id}-error`].filter(Boolean).join(' ') || undefined

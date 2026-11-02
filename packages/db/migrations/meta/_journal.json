@@ -36,6 +36,20 @@
       "when": 1793646956956,
       "tag": "0004_revision_append_only",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1793648322985,
+      "tag": "0005_candidates_sources",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1793648324362,
+      "tag": "0006_candidacy_status_event_append_only",
+      "breakpoints": true
     }
   ]
 }

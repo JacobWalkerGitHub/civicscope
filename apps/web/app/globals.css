@@ -297,11 +297,13 @@ select {
   font-weight: 400;
 }
 
-.add-race {
+.add-race,
+.add-form {
   margin-top: 16px;
 }
 
-.add-race summary {
+.add-race summary,
+.add-form summary {
   cursor: pointer;
   font-weight: 600;
   margin-bottom: 12px;
@@ -322,4 +324,55 @@ select {
 
 .table-wrap {
   overflow-x: auto;
+}
+
+section {
+  margin-top: 32px;
+}
+
+fieldset.source-fields {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 12px 16px;
+  display: grid;
+  gap: 12px;
+}
+
+fieldset.source-fields legend {
+  font-weight: 600;
+  padding: 0 4px;
+}
+
+textarea {
+  font: inherit;
+  width: 100%;
+  max-width: 40rem;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+.citations {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.citations li {
+  border-left: 3px solid var(--line);
+  padding-left: 12px;
+  display: grid;
+  gap: 4px;
+}
+
+.citations blockquote {
+  margin: 0;
+  font-style: italic;
+}
+
+.timeline {
+  padding-left: 20px;
+  display: grid;
+  gap: 8px;
 }
