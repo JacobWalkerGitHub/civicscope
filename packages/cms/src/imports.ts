@@ -219,7 +219,10 @@ export async function createCandidateImport(
  * create people, which add existing people to the race, which update candidacies,
  * and which fields are locked. Run again at apply time inside the transaction.
  */
-export async function planCandidateImport(tx: Tx | Db, batch: ImportBatch): Promise<ImportPlan> {
+export async function planCandidateImport(
+  tx: Tx | Db,
+  batch: Pick<ImportBatch, 'csvText' | 'raceId'>,
+): Promise<ImportPlan> {
   const counts: Record<RowAction, number> = {
     create: 0,
     add_to_race: 0,
@@ -623,7 +626,10 @@ export async function applyImport(db: Db, actor: Actor, id: number): Promise<Imp
     }
     const ref = sourceRefSchema.parse(batch.sourceRef);
     const src = await resolveSource(tx, actor, ref);
-    const note = `CSV import ${batch.id} (${batch.fileName})`;
+    const note =
+      batch.kind === 'fec'
+        ? `FEC import run ${batch.ingestRunId} (${batch.fileName})`
+        : `CSV import ${batch.id} (${batch.fileName})`;
     let conflicts = 0;
 
     for (const row of plan.rows) {

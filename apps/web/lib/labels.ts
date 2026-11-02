@@ -115,6 +115,7 @@ export const IDENTIFIER_SCHEME_LABELS: Record<PersonIdentifierScheme, string> = 
 
 export const CANDIDACY_STATUS_LABELS: Record<CandidacyStatus, string> = {
   announced: 'Announced',
+  registered: 'Registered with the FEC (not a ballot listing)',
   filed: 'Filed',
   qualified: 'Qualified for the ballot',
   withdrawn: 'Withdrew',

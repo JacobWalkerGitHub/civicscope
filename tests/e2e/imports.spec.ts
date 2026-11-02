@@ -141,3 +141,11 @@ test('editors cannot run imports', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Recent imports' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Upload a candidate list' })).toHaveCount(0);
 });
+
+test('the automated import page explains how runs start', async ({ page }) => {
+  await signIn(page, E2E_USERS.viewer.email);
+  await page.getByRole('link', { name: 'FEC data' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Automated imports');
+  await expect(page.getByText('No runs yet.')).toBeVisible();
+  await expect(page.getByText('pnpm ingest:fec 2028')).toBeVisible();
+});

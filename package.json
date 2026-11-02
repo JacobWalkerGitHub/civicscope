@@ -16,6 +16,7 @@
     "db:generate": "pnpm --filter @civicscope/db generate",
     "db:migrate": "pnpm --filter @civicscope/db migrate",
     "db:seed": "pnpm --filter @civicscope/db seed",
+    "ingest:fec": "tsx packages/cms/src/scripts/ingest-fec.ts",
     "dev": "pnpm --filter @civicscope/web dev",
     "admin:create-user": "pnpm --filter @civicscope/auth create-user",
     "test:e2e": "tsx tests/e2e/run.ts"

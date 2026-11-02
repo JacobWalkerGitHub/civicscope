@@ -71,6 +71,8 @@ describe('migrations', () => {
       'election_deadline',
       'field_lock',
       'import_batch',
+      'ingest_run',
+      'ingest_snapshot',
       'issue',
       'jurisdiction',
       'office',

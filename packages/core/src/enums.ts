@@ -151,6 +151,9 @@ export type PersonIdentifierScheme = (typeof PERSON_IDENTIFIER_SCHEMES)[number];
 /** Where a candidacy stands. Each change is a dated, sourced event. */
 export const CANDIDACY_STATUSES = [
   'announced',
+  // Registered with a campaign-finance regulator (for federal races, the FEC). This is
+  // about money, not the ballot: it never means the person is on a ballot.
+  'registered',
   'filed',
   'qualified',
   'withdrawn',
@@ -221,7 +224,8 @@ export type LockableEntity = keyof typeof LOCKABLE_FIELDS;
 export type LockableField<E extends LockableEntity = LockableEntity> =
   (typeof LOCKABLE_FIELDS)[E][number];
 
-export const IMPORT_KINDS = ['candidates'] as const;
+/** candidates: a CSV someone uploaded; fec: written by the automated FEC import. */
+export const IMPORT_KINDS = ['candidates', 'fec'] as const;
 export type ImportKind = (typeof IMPORT_KINDS)[number];
 
 /** preview: uploaded and checkable; applied: written in one transaction; discarded: abandoned. */
@@ -242,3 +246,10 @@ export type CorrectionState = (typeof CORRECTION_STATES)[number];
 /** How much of one state's races for one office level CivicScope covers in a cycle. */
 export const COVERAGE_LEVELS = ['none', 'partial', 'complete'] as const;
 export type CoverageLevel = (typeof COVERAGE_LEVELS)[number];
+
+/** Automated data sources, each with its own connector. */
+export const INGEST_SOURCES = ['fec'] as const;
+export type IngestSource = (typeof INGEST_SOURCES)[number];
+
+export const INGEST_RUN_STATES = ['running', 'succeeded', 'failed'] as const;
+export type IngestRunState = (typeof INGEST_RUN_STATES)[number];

@@ -38,6 +38,8 @@ const VERIFICATION_HELP: Record<(typeof VERIFICATION_STATUSES)[number], string> 
 
 const STATUS_HELP: Record<(typeof CANDIDACY_STATUSES)[number], string> = {
   announced: 'Has said publicly they are running, but has not filed.',
+  registered:
+    'Has registered as a federal candidate with the Federal Election Commission, which is required once a campaign raises or spends more than $5,000. This is about campaign finance only. It does not mean they are on any ballot.',
   filed: 'Has filed with the election authority.',
   qualified: 'The election authority has certified them for the ballot.',
   withdrawn: 'Has left the race.',
