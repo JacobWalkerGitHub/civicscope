@@ -1,7 +1,14 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getCandidacy, listParties, listStatusEvents, NotFoundError } from '@civicscope/cms';
+import {
+  getCandidacy,
+  IMPORT_FIELD_LABELS,
+  listLocks,
+  listParties,
+  listStatusEvents,
+  NotFoundError,
+} from '@civicscope/cms';
 import { can, todayIso } from '@civicscope/core';
 import { PublishBadge } from '@/components/admin/badges';
 import {
@@ -14,7 +21,7 @@ import {
 import { History } from '@/components/admin/history';
 import { CitationsPanel, SourceFields } from '@/components/admin/sources';
 import { getDb } from '@/lib/db';
-import { CANDIDACY_STATUS_LABELS, formatDate, options } from '@/lib/labels';
+import { CANDIDACY_STATUS_LABELS, dateTime, formatDate, options } from '@/lib/labels';
 import { requirePermission } from '@/lib/session';
 import {
   addStatusEventAction,
@@ -22,6 +29,7 @@ import {
   publishAction,
   updateCandidacyAction,
 } from '../../cms-actions';
+import { unlockFieldAction } from '../../imports/actions';
 import { CANDIDACY_CITABLE_FIELDS, CandidacyForm } from '../candidacy-form';
 
 export const metadata: Metadata = { title: 'Candidacy · CivicScope admin' };
@@ -34,7 +42,11 @@ export default async function CandidacyPage({ params }: { params: Promise<{ id: 
     if (e instanceof NotFoundError) notFound();
     throw e;
   });
-  const [events, parties] = await Promise.all([listStatusEvents(db, id), listParties(db)]);
+  const [events, parties, locks] = await Promise.all([
+    listStatusEvents(db, id),
+    listParties(db),
+    listLocks(db, 'candidacy', id),
+  ]);
   const archived = Boolean(c.deletedAt);
   const published = c.publishState === 'published';
   const canEdit = can(user.role, 'content:edit') && !archived;
@@ -85,6 +97,34 @@ export default async function CandidacyPage({ params }: { params: Promise<{ id: 
           candidacy={c}
           submitLabel="Save changes"
         />
+      )}
+
+      {locks.length > 0 && (
+        <section aria-labelledby="locks-heading">
+          <h2 id="locks-heading">Locked fields</h2>
+          <p className="muted">
+            These were changed by hand, so imports won’t overwrite them. If an import’s source
+            disagrees, the difference goes to the review queue. Unlock a field to let imports update
+            it again.
+          </p>
+          <ul>
+            {locks.map((l) => (
+              <li key={l.id}>
+                <strong>{IMPORT_FIELD_LABELS[l.field] ?? l.field}</strong>{' '}
+                <span className="muted">
+                  · {l.reason}
+                  {l.lockedByName && <> by {l.lockedByName}</>}, {dateTime.format(l.createdAt)}
+                </span>{' '}
+                {can(user.role, 'data:import') && (
+                  <ActionButton
+                    action={unlockFieldAction.bind(null, l.id)}
+                    label={`Unlock ${(IMPORT_FIELD_LABELS[l.field] ?? l.field).toLowerCase()}`}
+                  />
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       <section aria-labelledby="status-heading">

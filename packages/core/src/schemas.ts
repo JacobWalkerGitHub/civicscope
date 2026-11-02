@@ -357,3 +357,95 @@ export function fieldErrors(error: z.ZodError): Record<string, string> {
   }
   return out;
 }
+
+const yesNo = z.preprocess(
+  (v) => {
+    if (typeof v !== 'string') return v;
+    const s = v.trim().toLowerCase();
+    if (s === '') return null;
+    if (['yes', 'y', 'true', '1', 'x'].includes(s)) return true;
+    if (['no', 'n', 'false', '0'].includes(s)) return false;
+    return v;
+  },
+  z.boolean({ error: 'Use yes or no.' }).nullable().optional(),
+);
+
+/**
+ * One row of a candidate CSV import. Blank cells mean "the file says nothing about
+ * this", so an import never clears a value. Party is resolved against the parties
+ * table later; person_id is a number to link an existing person, or "new".
+ */
+export const candidateImportRowSchema = z
+  .object({
+    fullName: requiredText('a full name', 2, 200),
+    ballotName: optionalText(200),
+    party: optionalText(200),
+    incumbent: yesNo,
+    status: z.preprocess(
+      (v) => (typeof v === 'string' ? (v.trim() === '' ? null : v.trim().toLowerCase()) : v),
+      z
+        .enum(CANDIDACY_STATUSES, { error: `Use one of: ${CANDIDACY_STATUSES.join(', ')}.` })
+        .nullable()
+        .optional(),
+    ),
+    statusDate: z.preprocess(blankToNull, notInFuture('The status date').nullable().optional()),
+    campaignUrl: httpsUrl,
+    fecCandidateId: z.preprocess(
+      (v) => (typeof v === 'string' ? (v.trim() === '' ? null : v.trim().toUpperCase()) : v),
+      z
+        .string()
+        .regex(/^[HSP][0-9A-Z]{8}$/, 'FEC candidate IDs look like H8VA07094.')
+        .nullable()
+        .optional(),
+    ),
+    fecCommitteeId: z.preprocess(
+      (v) => (typeof v === 'string' ? (v.trim() === '' ? null : v.trim().toUpperCase()) : v),
+      z
+        .string()
+        .regex(/^C[0-9]{8}$/, 'FEC committee IDs look like C00123456.')
+        .nullable()
+        .optional(),
+    ),
+    personId: z.preprocess(
+      (v) => (typeof v === 'string' ? (v.trim() === '' ? null : v.trim().toLowerCase()) : v),
+      z
+        .union([z.literal('new'), z.coerce.number().int().positive()], {
+          error: 'Use a person number from CivicScope, or "new".',
+        })
+        .nullable()
+        .optional(),
+    ),
+  })
+  .superRefine((v, ctx) => {
+    if (v.status && !v.statusDate) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['statusDate'],
+        message: 'Give the date of this status.',
+      });
+    }
+    if (v.statusDate && !v.status) {
+      ctx.addIssue({ code: 'custom', path: ['status'], message: 'Give the status for this date.' });
+    }
+  });
+export type CandidateImportRow = z.infer<typeof candidateImportRowSchema>;
+
+/** CSV header (normalized with csvHeaderKey) → row field. */
+export const CANDIDATE_IMPORT_COLUMNS = {
+  full_name: 'fullName',
+  ballot_name: 'ballotName',
+  party: 'party',
+  incumbent: 'incumbent',
+  status: 'status',
+  status_date: 'statusDate',
+  campaign_url: 'campaignUrl',
+  fec_candidate_id: 'fecCandidateId',
+  fec_committee_id: 'fecCommitteeId',
+  person_id: 'personId',
+} as const satisfies Record<string, keyof CandidateImportRow>;
+
+/** What an import is about: the race its rows go into and the document they came from. */
+export const candidateImportInputSchema = sourceRefSchema.extend({
+  raceId: id('a race'),
+});
+export type CandidateImportInput = z.infer<typeof candidateImportInputSchema>;

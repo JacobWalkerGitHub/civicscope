@@ -4,6 +4,7 @@ import { schema, type Db } from '@civicscope/db';
 import { recordChange, type Actor, type Tx, type UpdateOptions } from './changes';
 import { countLiveCitations, insertCitation } from './citations';
 import { CmsError, mysqlErrorCode, NotFoundError } from './errors';
+import { lockChangedFields, lockField } from './locks';
 import { parseInput } from './parse';
 import { resolveSource } from './sources';
 
@@ -123,12 +124,14 @@ export async function updateCandidacy(
           fecCommitteeId: data.fecCommitteeId ?? null,
         })
         .where(eq(candidacy.id, id));
+      const after = await load(tx, id);
+      await lockChangedFields(tx, actor, 'candidacy', id, before, after);
       await recordChange(tx, actor, {
         entityType: 'candidacy',
         entityId: id,
         action: opts.action ?? 'update',
         before,
-        after: await load(tx, id),
+        after,
         note: opts.note,
       });
     });
@@ -179,6 +182,7 @@ export async function addStatusEvent(
       .update(candidacy)
       .set({ status: latest!.status, statusDate: latest!.date })
       .where(eq(candidacy.id, candidacyId));
+    await lockField(tx, actor, 'candidacy', candidacyId, 'status', 'Status recorded by hand');
     await recordChange(tx, actor, {
       entityType: 'candidacy',
       entityId: candidacyId,

@@ -435,3 +435,59 @@ textarea {
 .inline-form select {
   margin-right: 4px;
 }
+
+/* Imports and conflicts */
+
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 16px;
+  margin: 0 0 16px;
+}
+
+.facts dt {
+  font-weight: 600;
+}
+
+.facts dd {
+  margin: 0;
+}
+
+.import-preview td {
+  vertical-align: top;
+}
+
+.import-preview ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.import-preview tr.row-error td:first-child {
+  border-left: 4px solid var(--alert-ink);
+}
+
+.locked {
+  color: var(--alert-ink);
+}
+
+.conflicts {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.conflict {
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.conflict p {
+  margin: 0 0 6px;
+}
+
+.conflict .toolbar {
+  align-items: flex-end;
+}
