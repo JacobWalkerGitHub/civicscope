@@ -66,6 +66,7 @@ describe('migrations', () => {
       'official_resource',
       'party',
       'race',
+      'revision',
       'sign_in_attempt',
     ]);
   });

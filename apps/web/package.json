@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@civicscope/auth": "workspace:*",
+    "@civicscope/cms": "workspace:*",
     "@civicscope/core": "workspace:*",
     "@civicscope/db": "workspace:*",
     "next": "^16.0.0",

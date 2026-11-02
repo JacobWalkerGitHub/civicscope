@@ -158,3 +158,168 @@ td {
     color: #0b1416;
   }
 }
+
+.page-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.button {
+  display: inline-block;
+  font-weight: 600;
+  padding: 10px 16px;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  text-decoration: none;
+}
+
+button.secondary {
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+
+button.danger {
+  background: var(--surface);
+  color: var(--alert-ink);
+  border: 1px solid var(--alert-ink);
+}
+
+.form {
+  max-width: 640px;
+  margin-bottom: 32px;
+}
+
+.field {
+  display: grid;
+  gap: 4px;
+}
+
+.field label {
+  font-weight: 600;
+}
+
+.field.checkbox label {
+  font-weight: 400;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+select {
+  font: inherit;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.field-error {
+  margin: 0;
+  color: var(--alert-ink);
+  font-weight: 600;
+}
+
+[aria-invalid='true'] {
+  border-color: var(--alert-ink);
+}
+
+.notice {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--page);
+  border: 1px solid var(--line);
+}
+
+.inline-form {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.alert.inline {
+  padding: 4px 8px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: 1px solid var(--line);
+}
+
+.badge-published {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.badge-archived {
+  color: var(--muted);
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 16px;
+}
+
+.filters label {
+  display: grid;
+  gap: 4px;
+}
+
+.filters label.inline {
+  display: flex;
+  align-items: center;
+  font-weight: 400;
+}
+
+.add-race {
+  margin-top: 16px;
+}
+
+.add-race summary {
+  cursor: pointer;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.history {
+  margin-top: 32px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
