@@ -3,5 +3,6 @@ export * from './parties';
 export * from './elections';
 export * from './sources';
 export * from './candidates';
+export * from './claims';
 export * from './audit';
 export * from './auth';

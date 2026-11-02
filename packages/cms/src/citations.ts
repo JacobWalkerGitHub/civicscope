@@ -6,7 +6,7 @@ import { CmsError, NotFoundError } from './errors';
 import { parseInput } from './parse';
 import { resolveSource } from './sources';
 
-const { citation, source, person, candidacy } = schema;
+const { citation, source, person, candidacy, claim } = schema;
 export type Citation = typeof citation.$inferSelect;
 
 async function load(tx: Tx | Db, id: number): Promise<Citation> {
@@ -17,12 +17,16 @@ async function load(tx: Tx | Db, id: number): Promise<Citation> {
 
 /** The record a citation points at must exist and not be archived. */
 async function loadSubject(tx: Tx | Db, type: CitationSubject, id: number) {
-  const table = type === 'person' ? person : candidacy;
+  const table = type === 'person' ? person : type === 'candidacy' ? candidacy : claim;
   const [row] = await tx
     .select({ publishState: table.publishState, deletedAt: table.deletedAt })
     .from(table)
     .where(eq(table.id, id));
-  if (!row) throw new NotFoundError(type === 'person' ? 'Person' : 'Candidacy');
+  if (!row) {
+    throw new NotFoundError(
+      type === 'person' ? 'Person' : type === 'candidacy' ? 'Candidacy' : 'Profile entry',
+    );
+  }
   return row;
 }
 
@@ -145,6 +149,7 @@ export async function listCitationsOfSource(db: Db, sourceId: number) {
       excerpt: citation.excerpt,
       personName: person.fullName,
       candidacyName: candidacy.ballotName,
+      claimTitle: claim.title,
     })
     .from(citation)
     .leftJoin(person, and(eq(citation.subjectType, 'person'), eq(citation.subjectId, person.id)))
@@ -152,6 +157,7 @@ export async function listCitationsOfSource(db: Db, sourceId: number) {
       candidacy,
       and(eq(citation.subjectType, 'candidacy'), eq(citation.subjectId, candidacy.id)),
     )
+    .leftJoin(claim, and(eq(citation.subjectType, 'claim'), eq(citation.subjectId, claim.id)))
     .where(and(eq(citation.sourceId, sourceId), isNull(citation.deletedAt)))
     .orderBy(asc(citation.id));
 }

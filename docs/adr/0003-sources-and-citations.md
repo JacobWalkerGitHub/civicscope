@@ -31,3 +31,18 @@ nothing appears publicly without one ("no citation, no publish").
   `citation` by adding values to `CITATION_SUBJECTS`.
 - Ingestion jobs (FEC, state lists) will cite their sources the same way, so imported
   data follows the same publishing rules as hand-entered data.
+
+## Addendum: profile entries and review (Phase 1, part 4)
+
+- Positions, biography items and accomplishments share one `claim` table with a `kind`
+  column. CHECK constraints keep kind-specific fields (issue, statement type, biography
+  category) on the right kind, and the database refuses a published entry that was never
+  verified.
+- Every entry is labeled with whose account it is (`content_kind`), so a candidate's own
+  claims are never presented as established fact. Positions always quote the candidate's
+  exact words.
+- Workflow: draft → sent for review (needs a source) → a reviewer approves and publishes
+  it, or sends it back with a note. Reviewers can't approve their own latest edits; the
+  owner can, so a one-person team isn't stuck, and the audit log says so.
+- An editor's change to a published entry takes it off the public site until a reviewer
+  approves it. A reviewer's change stays published and is recorded as verified by them.

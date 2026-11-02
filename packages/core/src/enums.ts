@@ -161,6 +161,50 @@ export const CANDIDACY_STATUSES = [
 ] as const;
 export type CandidacyStatus = (typeof CANDIDACY_STATUSES)[number];
 
-/** Record types a citation can point at. Claims are added in a later phase. */
-export const CITATION_SUBJECTS = ['person', 'candidacy'] as const;
+/** Record types a citation can point at. */
+export const CITATION_SUBJECTS = ['person', 'candidacy', 'claim'] as const;
 export type CitationSubject = (typeof CITATION_SUBJECTS)[number];
+
+/**
+ * Entries on a candidate's profile. Each is one sourced statement about the person:
+ * - position: what they have said about an issue
+ * - biography: education, work, service and civic roles
+ * - accomplishment: something documented that they did
+ */
+export const CLAIM_KINDS = ['position', 'biography', 'accomplishment'] as const;
+export type ClaimKind = (typeof CLAIM_KINDS)[number];
+
+export const POSITION_TYPES = ['stated_position', 'campaign_promise', 'public_statement'] as const;
+export type PositionType = (typeof POSITION_TYPES)[number];
+
+export const BIO_CATEGORIES = [
+  'education',
+  'employment',
+  'military',
+  'public_service',
+  'civic',
+  'other',
+] as const;
+export type BioCategory = (typeof BIO_CATEGORIES)[number];
+
+/**
+ * Where the content of an entry comes from, shown to readers so a candidate's own
+ * claims are never presented as established fact.
+ */
+export const CONTENT_KINDS = [
+  'sourced_fact',
+  'candidate_claim',
+  'independent_analysis',
+  'editorial_summary',
+] as const;
+export type ContentKind = (typeof CONTENT_KINDS)[number];
+
+/** Review state of an entry, separate from whether it is published. */
+export const VERIFICATION_STATUSES = [
+  'unverified',
+  'pending_review',
+  'verified',
+  'disputed',
+  'outdated',
+] as const;
+export type VerificationStatus = (typeof VERIFICATION_STATUSES)[number];

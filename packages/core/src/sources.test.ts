@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   candidacyInputSchema,
+  claimInputSchema,
   personIdentifierInputSchema,
   personInputSchema,
   statusEventInputSchema,
@@ -69,6 +70,65 @@ describe('candidate input', () => {
     expect(statusEventInputSchema.safeParse({ ...ok, sourceUrl: '' }).success).toBe(false);
     expect(statusEventInputSchema.safeParse({ ...ok, effectiveDate: '2999-01-01' }).success).toBe(
       false,
+    );
+  });
+});
+
+describe('profile entries', () => {
+  const position = {
+    personId: '1',
+    kind: 'position',
+    contentKind: 'candidate_claim',
+    title: 'Supports a state income tax cut',
+    summary: 'Said they would propose lowering the state income tax rate.',
+    quote: 'I will cut the income tax.',
+    issueId: '3',
+    positionType: 'campaign_promise',
+  };
+
+  it('accepts a complete position', () => {
+    expect(claimInputSchema.safeParse(position).success).toBe(true);
+  });
+
+  it('requires the issue, statement type and exact words for a position', () => {
+    const r = claimInputSchema.safeParse({
+      ...position,
+      issueId: '',
+      positionType: '',
+      quote: '',
+    });
+    expect(r.success).toBe(false);
+    const paths = r.error!.issues.map((i) => i.path[0]);
+    expect(paths).toEqual(expect.arrayContaining(['issueId', 'positionType', 'quote']));
+  });
+
+  it('keeps fields to the kind they belong to', () => {
+    const r = claimInputSchema.safeParse({
+      ...position,
+      kind: 'biography',
+      bioCategory: 'education',
+    });
+    expect(r.success).toBe(false);
+    expect(r.error!.issues.map((i) => i.path[0])).toEqual(
+      expect.arrayContaining(['issueId', 'positionType']),
+    );
+  });
+
+  it('checks year order and future dates', () => {
+    const bio = {
+      personId: '1',
+      kind: 'biography',
+      bioCategory: 'employment',
+      contentKind: 'sourced_fact',
+      title: 'Teacher, Example High School',
+      summary: 'Taught civics at Example High School.',
+      startYear: '2010',
+      endYear: '2005',
+      statedOn: '2999-01-01',
+    };
+    const r = claimInputSchema.safeParse(bio);
+    expect(r.error!.issues.map((i) => i.path[0])).toEqual(
+      expect.arrayContaining(['endYear', 'statedOn']),
     );
   });
 });
