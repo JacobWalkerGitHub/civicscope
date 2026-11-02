@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import {
+  BIO_CATEGORIES,
   CANDIDACY_STATUSES,
+  CLAIM_KINDS,
+  CONTENT_KINDS,
+  POSITION_TYPES,
   CITATION_SUBJECTS,
   ELECTION_TYPES,
   LEGISLATIVE_CHAMBERS,
@@ -259,6 +263,78 @@ export const statusEventInputSchema = sourceRefSchema.extend({
   excerpt: optionalText(2000),
 });
 export type StatusEventInput = z.infer<typeof statusEventInputSchema>;
+
+export const issueInputSchema = z.object({
+  name: requiredText('a name', 2, 100),
+  description: optionalText(500),
+});
+export type IssueInput = z.infer<typeof issueInputSchema>;
+
+const optionalYear = z.preprocess(
+  blankToNull,
+  z.coerce
+    .number({ error: 'Enter a four-digit year.' })
+    .int()
+    .min(1900, 'Enter a four-digit year.')
+    .max(2200, 'Enter a four-digit year.')
+    .nullable()
+    .optional(),
+);
+
+/**
+ * One profile entry. Which fields apply depends on the kind; the rest must be blank,
+ * so a position never carries a stray biography category and so on.
+ */
+export const claimInputSchema = z
+  .object({
+    personId: id('a person'),
+    kind: z.enum(CLAIM_KINDS, { error: 'Choose what kind of entry this is.' }),
+    contentKind: z.enum(CONTENT_KINDS, { error: 'Choose where this information comes from.' }),
+    title: requiredText('a short title', 3, 200),
+    summary: requiredText('a summary', 10, 2000),
+    quote: optionalText(2000),
+    issueId: optionalId,
+    positionType: z.preprocess(blankToNull, z.enum(POSITION_TYPES).nullable().optional()),
+    bioCategory: z.preprocess(blankToNull, z.enum(BIO_CATEGORIES).nullable().optional()),
+    organization: optionalText(200),
+    statedOn: optionalDate,
+    venue: optionalText(200),
+    startYear: optionalYear,
+    endYear: optionalYear,
+  })
+  .superRefine((v, ctx) => {
+    const issue = (path: string, message: string) =>
+      ctx.addIssue({ code: 'custom', path: [path], message });
+    if (v.kind === 'position') {
+      if (!v.issueId) issue('issueId', 'Choose the issue this position is about.');
+      if (!v.positionType) issue('positionType', 'Choose what kind of statement this is.');
+    }
+    if (v.kind === 'biography' && !v.bioCategory) {
+      issue('bioCategory', 'Choose a category.');
+    }
+    if (v.kind !== 'position') {
+      if (v.issueId) issue('issueId', 'Only positions have an issue.');
+      if (v.positionType) issue('positionType', 'Only positions have a statement type.');
+    }
+    if (v.kind !== 'biography' && v.bioCategory) {
+      issue('bioCategory', 'Only biography entries have a category.');
+    }
+    if (v.startYear && v.endYear && v.endYear < v.startYear) {
+      issue('endYear', 'The end year is before the start year.');
+    }
+    if (v.statedOn && v.statedOn > todayIso()) {
+      issue('statedOn', "This date can't be in the future.");
+    }
+    // Positions always carry the candidate's own words, so readers can judge the summary.
+    if (v.kind === 'position' && !v.quote) {
+      issue('quote', 'Quote their exact words from the source.');
+    }
+  });
+export type ClaimInput = z.infer<typeof claimInputSchema>;
+
+export const reviewNoteSchema = z.object({
+  note: optionalText(1000),
+});
 
 /** URL-safe identifier from a display name: "Governor of Kentucky" -> "governor-of-kentucky". */
 export function slugify(text: string): string {

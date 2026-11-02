@@ -29,6 +29,12 @@ export default async function DashboardPage() {
         <li>
           <Link href="/admin/sources">Sources</Link>
         </li>
+        <li>
+          <Link href="/admin/issues">Issues</Link>
+        </li>
+        <li>
+          <Link href="/admin/review">Review queue</Link>
+        </li>
       </ul>
     </>
   );

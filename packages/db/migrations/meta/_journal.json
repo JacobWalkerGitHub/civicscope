@@ -50,6 +50,13 @@
       "when": 1793648324362,
       "tag": "0006_candidacy_status_event_append_only",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1793649640443,
+      "tag": "0007_claims_issues",
+      "breakpoints": true
     }
   ]
 }

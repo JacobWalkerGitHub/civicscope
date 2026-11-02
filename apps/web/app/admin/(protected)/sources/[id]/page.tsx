@@ -64,6 +64,8 @@ export default async function SourcePage({ params }: { params: Promise<{ id: str
               <li key={c.id}>
                 {c.subjectType === 'person' ? (
                   <Link href={`/admin/candidates/${c.subjectId}`}>{c.personName}</Link>
+                ) : c.subjectType === 'claim' ? (
+                  <Link href={`/admin/claims/${c.subjectId}`}>{c.claimTitle} (profile entry)</Link>
                 ) : (
                   <Link href={`/admin/candidacies/${c.subjectId}`}>
                     {c.candidacyName} (candidacy)

@@ -2,6 +2,17 @@
 
 import { redirect } from 'next/navigation';
 import {
+  approveClaim,
+  createClaim,
+  createIssue,
+  republishClaim,
+  sendClaimBack,
+  setClaimArchived,
+  setIssueArchived,
+  submitClaimForReview,
+  unpublishClaim,
+  updateClaim,
+  updateIssue,
   addCitation,
   addPersonIdentifier,
   addStatusEvent,
@@ -141,7 +152,7 @@ export async function publishAction(
 }
 
 export async function archiveAction(
-  entityType: PublishableEntity | 'source',
+  entityType: PublishableEntity | 'source' | 'claim' | 'issue',
   id: number,
   archived: boolean,
   _: FormState,
@@ -155,6 +166,10 @@ export async function archiveAction(
         return setCandidacyArchived(db, actor, id, archived);
       case 'source':
         return setSourceArchived(db, actor, id, archived);
+      case 'claim':
+        return setClaimArchived(db, actor, id, archived);
+      case 'issue':
+        return setIssueArchived(db, actor, id, archived);
       default:
         return setArchived(db, actor, entityType, id, archived);
     }
@@ -212,7 +227,7 @@ export async function addStatusEventAction(candidacyId: number, _: FormState, fo
 // Sources and citations
 
 export async function addCitationAction(
-  subjectType: 'person' | 'candidacy',
+  subjectType: 'person' | 'candidacy' | 'claim',
   subjectId: number,
   _: FormState,
   formData: FormData,
@@ -243,5 +258,63 @@ export async function restoreVersionAction(
   if (!isRestorable(entityType)) throw new Error('Not restorable');
   return runButtonAction('content:edit', (actor) =>
     restoreRevision(getDb(), actor, entityType, id, version),
+  );
+}
+
+// Profile entries and review
+
+export async function createClaimAction(
+  personId: number,
+  kind: string,
+  _: FormState,
+  formData: FormData,
+) {
+  let id = 0;
+  const state = await runFormAction('content:edit', formData, async (actor, values) => {
+    id = await createClaim(getDb(), actor, { ...values, personId, kind });
+  });
+  if (state.saved) redirect(`/admin/claims/${id}?created=1`);
+  return state;
+}
+
+export async function updateClaimAction(id: number, _: FormState, formData: FormData) {
+  return runFormAction('content:edit', formData, (actor, values) =>
+    updateClaim(getDb(), actor, id, values),
+  );
+}
+
+export async function submitClaimAction(id: number, _: FormState) {
+  return runButtonAction('content:edit', (actor) => submitClaimForReview(getDb(), actor, id));
+}
+
+export async function approveClaimAction(id: number, _: FormState, formData: FormData) {
+  return runFormAction('content:publish', formData, (actor, values) =>
+    approveClaim(getDb(), actor, id, values.note),
+  );
+}
+
+export async function sendClaimBackAction(id: number, _: FormState, formData: FormData) {
+  return runFormAction('content:publish', formData, (actor, values) =>
+    sendClaimBack(getDb(), actor, id, values.note ?? ''),
+  );
+}
+
+export async function claimPublishAction(id: number, publish: boolean, _: FormState) {
+  return runButtonAction('content:publish', (actor) =>
+    publish ? republishClaim(getDb(), actor, id) : unpublishClaim(getDb(), actor, id),
+  );
+}
+
+// Issues
+
+export async function createIssueAction(_: FormState, formData: FormData) {
+  return runFormAction('content:edit', formData, async (actor, values) => {
+    await createIssue(getDb(), actor, values);
+  });
+}
+
+export async function updateIssueAction(id: number, _: FormState, formData: FormData) {
+  return runFormAction('content:edit', formData, (actor, values) =>
+    updateIssue(getDb(), actor, id, values),
   );
 }

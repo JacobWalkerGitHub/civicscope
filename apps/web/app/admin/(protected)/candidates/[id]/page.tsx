@@ -4,17 +4,20 @@ import { notFound } from 'next/navigation';
 import {
   getPerson,
   listCandidaciesForPerson,
+  listClaimsForPerson,
   listPersonIdentifiers,
   NotFoundError,
 } from '@civicscope/cms';
-import { can } from '@civicscope/core';
-import { PublishBadge } from '@/components/admin/badges';
+import { can, CLAIM_KINDS } from '@civicscope/core';
+import { PublishBadge, VerificationBadge } from '@/components/admin/badges';
 import { ActionButton, ActionForm, SelectField, TextField } from '@/components/admin/form';
 import { History } from '@/components/admin/history';
 import { CitationsPanel } from '@/components/admin/sources';
 import { getDb } from '@/lib/db';
 import {
   CANDIDACY_STATUS_LABELS,
+  CLAIM_KIND_LABELS,
+  CLAIM_KIND_PLURALS,
   formatDate,
   IDENTIFIER_SCHEME_LABELS,
   options,
@@ -39,9 +42,10 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
     if (e instanceof NotFoundError) notFound();
     throw e;
   });
-  const [identifiers, candidacies] = await Promise.all([
+  const [identifiers, candidacies, claims] = await Promise.all([
     listPersonIdentifiers(db, id),
     listCandidaciesForPerson(db, id),
+    listClaimsForPerson(db, id),
   ]);
   const archived = Boolean(person.deletedAt);
   const published = person.publishState === 'published';
@@ -139,6 +143,43 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
             </tbody>
           </table>
         )}
+      </section>
+
+      <section aria-labelledby="profile-heading">
+        <h2 id="profile-heading">Profile</h2>
+        <p className="muted">
+          Positions, biography and accomplishments. Each entry needs a source and a reviewer&apos;s
+          approval before it is published.
+        </p>
+        {CLAIM_KINDS.map((kind) => {
+          const entries = claims.filter((c) => c.kind === kind && !c.deletedAt);
+          return (
+            <div key={kind}>
+              <h3>{CLAIM_KIND_PLURALS[kind]}</h3>
+              {entries.length === 0 ? (
+                <p className="muted">None yet.</p>
+              ) : (
+                <ul>
+                  {entries.map((c) => (
+                    <li key={c.id}>
+                      <Link href={`/admin/claims/${c.id}`}>{c.title}</Link>
+                      {c.issueName && <span className="muted"> · {c.issueName}</span>}{' '}
+                      <PublishBadge state={c.publishState} />{' '}
+                      <VerificationBadge status={c.verificationStatus} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {canEdit && (
+                <p>
+                  <Link href={`/admin/candidates/${id}/entries/new?kind=${kind}`}>
+                    Add {CLAIM_KIND_LABELS[kind].toLowerCase()}
+                  </Link>
+                </p>
+              )}
+            </div>
+          );
+        })}
       </section>
 
       <section aria-labelledby="ids-heading">

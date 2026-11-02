@@ -1,4 +1,9 @@
 import type {
+  BioCategory,
+  ClaimKind,
+  ContentKind,
+  PositionType,
+  VerificationStatus,
   CandidacyStatus,
   PersonIdentifierScheme,
   SourceType,
@@ -117,4 +122,47 @@ export const CANDIDACY_STATUS_LABELS: Record<CandidacyStatus, string> = {
   advanced: 'Advanced to the next round',
   won: 'Won',
   lost: 'Lost',
+};
+
+export const CLAIM_KIND_LABELS: Record<ClaimKind, string> = {
+  position: 'Position',
+  biography: 'Biography',
+  accomplishment: 'Accomplishment',
+};
+
+export const CLAIM_KIND_PLURALS: Record<ClaimKind, string> = {
+  position: 'Positions',
+  biography: 'Biography',
+  accomplishment: 'Accomplishments',
+};
+
+export const POSITION_TYPE_LABELS: Record<PositionType, string> = {
+  stated_position: 'Stated position',
+  campaign_promise: 'Campaign promise',
+  public_statement: 'Public statement',
+};
+
+export const BIO_CATEGORY_LABELS: Record<BioCategory, string> = {
+  education: 'Education',
+  employment: 'Work',
+  military: 'Military service',
+  public_service: 'Public office or government service',
+  civic: 'Civic and community roles',
+  other: 'Other',
+};
+
+/** Shown next to each entry so readers know whose account it is. */
+export const CONTENT_KIND_LABELS: Record<ContentKind, string> = {
+  sourced_fact: 'Fact from a record (official or independent)',
+  candidate_claim: 'The candidate’s own account',
+  independent_analysis: 'Independent analysis',
+  editorial_summary: 'CivicScope summary',
+};
+
+export const VERIFICATION_LABELS: Record<VerificationStatus, string> = {
+  unverified: 'Not yet reviewed',
+  pending_review: 'Waiting for review',
+  verified: 'Verified',
+  disputed: 'Disputed',
+  outdated: 'Outdated',
 };

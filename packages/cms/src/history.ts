@@ -6,6 +6,8 @@ import { ELECTION_EDITABLE, RACE_EDITABLE, updateElection, updateRace } from './
 import { OFFICE_EDITABLE, updateOffice } from './offices';
 import { PARTY_EDITABLE, updateParty } from './parties';
 import { CANDIDACY_EDITABLE, updateCandidacy } from './candidacies';
+import { CLAIM_EDITABLE, updateClaim } from './claims';
+import { ISSUE_EDITABLE, updateIssue } from './issues';
 import { PERSON_EDITABLE, updatePerson } from './people';
 import { SOURCE_EDITABLE, updateSource } from './sources';
 
@@ -18,6 +20,8 @@ const RESTORABLE = {
   person: { fields: PERSON_EDITABLE, update: updatePerson },
   candidacy: { fields: CANDIDACY_EDITABLE, update: updateCandidacy },
   source: { fields: SOURCE_EDITABLE, update: updateSource },
+  claim: { fields: CLAIM_EDITABLE, update: updateClaim },
+  issue: { fields: ISSUE_EDITABLE, update: updateIssue },
 } as const;
 export type RestorableEntity = keyof typeof RESTORABLE;
 

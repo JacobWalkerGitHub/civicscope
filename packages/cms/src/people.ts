@@ -12,7 +12,7 @@ import { CmsError, mysqlErrorCode, NotFoundError } from './errors';
 import { parseInput } from './parse';
 import { uniqueSlug } from './slugs';
 
-const { person, personIdentifier, candidacy } = schema;
+const { person, personIdentifier, candidacy, claim } = schema;
 export type Person = typeof person.$inferSelect;
 export const PERSON_EDITABLE = ['fullName', 'preferredName', 'sortName', 'birthYear'] as const;
 
@@ -85,6 +85,13 @@ export async function setPersonPublishState(
         .from(candidacy)
         .where(and(eq(candidacy.personId, id), eq(candidacy.publishState, 'published')));
       if (Number(row?.n) > 0) throw new CmsError('Unpublish this person’s candidacies first.');
+      const [claims] = await tx
+        .select({ n: sql<number>`count(*)` })
+        .from(claim)
+        .where(and(eq(claim.personId, id), eq(claim.publishState, 'published')));
+      if (Number(claims?.n) > 0) {
+        throw new CmsError('Unpublish this person’s profile entries first.');
+      }
     }
     if (before.publishState === state) return;
     await tx.update(person).set({ publishState: state }).where(eq(person.id, id));
@@ -112,6 +119,13 @@ export async function setPersonArchived(
         .from(candidacy)
         .where(and(eq(candidacy.personId, id), isNull(candidacy.deletedAt)));
       if (Number(row?.n) > 0) throw new CmsError('Archive this person’s candidacies first.');
+      const [claims] = await tx
+        .select({ n: sql<number>`count(*)` })
+        .from(claim)
+        .where(and(eq(claim.personId, id), isNull(claim.deletedAt)));
+      if (Number(claims?.n) > 0) {
+        throw new CmsError('Archive this person’s profile entries first.');
+      }
     }
     await tx
       .update(person)

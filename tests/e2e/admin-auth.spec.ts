@@ -44,7 +44,7 @@ test('the owner can sign in, see the users page, and sign out', async ({ page, c
 
   await page.getByRole('link', { name: 'Users' }).click();
   await expect(page.getByRole('heading', { name: 'Users' })).toBeVisible();
-  await expect(page.getByRole('cell', { name: E2E_USERS.viewer.email })).toBeVisible();
+  await expect(page.getByRole('cell', { name: E2E_USERS.viewer.email, exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: 'Sign out' }).click();
   await expect(page).toHaveURL(/\/admin\/sign-in$/);
