@@ -15,6 +15,8 @@ import {
   createRace,
   getPublicPerson,
   getPublicRace,
+  directoryFilterOptions,
+  listPublicCandidates,
   listUpcomingPublicRaces,
   setCandidacyArchived,
   setCandidacyPublishState,
@@ -223,6 +225,42 @@ describe('public race page', () => {
     const races = await listUpcomingPublicRaces(db, '2026-11-02');
     expect(races.map((r) => [r.name, Number(r.candidateCount)])).toEqual([['Example Auditor', 1]]);
     expect(await listUpcomingPublicRaces(db, '2027-11-03')).toEqual([]);
+  });
+});
+
+describe('candidate directory', () => {
+  it('lists public candidacies only, and filters by name, state, level and party', async () => {
+    const all = await listPublicCandidates(db, {}, 1, '2026-11-02');
+    expect(all.rows.map((r) => r.ballotName)).toEqual(['Ada Visible']);
+    expect(all.total).toBe(1);
+    expect(all.rows[0]).toMatchObject({
+      raceName: 'Example Auditor',
+      jurisdictionName: 'Kentucky',
+    });
+
+    const [ky] = await db
+      .select()
+      .from(schema.jurisdiction)
+      .where(eq(schema.jurisdiction.uspsCode, 'KY'));
+    const [tn] = await db
+      .select()
+      .from(schema.jurisdiction)
+      .where(eq(schema.jurisdiction.uspsCode, 'TN'));
+    const count = async (f: Parameters<typeof listPublicCandidates>[1]) =>
+      (await listPublicCandidates(db, f, 1, '2026-11-02')).total;
+    expect(await count({ q: 'ada' })).toBe(1);
+    expect(await count({ q: 'bea' })).toBe(0);
+    expect(await count({ q: "%' or 1=1 --" })).toBe(0);
+    expect(await count({ jurisdictionId: ky!.id })).toBe(1);
+    expect(await count({ jurisdictionId: tn!.id })).toBe(0);
+    expect(await count({ level: 'state' })).toBe(1);
+    expect(await count({ level: 'federal' })).toBe(0);
+    expect((await listPublicCandidates(db, {}, 1, '2028-01-01')).total).toBe(0);
+    expect((await listPublicCandidates(db, { includePast: true }, 1, '2028-01-01')).total).toBe(1);
+
+    const options = await directoryFilterOptions(db);
+    expect(options.states.map((s) => s.name)).toEqual(['Kentucky']);
+    expect(options.parties.map((p) => p.name)).toEqual(['Example Party']);
   });
 });
 

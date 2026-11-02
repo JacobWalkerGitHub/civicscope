@@ -131,6 +131,92 @@ test('once published, the race and profile are public, with sources', async ({ p
   await expectNoSeriousA11yIssues(page);
 });
 
+// A valid 1x1 PNG; the server checks the bytes, not the file name.
+const PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+  'base64',
+);
+
+test('an uploaded photo shows on the profile with its credit', async ({ page }) => {
+  await signIn(page, E2E_USERS.owner.email);
+  await page.goto(`/admin/races/${raceId}`);
+  await page.locator('tr', { hasText: NAME }).getByRole('link', { name: NAME }).click();
+  await page.getByRole('link', { name: NAME, exact: true }).click();
+  await expect(page).toHaveURL(/\/admin\/candidates\/\d+/);
+
+  // A file that is not really an image is refused.
+  const upload = page.locator('details', { hasText: 'Upload a photo' });
+  await upload.locator('summary').click();
+  await upload.getByLabel('Photo file').setInputFiles({
+    name: 'fake.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"></svg>'),
+  });
+  await upload.getByLabel('Where it came from').fill('https://campaign.example.com/press');
+  await upload.getByLabel('Credit').fill('E2E campaign');
+  await upload.getByRole('button', { name: 'Upload photo' }).click();
+  await expect(upload.getByRole('alert').first()).toContainText(/JPEG, PNG or WebP/);
+
+  await upload.getByLabel('Photo file').setInputFiles({
+    name: 'dana.png',
+    mimeType: 'image/png',
+    buffer: PNG,
+  });
+  await upload.getByLabel('Where it came from').fill('https://campaign.example.com/press');
+  await upload.getByLabel('Credit').fill('E2E campaign');
+  await upload.getByRole('button', { name: 'Upload photo' }).click();
+  await expect(page.getByAltText(`Current photo of ${NAME}`)).toBeVisible();
+
+  // Links to private addresses are refused before anything is fetched.
+  const link = page.locator('details', { hasText: 'from a link' });
+  await link.locator('summary').click();
+  await link.getByLabel('Image link').fill('https://127.0.0.1/photo.png');
+  await link.getByLabel('Page it appears on').fill('https://campaign.example.com/press');
+  await link.getByLabel('Credit').fill('E2E campaign');
+  await link.getByRole('button', { name: 'Copy photo from link' }).click();
+  await expect(link.getByRole('alert').first()).toContainText('private network');
+
+  await page.context().clearCookies();
+  await page.goto(`/races/${raceId}`);
+  await page.getByRole('link', { name: NAME }).click();
+  const img = page.locator('figure img');
+  await expect(img).toBeVisible();
+  const src = await img.getAttribute('src');
+  const res = await page.request.get(src!);
+  expect(res.status()).toBe(200);
+  expect(res.headers()['content-type']).toBe('image/png');
+  expect(res.headers()['content-security-policy']).toContain('sandbox');
+  await expect(page.getByRole('link', { name: 'E2E campaign' })).toHaveAttribute(
+    'href',
+    'https://campaign.example.com/press',
+  );
+  await expectNoSeriousA11yIssues(page);
+});
+
+test('the candidate directory searches and filters', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('navigation').getByRole('link', { name: 'Candidates' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Candidates');
+  await expect(page.getByRole('link', { name: NAME })).toBeVisible();
+  await expectNoSeriousA11yIssues(page);
+
+  await page.getByLabel('Name').fill('dana e2e');
+  await page.getByLabel('State').selectOption({ label: 'Kentucky' });
+  await page.getByLabel('Level').selectOption({ label: 'State' });
+  await page.getByRole('button', { name: 'Search' }).click();
+  await expect(page).toHaveURL(/q=dana/);
+  await expect(page.getByRole('status')).toContainText('1 candidacy');
+  await expect(page.getByRole('link', { name: NAME })).toBeVisible();
+
+  await page.getByLabel('Level').selectOption({ label: 'Federal' });
+  await page.getByRole('button', { name: 'Search' }).click();
+  await expect(page.getByRole('status')).toHaveText('No candidates match.');
+
+  // Drafts never show up, even by exact name.
+  await page.goto(`/candidates?q=${encodeURIComponent('no such e2e person')}`);
+  await expect(page.getByRole('status')).toHaveText('No candidates match.');
+});
+
 test('unpublishing takes a candidate off the public site at once', async ({ page }) => {
   await signIn(page, E2E_USERS.owner.email);
   await page.goto(`/admin/races/${raceId}`);

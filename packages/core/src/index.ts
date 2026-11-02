@@ -4,3 +4,4 @@ export * from './schemas';
 export * from './permissions';
 export * from './sources';
 export * from './csv';
+export * from './images';

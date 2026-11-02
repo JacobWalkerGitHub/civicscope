@@ -21,6 +21,10 @@ const nextConfig: NextConfig = {
   // Produces a self-contained server for the ECS container image.
   output: 'standalone',
   poweredByHeader: false,
+  experimental: {
+    // Room for a 5 MB candidate photo plus the form fields around it.
+    serverActions: { bodySizeLimit: '6mb' },
+  },
   async headers() {
     return [
       { source: '/:path*', headers: securityHeaders },

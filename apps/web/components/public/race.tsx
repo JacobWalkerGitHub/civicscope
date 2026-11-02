@@ -6,7 +6,7 @@ import {
   formatDate,
   PRIMARY_SYSTEM_LABELS,
 } from '@/lib/labels';
-import { NotPublic, Sources } from './sources';
+import { NotPublic, Sources, Thumb } from './sources';
 
 type RacePage = NonNullable<Awaited<ReturnType<typeof getPublicRace>>>;
 
@@ -81,7 +81,8 @@ export function RaceOverview({
             <p className="muted">Listed alphabetically by last name.</p>
             <ul className="candidate-list">
               {candidates.map((c) => (
-                <li key={c.candidacyId}>
+                <li key={c.candidacyId} className="with-thumb">
+                  <Thumb photoId={c.photoId} />
                   <h3>
                     <Link href={candidateHref(c.personSlug)}>{c.ballotName}</Link>{' '}
                     <NotPublic state={c.publishState} />
