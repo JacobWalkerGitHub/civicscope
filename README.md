@@ -2,7 +2,7 @@
 
 A nonpartisan, source-backed directory of candidates for federal and state office.
 
-**Status:** Phase 0 (foundations). No candidate data yet.
+**Status:** Phase 1 (admin CMS) in progress. No candidate data yet.
 
 ## Requirements
 
@@ -18,8 +18,13 @@ docker compose up -d mysql
 set -a; . ./.env; set +a
 pnpm db:migrate
 pnpm db:seed        # 50 states + DC from Census codes; safe to re-run
-pnpm dev            # http://localhost:3000
+pnpm admin:create-user --email you@example.com --name "Your Name" --role owner
+pnpm dev            # http://localhost:3000, admin at http://localhost:3000/admin
 ```
+
+`admin:create-user` asks for a password (12+ characters). Roles: `owner` (everything,
+including users), `reviewer` (edit, verify, publish), `editor` (draft only), `viewer`
+(read-only).
 
 ## Common commands
 
@@ -34,7 +39,8 @@ pnpm dev            # http://localhost:3000
 
 ```
 apps/web          Next.js app: public site, admin CMS (later), API
-packages/core     Shared enums, domain rules, validation schemas
+packages/core     Shared enums, domain rules, validation schemas, role permissions
+packages/auth     Admin passwords, sessions, sign-in lockout
 packages/db       Drizzle schema, migrations, seed data
 docs/adr          Architecture decision records
 ```

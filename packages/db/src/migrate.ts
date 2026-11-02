@@ -1,3 +1,4 @@
+/** Kept out of the package index: web bundles must not include migration files. */
 import { fileURLToPath } from 'node:url';
 import { migrate } from 'drizzle-orm/mysql2/migrator';
 import type { Db } from './client';
