@@ -21,6 +21,7 @@
     "test:e2e": "tsx tests/e2e/run.ts"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.10.2",
     "@civicscope/auth": "workspace:*",
     "@civicscope/db": "workspace:*",
     "@eslint/js": "^10.0.1",

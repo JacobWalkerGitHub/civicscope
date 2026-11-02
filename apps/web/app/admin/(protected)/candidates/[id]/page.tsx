@@ -61,6 +61,16 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
         <PublishBadge state={person.publishState} />
       </div>
       <div className="toolbar">
+        {!archived && (
+          <Link href={`/admin/preview/candidates/${person.slug}`} className="button">
+            Preview public page
+          </Link>
+        )}
+        {published && (
+          <Link href={`/candidates/${person.slug}`} className="button">
+            View public page
+          </Link>
+        )}
         {can(user.role, 'content:publish') && !archived && (
           <ActionButton
             action={publishAction.bind(null, 'person', id, !published)}

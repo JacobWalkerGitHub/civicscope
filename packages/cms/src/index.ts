@@ -13,3 +13,4 @@ export * from './parties';
 export * from './people';
 export * from './reference';
 export * from './sources';
+export * from './public';
