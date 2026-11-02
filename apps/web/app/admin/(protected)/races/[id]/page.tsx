@@ -62,6 +62,16 @@ export default async function RacePage({ params }: { params: Promise<{ id: strin
         <PublishBadge state={race.publishState} />
       </div>
       <div className="toolbar">
+        {!archived && (
+          <Link href={`/admin/preview/races/${id}`} className="button">
+            Preview public page
+          </Link>
+        )}
+        {published && (
+          <Link href={`/races/${id}`} className="button">
+            View public page
+          </Link>
+        )}
         {can(user.role, 'content:publish') && !archived && (
           <ActionButton
             action={publishAction.bind(null, 'race', id, !published)}

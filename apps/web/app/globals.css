@@ -491,3 +491,151 @@ textarea {
 .conflict .toolbar {
   align-items: flex-end;
 }
+
+/* Public site */
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+}
+
+.skip-link:focus {
+  left: 16px;
+  top: 8px;
+  padding: 8px 12px;
+  background: var(--surface);
+  z-index: 10;
+}
+
+.site-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  align-items: baseline;
+  padding: 12px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+.site-header .tagline {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.site-footer {
+  max-width: 1100px;
+  margin: 32px auto 0;
+  padding: 16px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.preview-banner {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border: 2px dashed var(--alert-ink);
+  border-radius: 6px;
+  background: var(--alert-bg);
+}
+
+.badge-not-public {
+  vertical-align: middle;
+  border-style: dashed;
+  color: var(--alert-ink);
+  font-size: 0.75rem;
+}
+
+.profile-header h1 {
+  margin-bottom: 4px;
+}
+
+.profile-header p {
+  margin: 0 0 4px;
+}
+
+.race-list,
+.candidate-list,
+.candidacies {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.candidate-list li,
+.candidacies li,
+.entry {
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.candidate-list h3,
+.candidacies h3,
+.entry h4 {
+  margin: 0 0 4px;
+}
+
+.candidate-list p,
+.candidacies p {
+  margin: 0 0 8px;
+}
+
+.issue-group {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.issue-group h3 {
+  margin: 8px 0 0;
+}
+
+.entry p {
+  margin: 0 0 8px;
+}
+
+.entry-meta {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.entry blockquote {
+  margin: 0 0 8px;
+  padding-left: 12px;
+  border-left: 3px solid var(--line);
+}
+
+.entry-flag {
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--alert-bg);
+  color: var(--alert-ink);
+}
+
+.sources summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-size: 0.9rem;
+}
+
+.sources ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+  font-size: 0.9rem;
+}
+
+.sources blockquote {
+  margin: 4px 0 0;
+  font-style: italic;
+}
+
+.about-entries {
+  margin-top: 24px;
+  font-size: 0.9rem;
+}
