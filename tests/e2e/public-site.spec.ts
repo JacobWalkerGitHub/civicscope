@@ -129,6 +129,11 @@ test('once published, the race and profile are public, with sources', async ({ p
   await page.getByText('Sources (').first().click();
   await expect(page.getByRole('link', { name: 'E2E public candidate list' }).first()).toBeVisible();
   await expectNoSeriousA11yIssues(page);
+
+  // Every profile links to the correction form, pre-filled with the page.
+  const profilePath = new URL(page.url()).pathname;
+  await page.getByRole('link', { name: 'Report an error on this page' }).click();
+  await expect(page.getByLabel('Page with the error')).toHaveValue(profilePath);
 });
 
 // A valid 1x1 PNG; the server checks the bytes, not the file name.

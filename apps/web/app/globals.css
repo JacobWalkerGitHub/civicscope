@@ -702,3 +702,59 @@ textarea {
   gap: 16px;
   margin-top: 16px;
 }
+
+/* Reading pages: methodology, about. */
+.prose {
+  max-width: 44rem;
+}
+
+.definitions > div {
+  margin-bottom: 12px;
+}
+
+.definitions dt {
+  font-weight: 600;
+}
+
+.definitions dd {
+  margin: 2px 0 0;
+}
+
+.report-link {
+  margin-top: 32px;
+  font-size: 0.95rem;
+}
+
+.corrections-log li {
+  margin-bottom: 8px;
+}
+
+.pre-wrap {
+  white-space: pre-wrap;
+}
+
+/* Spam trap on the public correction form: off screen, skipped by keyboard and screen readers. */
+.hp {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.tabs {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.tabs a[aria-current='page'] {
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.site-footer nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}

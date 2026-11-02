@@ -6,7 +6,7 @@ import {
   formatDate,
   PRIMARY_SYSTEM_LABELS,
 } from '@/lib/labels';
-import { NotPublic, Sources, Thumb } from './sources';
+import { NotPublic, ReportLink, Sources, Thumb } from './sources';
 
 type RacePage = NonNullable<Awaited<ReturnType<typeof getPublicRace>>>;
 
@@ -100,6 +100,7 @@ export function RaceOverview({
           </>
         )}
       </section>
+      <ReportLink path={`/races/${race.id}`} />
     </>
   );
 }

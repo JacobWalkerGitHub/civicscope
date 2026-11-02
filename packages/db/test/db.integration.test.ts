@@ -63,6 +63,8 @@ describe('migrations', () => {
       'candidacy_status_event',
       'citation',
       'claim',
+      'correction_request',
+      'coverage_status',
       'district',
       'election',
       'election_cycle',

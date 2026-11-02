@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { countOpenConflicts, countReviewQueue } from '@civicscope/cms';
+import { countOpenConflicts, countOpenCorrections, countReviewQueue } from '@civicscope/cms';
 import { can } from '@civicscope/core';
 import { getDb } from '@/lib/db';
 import { requirePermission } from '@/lib/session';
@@ -8,9 +8,10 @@ import { signOutAction } from '../actions';
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const user = await requirePermission('admin:view', { allowWithoutTwoStep: true });
-  const [entries, conflicts] = await Promise.all([
+  const [entries, conflicts, corrections] = await Promise.all([
     countReviewQueue(getDb()),
     countOpenConflicts(getDb()),
+    countOpenCorrections(getDb()),
   ]);
   const waiting = entries + conflicts;
   return (
@@ -35,6 +36,17 @@ export default async function AdminLayout({ children }: { children: ReactNode })
               </span>
             )}
           </Link>
+          {can(user.role, 'content:edit') && (
+            <Link href="/admin/corrections">
+              Corrections
+              {corrections > 0 && (
+                <span className="nav-count" aria-label={`${corrections} new`}>
+                  {corrections}
+                </span>
+              )}
+            </Link>
+          )}
+          <Link href="/admin/coverage">Coverage</Link>
           {can(user.role, 'users:manage') && <Link href="/admin/users">Users</Link>}
         </nav>
         <div className="who">

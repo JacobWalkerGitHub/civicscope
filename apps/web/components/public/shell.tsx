@@ -14,6 +14,8 @@ export function PublicShell({ children }: { children: ReactNode }) {
         <nav aria-label="Main">
           <Link href="/">Upcoming races</Link>
           <Link href="/candidates">Candidates</Link>
+          <Link href="/coverage">Coverage</Link>
+          <Link href="/methodology">How we work</Link>
         </nav>
         <p className="tagline">Nonpartisan, source-backed candidate research</p>
       </header>
@@ -23,6 +25,12 @@ export function PublicShell({ children }: { children: ReactNode }) {
           CivicScope is nonpartisan. Every fact links to its source, and candidates are listed in
           alphabetical order.
         </p>
+        <nav aria-label="About CivicScope">
+          <Link href="/about">About</Link>
+          <Link href="/methodology">Methodology</Link>
+          <Link href="/coverage">Coverage</Link>
+          <Link href="/corrections">Corrections</Link>
+        </nav>
       </footer>
     </>
   );
