@@ -6,6 +6,8 @@ import {
   CONTENT_KINDS,
   POSITION_TYPES,
   CITATION_SUBJECTS,
+  CORRECTION_STATES,
+  COVERAGE_LEVELS,
   ELECTION_TYPES,
   LEGISLATIVE_CHAMBERS,
   OFFICE_BRANCHES,
@@ -463,3 +465,74 @@ export const photoLinkSchema = photoCreditSchema.extend({
     .max(2048),
 });
 export type PhotoLinkInput = z.infer<typeof photoLinkSchema>;
+
+/** A path on this site, like /candidates/jane-doe. Never a full URL to somewhere else. */
+const sitePath = z.preprocess(
+  blankToNull,
+  z
+    .string()
+    .trim()
+    .max(500)
+    .regex(/^\/(?!\/)[^\s\\]*$/, 'Use the address of a CivicScope page, starting with /.')
+    .nullable()
+    .optional(),
+);
+
+/** What a reader sends with the public correction form. */
+export const correctionRequestSchema = z.object({
+  pagePath: sitePath,
+  description: requiredText('what is wrong', 10, 4000),
+  evidenceUrl: z.preprocess(blankToNull, webUrl.max(2048).nullable().optional()),
+  contactEmail: z.preprocess(
+    blankToNull,
+    z
+      .email({ error: 'Enter a valid email address, or leave it blank.' })
+      .max(254)
+      .nullable()
+      .optional(),
+  ),
+});
+export type CorrectionRequestInput = z.infer<typeof correctionRequestSchema>;
+
+/** An editor's decision on a correction request. */
+export const correctionResolutionSchema = z
+  .object({
+    state: z.enum(CORRECTION_STATES),
+    internalNote: optionalText(2000),
+    publicNote: optionalText(1000),
+  })
+  .superRefine((value, ctx) => {
+    if (value.publicNote && value.state !== 'fixed') {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['publicNote'],
+        message: 'Only a fixed request can go in the public corrections log.',
+      });
+    }
+  });
+export type CorrectionResolutionInput = z.infer<typeof correctionResolutionSchema>;
+
+/** One row of the public Coverage page. */
+export const coverageInputSchema = z
+  .object({
+    jurisdictionId: id('a state'),
+    cycleYear: z.coerce
+      .number({ error: 'Enter a year.' })
+      .int('Enter a year.')
+      .min(2024, 'Enter a year from 2024 on.')
+      .max(2100, 'Enter a year before 2100.'),
+    officeLevel: z.enum(OFFICE_LEVELS),
+    level: z.enum(COVERAGE_LEVELS),
+    asOf: optionalDate,
+    note: optionalText(500),
+  })
+  .superRefine((value, ctx) => {
+    if (value.level === 'complete' && !value.asOf) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['asOf'],
+        message: 'Say the date the coverage was complete as of.',
+      });
+    }
+  });
+export type CoverageInput = z.infer<typeof coverageInputSchema>;

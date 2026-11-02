@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { PublicCitation } from '@civicscope/cms';
 import type { SourceType } from '@civicscope/core';
 import { formatDate, SOURCE_TYPE_LABELS } from '@/lib/labels';
@@ -58,5 +59,16 @@ export function Thumb({ photoId }: { photoId: number | null }) {
     <img className="thumb" src={`/photos/${photoId}`} alt="" loading="lazy" />
   ) : (
     <span className="thumb thumb-empty" aria-hidden="true" />
+  );
+}
+
+/** Every public page that shows facts links to the correction form, pre-filled with the page. */
+export function ReportLink({ path }: { path: string }) {
+  return (
+    <p className="report-link">
+      <Link href={`/corrections?page=${encodeURIComponent(path)}`}>
+        Report an error on this page
+      </Link>
+    </p>
   );
 }

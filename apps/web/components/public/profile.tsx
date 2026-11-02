@@ -11,7 +11,7 @@ import {
   POSITION_TYPE_LABELS,
   VERIFICATION_LABELS,
 } from '@/lib/labels';
-import { NotPublic, Sources } from './sources';
+import { NotPublic, ReportLink, Sources } from './sources';
 
 type Profile = NonNullable<Awaited<ReturnType<typeof getPublicPerson>>>;
 type Claim = Profile['claims'][number];
@@ -184,6 +184,7 @@ export function CandidateProfile({
         sources for full context. Last updated{' '}
         {formatDate(person.updatedAt.toISOString().slice(0, 10))}.
       </p>
+      <ReportLink path={`/candidates/${person.slug}`} />
     </>
   );
 }

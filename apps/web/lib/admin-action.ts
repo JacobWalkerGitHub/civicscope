@@ -41,7 +41,8 @@ export async function runFormAction(
     }
     throw error;
   }
-  revalidatePath('/admin', 'layout');
+  // Refresh the admin and the public site, so a publish shows to readers at once.
+  revalidatePath('/', 'layout');
   return { error: null, fieldErrors: {}, values, saved: true };
 }
 
@@ -57,6 +58,7 @@ export async function runButtonAction(
     if (error instanceof CmsError) return { ...emptyFormState, error: error.message };
     throw error;
   }
-  revalidatePath('/admin', 'layout');
+  // Refresh the admin and the public site, so a publish shows to readers at once.
+  revalidatePath('/', 'layout');
   return { ...emptyFormState, saved: true };
 }

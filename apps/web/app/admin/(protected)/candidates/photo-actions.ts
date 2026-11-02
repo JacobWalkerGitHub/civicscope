@@ -35,7 +35,7 @@ export async function uploadPhotoAction(
     }
     throw error;
   }
-  revalidatePath('/admin', 'layout');
+  revalidatePath('/', 'layout');
   return { error: null, fieldErrors: {}, values: {}, saved: true };
 }
 

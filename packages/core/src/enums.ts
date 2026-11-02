@@ -230,3 +230,15 @@ export type ImportState = (typeof IMPORT_STATES)[number];
 
 export const CONFLICT_STATES = ['open', 'accepted', 'rejected'] as const;
 export type ConflictState = (typeof CONFLICT_STATES)[number];
+
+/**
+ * Where a reader's correction request stands.
+ * new: not looked at yet; in_review: someone is checking it; fixed: the record was
+ * changed; no_change: checked and found accurate; spam: not a real request.
+ */
+export const CORRECTION_STATES = ['new', 'in_review', 'fixed', 'no_change', 'spam'] as const;
+export type CorrectionState = (typeof CORRECTION_STATES)[number];
+
+/** How much of one state's races for one office level CivicScope covers in a cycle. */
+export const COVERAGE_LEVELS = ['none', 'partial', 'complete'] as const;
+export type CoverageLevel = (typeof COVERAGE_LEVELS)[number];

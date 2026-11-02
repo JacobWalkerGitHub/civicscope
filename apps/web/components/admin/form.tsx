@@ -106,7 +106,7 @@ export function TextField({
   name: string;
   label: string;
   defaultValue?: string | number | null;
-  type?: 'text' | 'date' | 'url' | 'number';
+  type?: 'text' | 'date' | 'url' | 'number' | 'email';
   hint?: string;
   required?: boolean;
 }) {
@@ -148,16 +148,23 @@ export function TextAreaField({
   label,
   defaultValue,
   hint,
+  required,
+  rows = 3,
 }: {
   name: string;
   label: string;
   defaultValue?: string | null;
   hint?: string;
+  required?: boolean;
+  rows?: number;
 }) {
   const { value, error, id } = useField(name, defaultValue);
   return (
     <div className="field">
-      <label htmlFor={id}>{label}</label>
+      <label htmlFor={id}>
+        {label}
+        {required && <span aria-hidden="true"> *</span>}
+      </label>
       {hint && (
         <p id={`${id}-hint`} className="hint">
           {hint}
@@ -166,8 +173,9 @@ export function TextAreaField({
       <textarea
         id={id}
         name={name}
-        rows={3}
+        rows={rows}
         defaultValue={value}
+        required={required}
         key={value}
         aria-invalid={error ? true : undefined}
         aria-describedby={
