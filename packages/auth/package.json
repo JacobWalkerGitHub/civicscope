@@ -1,0 +1,23 @@
+{
+  "name": "@civicscope/auth",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "create-user": "tsx src/scripts/create-user.ts"
+  },
+  "dependencies": {
+    "@civicscope/core": "workspace:*",
+    "@civicscope/db": "workspace:*",
+    "@node-rs/argon2": "^2.0.2",
+    "drizzle-orm": "^0.45.0"
+  },
+  "devDependencies": {
+    "@testcontainers/mysql": "^12.2.0",
+    "tsx": "^4.20.0"
+  }
+}

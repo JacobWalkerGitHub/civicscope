@@ -10,19 +10,25 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "pnpm -r typecheck",
+    "typecheck": "tsc -p tsconfig.json && pnpm -r typecheck",
     "test": "vitest run",
     "test:unit": "vitest run --project unit",
     "db:generate": "pnpm --filter @civicscope/db generate",
     "db:migrate": "pnpm --filter @civicscope/db migrate",
     "db:seed": "pnpm --filter @civicscope/db seed",
-    "dev": "pnpm --filter @civicscope/web dev"
+    "dev": "pnpm --filter @civicscope/web dev",
+    "admin:create-user": "pnpm --filter @civicscope/auth create-user",
+    "test:e2e": "tsx tests/e2e/run.ts"
   },
   "devDependencies": {
+    "@civicscope/auth": "workspace:*",
+    "@civicscope/db": "workspace:*",
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "1.63.0",
     "@types/node": "^22.18.0",
     "eslint": "^10.14.0",
     "prettier": "^3.6.2",
+    "tsx": "^4.20.0",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.0",
     "vitest": "^5.1.0"

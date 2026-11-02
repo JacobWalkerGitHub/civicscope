@@ -38,3 +38,12 @@ jobs:
       # Unit tests plus integration tests against a real MySQL 8.4 (Testcontainers uses the runner's Docker).
       - run: pnpm test
       - run: pnpm --filter @civicscope/web build
+      # Browser tests of the admin sign-in flow against the production build.
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-results
+          path: test-results/
+          retention-days: 7

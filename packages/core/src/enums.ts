@@ -115,5 +115,8 @@ export const AUDIT_ACTIONS = [
   'split',
   'import',
   'delete',
+  'sign_in',
+  'sign_out',
+  'role_change',
 ] as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];

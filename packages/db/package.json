@@ -5,7 +5,10 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./schema": "./src/schema/index.ts"
+    "./schema": "./src/schema/index.ts",
+    "./testing": "./src/testing.ts",
+    "./migrate": "./src/migrate.ts",
+    "./env": "./src/scripts/env.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
