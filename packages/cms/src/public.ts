@@ -14,6 +14,7 @@ import { schema, type Db } from '@civicscope/db';
 
 const {
   person,
+  personPhoto,
   candidacy,
   race,
   election,
@@ -94,10 +95,14 @@ export async function getPublicPerson(db: Db, slug: string, opts: ViewOptions = 
       fullName: person.fullName,
       preferredName: person.preferredName,
       birthYear: person.birthYear,
+      photoId: person.photoId,
+      photoCredit: personPhoto.credit,
+      photoSourceUrl: personPhoto.sourceUrl,
       publishState: person.publishState,
       updatedAt: person.updatedAt,
     })
     .from(person)
+    .leftJoin(personPhoto, eq(personPhoto.id, person.photoId))
     .where(and(eq(person.slug, slug), visible(person, opts)));
   if (!p) return null;
 
@@ -212,6 +217,7 @@ export async function getPublicRace(db: Db, id: number, opts: ViewOptions = {}) 
       partyName: party.name,
       personSlug: person.slug,
       personPublishState: person.publishState,
+      photoId: person.photoId,
     })
     .from(candidacy)
     .innerJoin(person, eq(person.id, candidacy.personId))
@@ -244,4 +250,112 @@ export async function listUpcomingPublicRaces(db: Db, today = todayIso()) {
     .innerJoin(jurisdiction, eq(jurisdiction.id, election.jurisdictionId))
     .where(and(visible(race, {}), visible(election, {}), gte(election.date, today)))
     .orderBy(asc(election.date), asc(jurisdiction.name), asc(race.name));
+}
+
+export interface DirectoryFilters {
+  /** Part of a name. */
+  q?: string;
+  jurisdictionId?: number;
+  level?: 'federal' | 'state' | 'local';
+  partyId?: number;
+  /** Include elections before today. */
+  includePast?: boolean;
+}
+
+export const DIRECTORY_PAGE_SIZE = 50;
+
+/**
+ * The public candidate directory: one row per public candidacy in a public race,
+ * alphabetical by last name. Filters combine with AND.
+ */
+export async function listPublicCandidates(
+  db: Db,
+  filters: DirectoryFilters = {},
+  page = 1,
+  today = todayIso(),
+) {
+  const q = filters.q?.trim().slice(0, 100);
+  const where = and(
+    visible(candidacy, {}),
+    visible(person, {}),
+    visible(race, {}),
+    visible(election, {}),
+    filters.includePast ? undefined : gte(election.date, today),
+    filters.jurisdictionId ? eq(election.jurisdictionId, filters.jurisdictionId) : undefined,
+    filters.level ? eq(office.level, filters.level) : undefined,
+    filters.partyId ? eq(candidacy.partyId, filters.partyId) : undefined,
+    q
+      ? or(
+          sql`${person.fullName} like ${`%${q}%`}`,
+          sql`${person.preferredName} like ${`%${q}%`}`,
+          sql`${candidacy.ballotName} like ${`%${q}%`}`,
+        )
+      : undefined,
+  );
+  const base = db
+    .select({
+      candidacyId: candidacy.id,
+      ballotName: candidacy.ballotName,
+      status: candidacy.status,
+      isIncumbent: candidacy.isIncumbent,
+      partyName: party.name,
+      personSlug: person.slug,
+      photoId: person.photoId,
+      raceId: race.id,
+      raceName: race.name,
+      electionName: election.name,
+      electionDate: election.date,
+      jurisdictionName: jurisdiction.name,
+    })
+    .from(candidacy)
+    .innerJoin(person, eq(person.id, candidacy.personId))
+    .innerJoin(race, eq(race.id, candidacy.raceId))
+    .innerJoin(election, eq(election.id, race.electionId))
+    .innerJoin(office, eq(office.id, race.officeId))
+    .innerJoin(jurisdiction, eq(jurisdiction.id, election.jurisdictionId))
+    .leftJoin(party, eq(party.id, candidacy.partyId))
+    .where(where);
+  const [countRow] = await db
+    .select({ n: sql<number>`count(*)` })
+    .from(candidacy)
+    .innerJoin(person, eq(person.id, candidacy.personId))
+    .innerJoin(race, eq(race.id, candidacy.raceId))
+    .innerJoin(election, eq(election.id, race.electionId))
+    .innerJoin(office, eq(office.id, race.officeId))
+    .where(where);
+  const safePage = Math.max(1, Math.floor(page) || 1);
+  const rows = await base
+    .orderBy(asc(person.sortName), asc(election.date), asc(candidacy.id))
+    .limit(DIRECTORY_PAGE_SIZE)
+    .offset((safePage - 1) * DIRECTORY_PAGE_SIZE);
+  return { rows, total: Number(countRow?.n ?? 0), page: safePage };
+}
+
+/** Choices for the directory filters: only states and parties that have public candidates. */
+export async function directoryFilterOptions(db: Db) {
+  const live = and(
+    visible(candidacy, {}),
+    visible(person, {}),
+    visible(race, {}),
+    visible(election, {}),
+  );
+  const states = await db
+    .selectDistinct({ id: jurisdiction.id, name: jurisdiction.name })
+    .from(candidacy)
+    .innerJoin(person, eq(person.id, candidacy.personId))
+    .innerJoin(race, eq(race.id, candidacy.raceId))
+    .innerJoin(election, eq(election.id, race.electionId))
+    .innerJoin(jurisdiction, eq(jurisdiction.id, election.jurisdictionId))
+    .where(live)
+    .orderBy(asc(jurisdiction.name));
+  const parties = await db
+    .selectDistinct({ id: party.id, name: party.name })
+    .from(candidacy)
+    .innerJoin(person, eq(person.id, candidacy.personId))
+    .innerJoin(race, eq(race.id, candidacy.raceId))
+    .innerJoin(election, eq(election.id, race.electionId))
+    .innerJoin(party, eq(party.id, candidacy.partyId))
+    .where(live)
+    .orderBy(asc(party.name));
+  return { states, parties };
 }

@@ -3,6 +3,7 @@ import {
   boolean,
   char,
   check,
+  customType,
   date,
   datetime,
   index,
@@ -34,6 +35,8 @@ export const person = mysqlTable(
     sortName: varchar('sort_name', { length: 200 }).notNull(),
     /** Only recorded when a source states it. */
     birthYear: smallint('birth_year'),
+    /** The photo shown on the profile (see person_photo). */
+    photoId: int('photo_id'),
     ...publishable,
     ...timestamps,
     ...softDelete,
@@ -119,4 +122,38 @@ export const candidacyStatusEvent = mysqlTable(
       .default(sql`CURRENT_TIMESTAMP(3)`),
   },
   (t) => [index('candidacy_status_event_idx').on(t.candidacyId, t.effectiveDate)],
+);
+
+/** Binary column for small files kept in the database (up to 16 MB). */
+const mediumBlob = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType: () => 'mediumblob',
+});
+
+/**
+ * A candidate photo. CivicScope keeps its own copy (uploaded, or downloaded from a
+ * link) so photos don't break or track readers through third-party sites. Every
+ * photo records where it came from and whose it is. person.photo_id points at the
+ * one in use; older photos stay for the history.
+ */
+export const personPhoto = mysqlTable(
+  'person_photo',
+  {
+    id: int('id').autoincrement().primaryKey(),
+    personId: int('person_id')
+      .notNull()
+      .references(() => person.id),
+    contentType: varchar('content_type', { length: 32 }).notNull(),
+    data: mediumBlob('data').notNull(),
+    byteSize: int('byte_size').notNull(),
+    sha256: char('sha256', { length: 64 }).notNull(),
+    /** The page or file the photo came from. */
+    sourceUrl: varchar('source_url', { length: 2048 }).notNull(),
+    /** Shown under the photo, e.g. "Photo: Example for Senate campaign". */
+    credit: varchar('credit', { length: 200 }).notNull(),
+    uploadedBy: int('uploaded_by').notNull(),
+    createdAt: datetime('created_at', { mode: 'date', fsp: 3 })
+      .notNull()
+      .default(sql`CURRENT_TIMESTAMP(3)`),
+  },
+  (t) => [index('person_photo_person_idx').on(t.personId)],
 );

@@ -51,3 +51,12 @@ export function NotPublic({ state }: { state: string }) {
   if (state === 'published') return null;
   return <span className="badge badge-not-public">Not public ({state})</span>;
 }
+
+/** A small candidate photo for lists. Decorative: the name beside it says who it is. */
+export function Thumb({ photoId }: { photoId: number | null }) {
+  return photoId ? (
+    <img className="thumb" src={`/photos/${photoId}`} alt="" loading="lazy" />
+  ) : (
+    <span className="thumb thumb-empty" aria-hidden="true" />
+  );
+}

@@ -449,3 +449,17 @@ export const candidateImportInputSchema = sourceRefSchema.extend({
   raceId: id('a race'),
 });
 export type CandidateImportInput = z.infer<typeof candidateImportInputSchema>;
+
+/** Where a candidate photo came from and whose it is; shown under the photo. */
+export const photoCreditSchema = z.object({
+  sourceUrl: z.preprocess(blankToNull, webUrl.max(2048).nullable().optional()),
+  credit: requiredText('a photo credit', 2, 200),
+});
+export type PhotoCreditInput = z.infer<typeof photoCreditSchema>;
+
+export const photoLinkSchema = photoCreditSchema.extend({
+  imageUrl: z
+    .url({ protocol: /^https$/, error: 'Enter the image’s full https:// address.' })
+    .max(2048),
+});
+export type PhotoLinkInput = z.infer<typeof photoLinkSchema>;

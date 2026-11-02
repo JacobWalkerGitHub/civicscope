@@ -11,6 +11,10 @@ export function PublicShell({ children }: { children: ReactNode }) {
         <Link href="/" className="brand">
           CivicScope
         </Link>
+        <nav aria-label="Main">
+          <Link href="/">Upcoming races</Link>
+          <Link href="/candidates">Candidates</Link>
+        </nav>
         <p className="tagline">Nonpartisan, source-backed candidate research</p>
       </header>
       <main id="content">{children}</main>

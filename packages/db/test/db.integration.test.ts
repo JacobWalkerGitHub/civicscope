@@ -76,6 +76,7 @@ describe('migrations', () => {
       'party',
       'person',
       'person_identifier',
+      'person_photo',
       'race',
       'review_item',
       'revision',

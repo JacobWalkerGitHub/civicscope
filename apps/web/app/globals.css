@@ -286,7 +286,7 @@ select {
   margin-bottom: 16px;
 }
 
-.filters label {
+.filters .field {
   display: grid;
   gap: 4px;
 }
@@ -638,4 +638,67 @@ textarea {
 .about-entries {
   margin-top: 24px;
   font-size: 0.9rem;
+}
+
+.site-header nav {
+  display: flex;
+  gap: 16px;
+}
+
+.profile-photo {
+  margin: 0 0 12px;
+  width: 160px;
+}
+
+.profile-photo img {
+  display: block;
+  width: 160px;
+  height: 200px;
+  object-fit: cover;
+  border-radius: 6px;
+  background: var(--page);
+}
+
+.profile-photo figcaption,
+.admin-photo p {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.admin-photo img {
+  width: 120px;
+  height: 150px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.with-thumb {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  column-gap: 12px;
+}
+
+.with-thumb > :not(.thumb) {
+  grid-column: 2;
+}
+
+.thumb {
+  grid-row: 1 / span 4;
+  width: 56px;
+  height: 70px;
+  object-fit: cover;
+  border-radius: 4px;
+  background: var(--page);
+  border: 1px solid var(--line);
+}
+
+.h3 {
+  font-size: 1.17em;
+  margin: 0 0 4px;
+}
+
+.pager {
+  display: flex;
+  gap: 16px;
+  margin-top: 16px;
 }

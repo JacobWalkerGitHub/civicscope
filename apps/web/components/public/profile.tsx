@@ -77,6 +77,21 @@ export function CandidateProfile({
   return (
     <>
       <header className="profile-header">
+        {person.photoId && (
+          <figure className="profile-photo">
+            <img src={`/photos/${person.photoId}`} alt={`Photo of ${person.fullName}`} />
+            <figcaption>
+              Photo:{' '}
+              {person.photoSourceUrl ? (
+                <a href={person.photoSourceUrl} rel="noopener noreferrer nofollow" target="_blank">
+                  {person.photoCredit}
+                </a>
+              ) : (
+                person.photoCredit
+              )}
+            </figcaption>
+          </figure>
+        )}
         <h1>
           {person.fullName} <NotPublic state={person.publishState} />
         </h1>

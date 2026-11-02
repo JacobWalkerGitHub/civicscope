@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
+  getCurrentPhoto,
   getPerson,
   listCandidaciesForPerson,
   listClaimsForPerson,
@@ -10,7 +11,13 @@ import {
 } from '@civicscope/cms';
 import { can, CLAIM_KINDS } from '@civicscope/core';
 import { PublishBadge, VerificationBadge } from '@/components/admin/badges';
-import { ActionButton, ActionForm, SelectField, TextField } from '@/components/admin/form';
+import {
+  ActionButton,
+  ActionForm,
+  FileField,
+  SelectField,
+  TextField,
+} from '@/components/admin/form';
 import { History } from '@/components/admin/history';
 import { CitationsPanel } from '@/components/admin/sources';
 import { getDb } from '@/lib/db';
@@ -31,6 +38,7 @@ import {
   updatePersonAction,
 } from '../../cms-actions';
 import { PERSON_CITABLE_FIELDS, PersonForm } from '../person-form';
+import { linkPhotoAction, removePhotoAction, uploadPhotoAction } from '../photo-actions';
 
 export const metadata: Metadata = { title: 'Person · CivicScope admin' };
 
@@ -42,10 +50,11 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
     if (e instanceof NotFoundError) notFound();
     throw e;
   });
-  const [identifiers, candidacies, claims] = await Promise.all([
+  const [identifiers, candidacies, claims, photo] = await Promise.all([
     listPersonIdentifiers(db, id),
     listCandidaciesForPerson(db, id),
     listClaimsForPerson(db, id),
+    getCurrentPhoto(db, id),
   ]);
   const archived = Boolean(person.deletedAt);
   const published = person.publishState === 'published';
@@ -108,6 +117,90 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
           <dd>{person.birthYear ?? '—'}</dd>
         </dl>
       )}
+
+      <section aria-labelledby="photo-heading">
+        <h2 id="photo-heading">Photo</h2>
+        {photo ? (
+          <div className="admin-photo">
+            <img src={`/photos/${photo.id}`} alt={`Current photo of ${person.fullName}`} />
+            <p>
+              Credit: {photo.credit} ·{' '}
+              <a href={photo.sourceUrl} rel="noopener noreferrer" target="_blank">
+                where it came from
+              </a>
+            </p>
+            {canEdit && (
+              <ActionButton
+                action={removePhotoAction.bind(null, id)}
+                label="Remove photo"
+                confirm="Stop showing this photo? It stays in the history."
+              />
+            )}
+          </div>
+        ) : (
+          <p className="muted">No photo yet.</p>
+        )}
+        {canEdit && (
+          <>
+            <details className="add-form">
+              <summary>{photo ? 'Replace with an uploaded photo' : 'Upload a photo'}</summary>
+              <ActionForm
+                action={uploadPhotoAction.bind(null, id)}
+                submitLabel="Upload photo"
+                savedMessage="Photo saved."
+                resetOnSave
+              >
+                <FileField
+                  name="file"
+                  label="Photo file"
+                  accept="image/jpeg,image/png,image/webp"
+                  hint="JPEG, PNG or WebP, up to 5 MB. Use an official or campaign photo."
+                  required
+                />
+                <TextField
+                  name="sourceUrl"
+                  label="Where it came from"
+                  type="url"
+                  hint="The page you got the photo from, e.g. the campaign's press page."
+                  required
+                />
+                <TextField
+                  name="credit"
+                  label="Credit"
+                  hint='Shown under the photo, e.g. "Smith for Senate campaign".'
+                  required
+                />
+              </ActionForm>
+            </details>
+            <details className="add-form">
+              <summary>
+                {photo ? 'Replace with a photo from a link' : 'Add a photo from a link'}
+              </summary>
+              <ActionForm
+                action={linkPhotoAction.bind(null, id)}
+                submitLabel="Copy photo from link"
+                savedMessage="Photo saved."
+                resetOnSave
+              >
+                <TextField
+                  name="imageUrl"
+                  label="Image link"
+                  type="url"
+                  hint="The https:// address of the image itself. CivicScope saves its own copy."
+                  required
+                />
+                <TextField
+                  name="sourceUrl"
+                  label="Page it appears on"
+                  type="url"
+                  hint="Optional. Leave blank to use the image link."
+                />
+                <TextField name="credit" label="Credit" required />
+              </ActionForm>
+            </details>
+          </>
+        )}
+      </section>
 
       <CitationsPanel
         subjectType="person"
