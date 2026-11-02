@@ -15,7 +15,7 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   // Workspace packages ship TypeScript source.
-  transpilePackages: ['@civicscope/core', '@civicscope/db', '@civicscope/auth'],
+  transpilePackages: ['@civicscope/core', '@civicscope/db', '@civicscope/auth', '@civicscope/cms'],
   // Native and driver packages load from node_modules at runtime instead of being bundled.
   serverExternalPackages: ['@node-rs/argon2', 'mysql2'],
   // Produces a self-contained server for the ECS container image.

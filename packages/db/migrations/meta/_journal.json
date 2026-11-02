@@ -22,6 +22,20 @@
       "when": 1793645908733,
       "tag": "0002_admin_auth",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1793646955631,
+      "tag": "0003_revision",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1793646956956,
+      "tag": "0004_revision_append_only",
+      "breakpoints": true
     }
   ]
 }

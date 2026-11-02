@@ -1,0 +1,21 @@
+{
+  "name": "@civicscope/cms",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@civicscope/core": "workspace:*",
+    "@civicscope/db": "workspace:*",
+    "drizzle-orm": "^0.45.0",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@testcontainers/mysql": "^12.2.0"
+  }
+}

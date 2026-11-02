@@ -47,6 +47,9 @@ importers:
       '@civicscope/auth':
         specifier: workspace:*
         version: link:../../packages/auth
+      '@civicscope/cms':
+        specifier: workspace:*
+        version: link:../../packages/cms
       '@civicscope/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -94,6 +97,25 @@ importers:
       tsx:
         specifier: ^4.20.0
         version: 4.23.15
+
+  packages/cms:
+    dependencies:
+      '@civicscope/core':
+        specifier: workspace:*
+        version: link:../core
+      '@civicscope/db':
+        specifier: workspace:*
+        version: link:../db
+      drizzle-orm:
+        specifier: ^0.45.0
+        version: 0.45.4(mysql2@3.24.6(@types/node@22.20.5))
+      zod:
+        specifier: ^4.1.0
+        version: 4.6.7
+    devDependencies:
+      '@testcontainers/mysql':
+        specifier: ^12.2.0
+        version: 12.2.1
 
   packages/core:
     dependencies:

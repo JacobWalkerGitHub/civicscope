@@ -13,6 +13,9 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           <Link href="/admin" className="brand">
             CivicScope admin
           </Link>
+          <Link href="/admin/elections">Elections</Link>
+          <Link href="/admin/offices">Offices</Link>
+          <Link href="/admin/parties">Parties</Link>
           {can(user.role, 'users:manage') && <Link href="/admin/users">Users</Link>}
         </nav>
         <div className="who">

@@ -5,12 +5,14 @@
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createUser } from '@civicscope/auth';
+import { seedJurisdictions } from '@civicscope/db';
 import { startTestDatabase } from '@civicscope/db/testing';
 import { E2E_PASSWORD, E2E_USERS } from './users';
 
 const database = await startTestDatabase();
 let exitCode: number;
 try {
+  await seedJurisdictions(database.db);
   for (const user of Object.values(E2E_USERS)) {
     await createUser(
       database.db,

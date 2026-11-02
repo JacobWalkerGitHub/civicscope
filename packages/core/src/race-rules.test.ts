@@ -3,7 +3,11 @@ import {
   ELECTION_TYPES,
   PRIMARY_SYSTEMS,
   electionInputSchema,
+  fieldErrors,
   isValidPrimarySystem,
+  officeInputSchema,
+  partyInputSchema,
+  slugify,
   racePartyError,
   racePartyRule,
   raceInputSchema,
@@ -64,20 +68,17 @@ describe('isValidPrimarySystem', () => {
 });
 
 describe('electionInputSchema', () => {
-  const base = {
-    cycleId: 1,
-    jurisdictionId: 18,
-    date: '2027-11-02',
-    name: 'Kentucky General Election',
-  };
+  const base = { jurisdictionId: '18', date: '2027-11-02', name: 'Kentucky General Election' };
 
-  it('accepts a general election with no primary system', () => {
+  it('accepts a general election with no primary system and coerces form strings', () => {
     const parsed = electionInputSchema.parse({
       ...base,
       type: 'general',
       primarySystem: 'not_applicable',
+      officialUrl: '',
     });
-    expect(parsed.publishState).toBe('draft');
+    expect(parsed.jurisdictionId).toBe(18);
+    expect(parsed.officialUrl).toBeNull();
   });
 
   it('rejects a primary without a primary system', () => {
@@ -87,6 +88,7 @@ describe('electionInputSchema', () => {
       primarySystem: 'not_applicable',
     });
     expect(result.success).toBe(false);
+    if (!result.success) expect(fieldErrors(result.error).primarySystem).toMatch(/must say/);
   });
 
   it('rejects a non-HTTPS official URL', () => {
@@ -110,12 +112,22 @@ describe('electionInputSchema', () => {
   });
 });
 
-describe('validateRaceForElection', () => {
-  const race = raceInputSchema.parse({ electionId: 1, officeId: 1, name: 'Governor' });
+describe('raceInputSchema and validateRaceForElection', () => {
+  const race = raceInputSchema.parse({
+    electionId: '1',
+    officeId: '1',
+    districtId: '',
+    partyId: '',
+    name: 'Governor',
+  });
+
+  it('turns blank selects into null and unchecked boxes into false', () => {
+    expect(race).toMatchObject({ districtId: null, partyId: null, isSpecial: false, seats: 1 });
+  });
 
   it('flags a Louisiana-style jungle primary race that names a party', () => {
     const errors = validateRaceForElection(
-      { ...race, partyId: 2 },
+      { partyId: 2 },
       { type: 'primary', primarySystem: 'jungle' },
     );
     expect(errors).toHaveLength(1);
@@ -123,5 +135,47 @@ describe('validateRaceForElection', () => {
 
   it('passes a jungle primary race with no party', () => {
     expect(validateRaceForElection(race, { type: 'primary', primarySystem: 'jungle' })).toEqual([]);
+  });
+});
+
+describe('officeInputSchema', () => {
+  it('rejects a chamber on a non-legislative office', () => {
+    const result = officeInputSchema.safeParse({
+      jurisdictionId: '1',
+      title: 'Governor of Kentucky',
+      level: 'state',
+      branch: 'executive',
+      chamber: 'upper',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('reads an unchecked partisan box as false', () => {
+    const parsed = officeInputSchema.parse({
+      jurisdictionId: '1',
+      title: 'Judge',
+      level: 'state',
+      branch: 'judicial',
+    });
+    expect(parsed.isPartisan).toBe(false);
+  });
+});
+
+describe('partyInputSchema', () => {
+  it('uppercases FEC codes and validates them', () => {
+    expect(partyInputSchema.parse({ name: 'Test Party', fecCode: 'tst' }).fecCode).toBe('TST');
+    expect(partyInputSchema.safeParse({ name: 'Test Party', fecCode: 'TOOLONG' }).success).toBe(
+      false,
+    );
+  });
+});
+
+describe('slugify', () => {
+  it('makes URL-safe slugs', () => {
+    expect(slugify('Governor of Kentucky')).toBe('governor-of-kentucky');
+    expect(slugify('  Virginia House of Delegates — District 7 ')).toBe(
+      'virginia-house-of-delegates-district-7',
+    );
+    expect(slugify('Peña & Sons')).toBe('pena-and-sons');
   });
 });
