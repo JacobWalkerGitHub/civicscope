@@ -529,7 +529,11 @@ export async function runCongressImport(
           continue;
         }
         detailed++;
-        await importBill(b.type, number, before);
+        // Keep the map current: a bill that changes during a long run moves to the end
+        // of the list and comes round again, and must then be updated, not re-inserted.
+        const id = await importBill(b.type, number, before);
+        const [row] = await db.select().from(bill).where(eq(bill.id, id));
+        existing.set(`${b.type}:${number}`, row!);
       }
     }
   }
@@ -631,6 +635,7 @@ export async function runCongressImport(
           : 'unchanged'
         : result.action
     ]++;
+    return result.id;
   }
 
   /** Makes the stored sponsors match the source; returns how many rows changed. */
@@ -697,7 +702,9 @@ export async function runCongressImport(
             continue;
           }
           detailed++;
-          await importHouseVote(session, v.rollCallNumber, before);
+          const id = await importHouseVote(session, v.rollCallNumber, before);
+          const [row] = await db.select().from(rollCallVote).where(eq(rollCallVote.id, id));
+          existing.set(`${session}:${v.rollCallNumber}`, row!);
         }
       }
     }
@@ -784,6 +791,7 @@ export async function runCongressImport(
     });
     summary.votes.positions += positions.size;
     summary.votes[result.action === 'unchanged' ? 'updated' : result.action]++;
+    return result.id;
   }
 
   /** LIS member ID ("S428") -> Bioguide ID, from congress-legislators. */

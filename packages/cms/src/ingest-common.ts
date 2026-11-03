@@ -69,7 +69,11 @@ export const withoutKey = (url: URL | string) => {
   return copy.toString();
 };
 
-/** GETs a URL, retrying rate limits, server errors and network failures with backoff. */
+/**
+ * GETs a URL, retrying rate limits, server errors and network failures with backoff.
+ * Six tries over about four minutes: imports run unattended for hours, and Congress.gov
+ * has been seen to hang on one URL for a few minutes and then recover.
+ */
 export async function fetchText(
   url: URL,
   opts: FetchOptions,
@@ -78,7 +82,7 @@ export async function fetchText(
   const doFetch = opts.fetch ?? fetch;
   const sleep = opts.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
   let lastError = '';
-  for (let attempt = 0; attempt < 4; attempt++) {
+  for (let attempt = 0; attempt < 6; attempt++) {
     if (attempt > 0) await sleep(2000 * 2 ** (attempt - 1));
     let res: Response;
     try {

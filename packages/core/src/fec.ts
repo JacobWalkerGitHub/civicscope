@@ -7,7 +7,12 @@ import { z } from 'zod';
  */
 export const fecCandidateSchema = z.looseObject({
   candidate_id: z.string().regex(/^[HSP][0-9A-Z]{8}$/),
-  name: z.string().trim().min(1),
+  /** Null (with most other fields) on a registration the FEC hasn't processed yet. */
+  name: z
+    .string()
+    .trim()
+    .nullable()
+    .transform((n) => n || null),
   office: z.enum(['H', 'S', 'P']),
   state: z.string().regex(/^[A-Z]{2}$/),
   /** Two digits; "00" for Senate, President and at-large House seats. */
