@@ -36,4 +36,6 @@ USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s \
   CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/api/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"
-CMD ["node", "apps/web/server.js"]
+# ECS sets HOSTNAME to the task's own address, which would make Next.js listen only
+# there, and the health check above (127.0.0.1) would never reach it. Listen everywhere.
+CMD ["sh", "-c", "HOSTNAME=0.0.0.0 exec node apps/web/server.js"]

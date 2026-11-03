@@ -12,3 +12,4 @@ next-env.d.ts
 test-results/
 playwright-report/
 cdk.out/
+infra/cdk.context.json
