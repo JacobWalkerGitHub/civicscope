@@ -49,7 +49,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           <ul className="candidate-list">
             {r.candidates.map((c) => (
               <li key={c.candidacyId} className="with-thumb">
-                <Thumb photoId={c.photoId} />
+                <Thumb photoId={c.photoId} name={c.ballotName} />
                 <h3>
                   <Link href={`/candidates/${c.personSlug}`}>{c.ballotName}</Link>
                 </h3>

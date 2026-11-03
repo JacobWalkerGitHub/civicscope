@@ -105,7 +105,7 @@ export function RaceOverview({
             <ul className="candidate-list">
               {candidates.map((c) => (
                 <li key={c.candidacyId} className="with-thumb">
-                  <Thumb photoId={c.photoId} />
+                  <Thumb photoId={c.photoId} name={c.ballotName} />
                   <h3>
                     <Link href={candidateHref(c.personSlug)}>{c.ballotName}</Link>{' '}
                     <NotPublic state={c.publishState} />

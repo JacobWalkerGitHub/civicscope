@@ -11,7 +11,7 @@ import {
   POSITION_TYPE_LABELS,
   VERIFICATION_LABELS,
 } from '@/lib/labels';
-import { NotPublic, ReportLink, Sources } from './sources';
+import { initials, NotPublic, ReportLink, Sources } from './sources';
 
 type Profile = NonNullable<Awaited<ReturnType<typeof getPublicPerson>>>;
 type Claim = Profile['claims'][number];
@@ -91,6 +91,11 @@ export function CandidateProfile({
               )}
             </figcaption>
           </figure>
+        )}
+        {!person.photoId && (
+          <span className="profile-avatar" aria-hidden="true">
+            {initials(person.fullName)}
+          </span>
         )}
         <h1>
           {person.fullName} <NotPublic state={person.publishState} />

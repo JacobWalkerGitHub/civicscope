@@ -113,13 +113,27 @@ export function ElectionOverview({
             <Link href="/coverage">Coverage</Link>.
           </p>
         ) : (
-          <ul className="race-list">
-            {races.map((r) => (
-              <li key={r.id}>
-                <Link href={raceHref(r.id)}>{r.name}</Link> <NotPublic state={r.publishState} />
-              </li>
-            ))}
-          </ul>
+          groupByOffice(races).map(([title, list]) => (
+            <div key={title} className="race-group">
+              {list.length > 1 && (
+                <h3>
+                  {title} <span className="muted">· {list.length} races</span>
+                </h3>
+              )}
+              <ul className={list.length > 6 ? 'race-list race-grid' : 'race-list'}>
+                {list.map((r) => (
+                  <li key={r.id}>
+                    <Link href={raceHref(r.id)}>
+                      {list.length > 1 && r.name.startsWith(`${title}, `)
+                        ? r.name.slice(title.length + 2)
+                        : r.name}
+                    </Link>{' '}
+                    <NotPublic state={r.publishState} />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))
         )}
       </section>
 
@@ -156,4 +170,11 @@ export function ElectionOverview({
       <ReportLink path={`/elections/${e.id}`} />
     </>
   );
+}
+
+/** Races grouped by office, in the order they arrive. A legislature has a hundred or more. */
+function groupByOffice<T extends { officeTitle: string }>(races: T[]): [string, T[]][] {
+  const groups = new Map<string, T[]>();
+  for (const r of races) groups.set(r.officeTitle, [...(groups.get(r.officeTitle) ?? []), r]);
+  return [...groups];
 }
