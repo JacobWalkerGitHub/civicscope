@@ -7,7 +7,9 @@ import type {
   CandidacyStatus,
   PersonIdentifierScheme,
   SourceType,
+  ElectionDeadlineKind,
   ElectionType,
+  OfficialResourceKind,
   OfficeBranch,
   OfficeLevel,
   LegislativeChamber,
@@ -35,6 +37,49 @@ export const PRIMARY_SYSTEM_LABELS: Record<PrimarySystem, string> = {
   jungle: 'Jungle / open blanket (all candidates on one ballot)',
   nonpartisan: 'Nonpartisan',
   not_applicable: 'Not applicable (general election)',
+};
+
+/**
+ * How each primary system works, in plain words, for the public race and election
+ * pages. Describes the rules only; says nothing about which party benefits.
+ */
+export const PRIMARY_SYSTEM_EXPLANATIONS: Record<PrimarySystem, string> = {
+  closed:
+    'Each party holds its own primary, and only voters registered with that party can vote in it. Each party’s winner goes on to the general election.',
+  semi_closed:
+    'Each party holds its own primary. Voters registered with a party vote in that party’s primary; voters not registered with any party can usually choose one party’s primary. Each party’s winner goes on to the general election.',
+  open_partisan:
+    'Each party holds its own primary, and any registered voter can choose one party’s ballot. Each party’s winner goes on to the general election.',
+  top_two:
+    'All candidates, whatever their party, run on one primary ballot, and every voter gets the same ballot. The two candidates with the most votes advance to the general election, even if they belong to the same party.',
+  jungle:
+    'All candidates, whatever their party, run on one ballot, and every voter gets the same ballot. A candidate who wins a majority of the votes wins the office outright. If no one does, the top two advance to a second election, even if they belong to the same party.',
+  nonpartisan:
+    'Candidates run without party labels on the ballot. The rules for who advances are set by the state and are explained on the election office page.',
+  not_applicable: '',
+};
+
+export const DEADLINE_KIND_LABELS: Record<ElectionDeadlineKind, string> = {
+  filing_open: 'Candidate filing opens',
+  filing_close: 'Candidate filing deadline',
+  petition: 'Petition deadline',
+  withdrawal: 'Withdrawal deadline',
+  voter_registration: 'Voter registration deadline',
+  mail_ballot_request: 'Mail ballot request deadline',
+  early_voting_start: 'Early voting begins',
+  early_voting_end: 'Early voting ends',
+  certification: 'Results certified',
+  other: 'Other',
+};
+
+export const RESOURCE_KIND_LABELS: Record<OfficialResourceKind, string> = {
+  election_authority: 'Election office',
+  candidate_list: 'Official candidate list',
+  results: 'Official results',
+  voter_registration: 'Register or check registration',
+  polling_place: 'Find your polling place',
+  campaign_finance: 'Campaign finance reports',
+  other: 'Other',
 };
 
 export const PUBLISH_STATE_LABELS: Record<PublishState, string> = {

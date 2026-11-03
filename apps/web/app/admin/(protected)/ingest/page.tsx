@@ -22,15 +22,16 @@ export default async function IngestPage() {
       <h1>Automated imports</h1>
       <p className="muted">
         Runs that load federal candidates from the FEC, match Members of Congress to people here by
-        their IDs, and load members, bills and House votes from Congress.gov. They create drafts
-        only: nothing is published until a reviewer publishes it. Fields someone changed by hand are
-        never overwritten, and possible duplicates wait for a person.
+        their IDs, and load members, bills and House votes from Congress.gov and Senate votes from
+        senate.gov. They create drafts only: nothing is published until a reviewer publishes it.
+        Fields someone changed by hand are never overwritten, and possible duplicates wait for a
+        person.
       </p>
       <p className="hint">
         Start a run from the server with <code>pnpm ingest:fec 2028</code> (needs{' '}
         <code>FEC_API_KEY</code>), <code>pnpm ingest:legislators</code>, then{' '}
-        <code>pnpm ingest:congress 119</code> (needs <code>CONGRESS_API_KEY</code>). Scheduled runs
-        come with hosting.
+        <code>pnpm ingest:congress 119</code> (needs <code>CONGRESS_API_KEY</code>, except for{' '}
+        <code>--parts senate-votes</code>). Scheduled runs come with hosting.
       </p>
       {runs.length === 0 ? (
         <p className="muted">No runs yet.</p>

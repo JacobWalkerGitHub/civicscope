@@ -73,10 +73,49 @@ attached to a person, 278 of them to FEC-imported people, and 430 of 430 passed 
 
 ## Consequences
 
-- Senate votes are not imported: Congress.gov has no Senate vote endpoint yet.
+- Senate votes come from senate.gov instead (see the addendum below).
 - Members are not shown on the public site yet; the admin person page shows what
   attached ("Record in Congress").
 - Districts come from the member list's current district, which can differ from the
   district served in an older Congress after redistricting.
 - Names on people created by the FEC import still use the FEC's capitalization guesses
   (e.g. "Lalota Nick"); an editor fixes them, and the crosswalk never overwrites them.
+
+## Addendum: Senate roll-call votes (Phase 3, part 3)
+
+Congress.gov has no Senate vote endpoint, so Senate votes come from the Senate's own XML
+files, which are what senate.gov's roll-call pages are built from.
+
+- **What `--parts senate-votes` fetches** (no API key needed): the vote menu for each
+  session that has started
+  (`/legislative/LIS/roll_call_lists/vote_menu_{congress}_{session}.xml`), then each
+  vote's file (`/legislative/LIS/roll_call_votes/vote{congress}{session}/vote_{congress}_{session}_{nnnnn}.xml`).
+  Both are validated and snapshotted like the Congress.gov responses. Each vote is cited
+  to its public page on senate.gov (the same path ending in `.htm`, a legislative record).
+- **Senators are matched by LIS ID.** The Senate's files name senators by their LIS
+  member ID (`S428`), not Bioguide ID. congress-legislators lists both (`id.lis`), so the
+  run loads `legislators-current.json` (and `legislators-historical.json` only when a
+  vote has someone the current file lacks) and stores each position under the Bioguide
+  ID, like House votes. Nothing is matched by name. An LIS ID the dataset doesn't list
+  yet is named on the run page, the rest of the vote is stored, and the vote is marked
+  incomplete (an empty `source_updated_at`) so the next run fetches it again.
+- **Re-runs fetch only new votes.** The menu has no "last changed" date, so a normal run
+  fetches only votes it doesn't have, plus incomplete ones. `--refresh-senate` fetches
+  every vote again and rewrites those whose `modify_date` changed, to pick up the rare
+  correction. Votes are fetched oldest first, so `--max-votes` leaves the newest for the
+  next run.
+- **Times are Eastern.** The Senate writes "September 15, 2025, 06:15 PM" with no zone;
+  it is read as America/New_York (daylight or standard time as of that date) and stored in
+  UTC, like House votes.
+- **What a Senate vote records.** The question is the Senate's full question text; the
+  measure is the amendment when the vote is on one, otherwise the document (a bill such as
+  `S. 5`, or a nomination such as `PN464`); the vote type is the majority required
+  ("3/5 majority required"); a Vice President's tie-breaking vote is noted in the result.
+- `pnpm check:congress-votes --chamber senate` runs the same spot check against the stored
+  senate.gov files: the sampled position's LIS ID must belong to the member, their term on
+  the vote date must be a Senate seat in the recorded state, and the surname must match.
+
+Parsing was written and tested against real files saved from senate.gov (the 119th
+Congress's vote menu and roll calls 8 and 518 of 2025, kept in
+`packages/core/src/__fixtures__/senate/`). The live site was not reachable from the
+development environment, so the first live run must confirm the fetch itself.

@@ -8,7 +8,9 @@ import {
   CITATION_SUBJECTS,
   CORRECTION_STATES,
   COVERAGE_LEVELS,
+  ELECTION_DEADLINE_KINDS,
   ELECTION_TYPES,
+  OFFICIAL_RESOURCE_KINDS,
   LEGISLATIVE_CHAMBERS,
   OFFICE_BRANCHES,
   OFFICE_LEVELS,
@@ -136,6 +138,37 @@ export const raceInputSchema = z.object({
   status: z.enum(RACE_STATUSES).default('scheduled'),
 });
 export type RaceInput = z.infer<typeof raceInputSchema>;
+
+/**
+ * A date that matters for an election (filing, registration, early voting...). Every
+ * one must name the official document that sets it: dates are never guessed from a
+ * previous cycle.
+ */
+export const electionDeadlineInputSchema = z.object({
+  electionId: id('an election'),
+  kind: z.enum(ELECTION_DEADLINE_KINDS, { error: 'Choose what kind of date this is.' }),
+  date: isoDate,
+  label: requiredText('a description', 3, 200),
+  sourceUrl: z.preprocess(
+    blankToNull,
+    z
+      .url({ protocol: /^https$/, error: 'Enter the https:// address of the official source.' })
+      .max(2048),
+  ),
+});
+export type ElectionDeadlineInput = z.infer<typeof electionDeadlineInputSchema>;
+
+/** A link to an official election authority or resource for a state. */
+export const officialResourceInputSchema = z.object({
+  jurisdictionId: id('a state'),
+  kind: z.enum(OFFICIAL_RESOURCE_KINDS, { error: 'Choose what kind of resource this is.' }),
+  label: requiredText('a label', 3, 200),
+  url: z.preprocess(
+    blankToNull,
+    z.url({ protocol: /^https$/, error: 'Enter a full https:// address.' }).max(2048),
+  ),
+});
+export type OfficialResourceInput = z.infer<typeof officialResourceInputSchema>;
 
 /** Checks the rules that depend on the race's election, not just its own fields. */
 export function validateRaceForElection(

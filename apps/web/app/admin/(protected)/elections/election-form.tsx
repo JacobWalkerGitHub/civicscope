@@ -61,10 +61,10 @@ export function ElectionForm({
       />
       <TextField
         name="officialUrl"
-        label="Official election page"
+        label="Official source"
         type="url"
         defaultValue={election?.officialUrl}
-        hint="Link to the state election authority's page for this election (https://)."
+        hint="The election authority's page or calendar for this election, or the law that sets its date (https://)."
       />
     </ActionForm>
   );

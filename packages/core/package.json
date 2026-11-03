@@ -10,6 +10,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "fast-xml-parser": "^5.11.2",
     "zod": "^4.1.0"
   }
 }

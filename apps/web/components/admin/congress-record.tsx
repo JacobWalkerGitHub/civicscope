@@ -11,8 +11,8 @@ const voteDate = new Intl.DateTimeFormat('en-US', {
 
 /**
  * A person's record in Congress, found through their Bioguide ID: seats held, bills
- * sponsored and recent House votes. Imported from Congress.gov as drafts; shown here so
- * an editor can check what attached to this person.
+ * sponsored and recent House and Senate votes. Imported from Congress.gov and senate.gov
+ * as drafts; shown here so an editor can check what attached to this person.
  */
 export async function CongressRecord({ personId }: { personId: number }) {
   const record = await getCongressRecord(getDb(), personId);
@@ -23,8 +23,8 @@ export async function CongressRecord({ personId }: { personId: number }) {
     <section aria-labelledby="congress-heading">
       <h2 id="congress-heading">Record in Congress</h2>
       <p className="muted">
-        Imported from Congress.gov for Bioguide ID {record.bioguideIds.join(', ')}. These are drafts
-        and are not on the public site yet.
+        Imported from Congress.gov and senate.gov for Bioguide ID {record.bioguideIds.join(', ')}.
+        These are drafts and are not on the public site yet.
       </p>
       {nothing && <p className="muted">Nothing imported for this ID yet.</p>}
       {memberships.length > 0 && (
@@ -69,12 +69,13 @@ export async function CongressRecord({ personId }: { personId: number }) {
       )}
       {votes.length > 0 && (
         <>
-          <h3>Recent House votes ({record.voteCount} in all)</h3>
+          <h3>Recent votes ({record.voteCount} in all)</h3>
           <table>
             <thead>
               <tr>
                 <th scope="col">Date</th>
                 <th scope="col">Roll call</th>
+                <th scope="col">Chamber</th>
                 <th scope="col">Question</th>
                 <th scope="col">Vote</th>
                 <th scope="col">Result</th>
@@ -82,17 +83,21 @@ export async function CongressRecord({ personId }: { personId: number }) {
             </thead>
             <tbody>
               {votes.map((v) => {
-                const type = v.legislationType?.toLowerCase() ?? '';
-                const measure =
-                  isBillType(type) && v.legislationNumber
+                // "HR" from the Clerk, "H.R." from the Senate; nominations ("PN") and
+                // amendments are shown as the chamber names them.
+                const type = v.legislationType?.toLowerCase().replace(/[^a-z]/g, '') ?? '';
+                const measure = !v.legislationNumber
+                  ? null
+                  : isBillType(type) && /^\d+$/.test(v.legislationNumber)
                     ? billLabel(type, Number(v.legislationNumber))
-                    : null;
+                    : `${v.legislationType} ${v.legislationNumber}`;
                 return (
                   <tr key={v.id}>
                     <td>{voteDate.format(v.votedAt)}</td>
                     <td>
                       {v.rollNumber} ({v.congress}-{v.session})
                     </td>
+                    <td>{v.chamber === 'senate' ? 'Senate' : 'House'}</td>
                     <td>
                       {v.question}
                       {measure && ` (${measure})`}

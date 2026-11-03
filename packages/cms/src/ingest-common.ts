@@ -74,7 +74,11 @@ export const withoutKey = (url: URL | string) => {
  * Six tries over about four minutes: imports run unattended for hours, and Congress.gov
  * has been seen to hang on one URL for a few minutes and then recover.
  */
-export async function fetchText(url: URL, opts: FetchOptions): Promise<string> {
+export async function fetchText(
+  url: URL,
+  opts: FetchOptions,
+  accept = 'application/json',
+): Promise<string> {
   const doFetch = opts.fetch ?? fetch;
   const sleep = opts.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
   let lastError = '';
@@ -83,7 +87,7 @@ export async function fetchText(url: URL, opts: FetchOptions): Promise<string> {
     let res: Response;
     try {
       res = await doFetch(url, {
-        headers: { accept: 'application/json' },
+        headers: { accept },
         signal: AbortSignal.timeout(30_000),
       });
     } catch (error) {

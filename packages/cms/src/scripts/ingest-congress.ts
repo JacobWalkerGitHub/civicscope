@@ -5,11 +5,14 @@ import { CONGRESS_PARTS, runCongressImport, type CongressPart } from '../congres
 
 /**
  * Imports one Congress from the Congress.gov API: members, bills (with sponsors and
- * cosponsors) and House roll-call votes. Run `pnpm ingest:legislators` first.
- *   pnpm ingest:congress 119 [--parts members,bills,house-votes]
+ * cosponsors) and House roll-call votes; and Senate roll-call votes from senate.gov.
+ * Run `pnpm ingest:legislators` first.
+ *   pnpm ingest:congress 119 [--parts members,bills,house-votes,senate-votes]
  *                            [--max-bills 500] [--max-votes 100] [--max-requests 4000]
- * Needs CONGRESS_API_KEY (a free api.data.gov key). DEMO_KEY allows about 10 requests
- * an hour, so use it only with a small --max-requests.
+ *                            [--refresh-senate]
+ * Needs CONGRESS_API_KEY (a free api.data.gov key) for every part except senate-votes.
+ * DEMO_KEY allows about 10 requests an hour, so use it only with a small --max-requests.
+ * --refresh-senate fetches stored Senate votes again to pick up corrections.
  */
 await runCli(async () => {
   const url = requireDatabaseUrl();
@@ -20,6 +23,7 @@ await runCli(async () => {
       'max-bills': { type: 'string' },
       'max-votes': { type: 'string' },
       'max-requests': { type: 'string' },
+      'refresh-senate': { type: 'boolean' },
     },
   });
   const congress = Number(positionals[0]);
@@ -36,8 +40,8 @@ await runCli(async () => {
     if (!Number.isInteger(n) || n < 0) throw new Error(`--${name} must be a whole number.`);
     return n;
   };
-  const apiKey = process.env.CONGRESS_API_KEY;
-  if (!apiKey) {
+  const apiKey = process.env.CONGRESS_API_KEY ?? '';
+  if (!apiKey && parts.some((p) => p !== 'senate-votes')) {
     throw new Error(
       'CONGRESS_API_KEY is not set. Get a free key at https://api.data.gov/signup/ and add it to .env.',
     );
@@ -50,6 +54,7 @@ await runCli(async () => {
       maxBills: num(values['max-bills'], 'max-bills'),
       maxVotes: num(values['max-votes'], 'max-votes'),
       maxRequests: num(values['max-requests'], 'max-requests'),
+      refreshSenateVotes: values['refresh-senate'] ?? false,
     });
     const t = (x: { created: number; updated: number; unchanged: number; deferred: number }) =>
       `${x.created} new, ${x.updated} updated, ${x.unchanged} unchanged${x.deferred ? `, ${x.deferred} left for next run` : ''}`;
@@ -61,6 +66,10 @@ await runCli(async () => {
       console.log(`  Bills: ${t(s.bills)}; ${s.bills.sponsorships} sponsor rows changed`);
     if (parts.includes('house-votes'))
       console.log(`  House votes: ${t(s.votes)}; ${s.votes.positions} member votes stored`);
+    if (parts.includes('senate-votes') && s.senateVotes)
+      console.log(
+        `  Senate votes: ${t(s.senateVotes)}; ${s.senateVotes.positions} senator votes stored`,
+      );
     console.log(
       `  ${s.unmatched.length} members with no CivicScope person yet, ${s.attention.length} need a person.`,
     );

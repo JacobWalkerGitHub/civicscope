@@ -27,16 +27,17 @@ including users), `reviewer` (edit, verify, publish), `editor` (draft only), `vi
 
 ## Common commands
 
-| Command                                        | What it does                                                      |
-| ---------------------------------------------- | ----------------------------------------------------------------- |
-| `pnpm test`                                    | Unit tests and MySQL integration tests (starts a MySQL container) |
-| `pnpm test:unit`                               | Unit tests only, no Docker needed                                 |
-| `pnpm lint` / `pnpm typecheck` / `pnpm format` | Code quality                                                      |
-| `pnpm db:generate --name <change>`             | Create a migration after editing `packages/db/src/schema`         |
-| `pnpm ingest:fec 2028`                         | Import FEC candidate registrations (needs `FEC_API_KEY`)          |
-| `pnpm ingest:legislators`                      | Match Members of Congress to people by Bioguide/FEC/Wikidata IDs  |
-| `pnpm ingest:congress 119`                     | Import members, bills and House votes (needs `CONGRESS_API_KEY`)  |
-| `pnpm check:congress-votes`                    | Spot-check a random sample of imported House votes                |
+| Command                                        | What it does                                                       |
+| ---------------------------------------------- | ------------------------------------------------------------------ |
+| `pnpm test`                                    | Unit tests and MySQL integration tests (starts a MySQL container)  |
+| `pnpm test:unit`                               | Unit tests only, no Docker needed                                  |
+| `pnpm lint` / `pnpm typecheck` / `pnpm format` | Code quality                                                       |
+| `pnpm db:generate --name <change>`             | Create a migration after editing `packages/db/src/schema`          |
+| `pnpm ingest:fec 2028`                         | Import FEC candidate registrations (needs `FEC_API_KEY`)           |
+| `pnpm ingest:legislators`                      | Match Members of Congress to people by Bioguide/FEC/Wikidata IDs   |
+| `pnpm ingest:congress 119`                     | Import members, bills, House and Senate votes (`CONGRESS_API_KEY`) |
+| `pnpm data:calendar --as you@example.com`      | Load the reviewed 2027 election calendar (drafts, dates, links)    |
+| `pnpm check:congress-votes [--chamber senate]` | Spot-check a random sample of imported House (or Senate) votes     |
 
 ## Layout
 

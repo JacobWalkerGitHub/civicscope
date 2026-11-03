@@ -38,6 +38,11 @@ export const legislatorSchema = z.looseObject({
       .string()
       .regex(/^Q\d+$/)
       .optional(),
+    /** The Senate's own member ID ("S428"), used in its roll-call vote files. */
+    lis: z
+      .string()
+      .regex(/^S\d{3}$/)
+      .optional(),
   }),
   name: z.looseObject({
     first: z.string().min(1),

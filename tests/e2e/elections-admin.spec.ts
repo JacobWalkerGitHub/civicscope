@@ -1,3 +1,4 @@
+import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import { E2E_PASSWORD, E2E_USERS } from './users';
 
@@ -16,6 +17,14 @@ async function press(page: Page, name: string | RegExp) {
 }
 
 const status = (page: Page) => page.locator('.page-header');
+
+async function noSeriousA11yIssues(page: Page) {
+  const results = await new AxeBuilder({ page }).analyze();
+  const serious = results.violations.filter(
+    (v) => v.impact === 'serious' || v.impact === 'critical',
+  );
+  expect(serious.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
+}
 
 test.describe.configure({ mode: 'serial' });
 
@@ -72,6 +81,49 @@ test('the owner sets up an election and race, and publishes them in order', asyn
   await press(page, 'Publish');
   await expect(status(page)).toContainText('Published');
   await expect(page.getByRole('cell', { name: 'Published' })).toBeVisible();
+});
+
+test('key dates and official links show on the public election calendar', async ({ page }) => {
+  // Fixture values: not a real deadline or official page.
+  await signIn(page, E2E_USERS.owner.email);
+  await page.getByRole('link', { name: 'Elections' }).first().click();
+  await page.getByRole('link', { name: '2027 Kentucky General Election' }).click();
+
+  await page.getByText('Add a date').click();
+  const dateForm = page.locator('details', { hasText: 'Add a date' });
+  await dateForm.getByLabel('Kind of date').selectOption({ label: 'Voter registration deadline' });
+  await dateForm.getByRole('textbox', { name: 'Date', exact: true }).fill('2027-10-04');
+  await dateForm.getByLabel('Description').fill('Registration closes (test fixture)');
+  // A date must name its official source.
+  await dateForm.getByRole('button', { name: 'Add date' }).click();
+  await expect(dateForm.getByText(/official source/)).toBeVisible();
+  await dateForm.getByLabel('Official source').fill('https://elections.example.gov/2027.pdf');
+  await dateForm.getByRole('button', { name: 'Add date' }).click();
+  await expect(
+    page.getByRole('cell', { name: 'Registration closes (test fixture)' }),
+  ).toBeVisible();
+
+  await page.getByText('Add a link').click();
+  const linkForm = page.locator('details', { hasText: 'Add a link' });
+  await linkForm.getByLabel('Kind of link').selectOption({ label: 'Election office' });
+  await linkForm.getByLabel('Label').fill('Example State Board of Elections');
+  await linkForm.getByLabel('Address').fill('https://elections.example.gov/');
+  await linkForm.getByRole('button', { name: 'Add link' }).click();
+  await expect(page.getByRole('link', { name: 'Example State Board of Elections' })).toBeVisible();
+
+  await page.goto('/elections?year=2027');
+  await expect(page.getByRole('heading', { name: 'Election calendar' })).toBeVisible();
+  await expect(page.getByText('Voter registration deadline')).toBeVisible();
+  await noSeriousA11yIssues(page);
+  await page.getByRole('link', { name: '2027 Kentucky General Election' }).click();
+  await expect(page.getByRole('heading', { name: '2027 Kentucky General Election' })).toBeVisible();
+  await expect(
+    page.getByRole('cell', { name: /Registration closes \(test fixture\)/ }),
+  ).toBeVisible();
+  await expect(page.getByRole('link', { name: 'elections.example.gov' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Example State Board of Elections' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Governor of Kentucky' })).toBeVisible();
+  await noSeriousA11yIssues(page);
 });
 
 test('an earlier version of a party can be restored', async ({ page }) => {
