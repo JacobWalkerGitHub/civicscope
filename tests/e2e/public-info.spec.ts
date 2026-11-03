@@ -73,6 +73,8 @@ test('coverage starts empty and shows what an admin lists', async ({ page }) => 
 test('a reader reports a mistake without an account', async ({ page }) => {
   await page.goto('/corrections?page=/candidates/e2e-example');
   await expect(page.getByLabel('Page with the error')).toHaveValue('/candidates/e2e-example');
+  await expect(page.getByRole('heading', { name: 'Our correction policy' })).toBeVisible();
+  await expect(page.getByText('Nobody can pay to change, add or remove anything.')).toBeVisible();
   await expectNoSeriousA11yIssues(page);
 
   await page.getByLabel('What is wrong?').fill('Too short');

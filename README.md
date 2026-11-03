@@ -38,6 +38,9 @@ including users), `reviewer` (edit, verify, publish), `editor` (draft only), `vi
 | `pnpm ingest:congress 119`                     | Import members, bills, House and Senate votes (`CONGRESS_API_KEY`) |
 | `pnpm data:calendar --as you@example.com`      | Load the reviewed 2027 election calendar (drafts, dates, links)    |
 | `pnpm check:congress-votes [--chamber senate]` | Spot-check a random sample of imported House (or Senate) votes     |
+| `pnpm check:ingest`                            | Alert on ingest runs that failed or are stuck (hourly in AWS)      |
+| `pnpm db:verify-restore --target <url>`        | Check a restored database copy (backup restore drill)              |
+| `pnpm test:load --url <site>`                  | Load-test the public pages of a site you run                       |
 
 ## Layout
 
@@ -47,6 +50,7 @@ packages/core     Shared enums, domain rules, validation schemas, role permissio
 packages/auth     Admin passwords, sessions, sign-in lockout
 packages/db       Drizzle schema, migrations, seed data
 docs/adr          Architecture decision records
+infra             AWS CDK app and deploy runbook (see infra/README.md)
 ```
 
 See `docs/adr/0001-foundation-choices.md` for why things are the way they are.

@@ -190,7 +190,13 @@ test('an uploaded photo shows on the profile with its credit', async ({ page }) 
   const res = await page.request.get(src!);
   expect(res.status()).toBe(200);
   expect(res.headers()['content-type']).toBe('image/png');
-  expect(res.headers()['content-security-policy']).toContain('sandbox');
+  expect(res.headers()['content-security-policy']).toBe("default-src 'none'; sandbox");
+  // Pages get the site-wide policy instead.
+  const pageRes = await page.request.get('/');
+  expect(pageRes.headers()['content-security-policy']).toContain("frame-ancestors 'none'");
+  const health = await page.request.get('/api/health');
+  expect(health.status()).toBe(200);
+  expect(await health.json()).toEqual({ status: 'ok' });
   await expect(page.getByRole('link', { name: 'E2E campaign' })).toHaveAttribute(
     'href',
     'https://campaign.example.com/press',

@@ -1,0 +1,80 @@
+import { App } from 'aws-cdk-lib';
+import { Match, Template } from 'aws-cdk-lib/assertions';
+import { describe, expect, it } from 'vitest';
+import { CivicScopeStack } from '../lib/civicscope-stack';
+
+const template = Template.fromStack(
+  new CivicScopeStack(new App(), 'Test', {
+    imageTag: 'test',
+    multiAz: true,
+    fecCycle: 2028,
+    congress: 119,
+    alertEmail: 'alerts@example.com',
+  }),
+);
+
+describe('CivicScope stack', () => {
+  it('keeps the database private, encrypted, backed up and TLS-only', () => {
+    template.hasResourceProperties('AWS::RDS::DBInstance', {
+      Engine: 'mysql',
+      MultiAZ: true,
+      StorageEncrypted: true,
+      PubliclyAccessible: false,
+      DeletionProtection: true,
+      BackupRetentionPeriod: 14,
+    });
+    template.hasResourceProperties('AWS::RDS::DBParameterGroup', {
+      Parameters: Match.objectLike({
+        require_secure_transport: '1',
+        log_bin_trust_function_creators: '1',
+      }),
+    });
+    template.hasResourceProperties('AWS::Backup::BackupPlan', {
+      BackupPlan: Match.objectLike({
+        BackupPlanRule: [Match.objectLike({ Lifecycle: { DeleteAfterDays: 365 } })],
+      }),
+    });
+  });
+
+  it('puts the site behind CloudFront and a WAF, with no public load balancer', () => {
+    template.hasResourceProperties('AWS::ElasticLoadBalancingV2::LoadBalancer', {
+      Scheme: 'internal',
+    });
+    template.hasResourceProperties('AWS::WAFv2::WebACL', {
+      Scope: 'CLOUDFRONT',
+      Rules: Match.arrayWith([
+        Match.objectLike({ Name: 'AWSManagedRulesCommonRuleSet' }),
+        Match.objectLike({ Name: 'admin-rate' }),
+      ]),
+    });
+    template.hasResourceProperties('AWS::CloudFront::Distribution', {
+      DistributionConfig: Match.objectLike({
+        WebACLId: Match.anyValue(),
+        DefaultCacheBehavior: Match.objectLike({ ViewerProtocolPolicy: 'redirect-to-https' }),
+      }),
+    });
+  });
+
+  it('alarms on a failed ingest, by log line and by task exit code', () => {
+    template.hasResourceProperties('AWS::Logs::MetricFilter', {
+      FilterPattern: '{ $.event = "civicscope_alert" }',
+    });
+    template.hasResourceProperties('AWS::Events::Rule', {
+      EventPattern: Match.objectLike({ 'detail-type': ['ECS Task State Change'] }),
+    });
+    template.hasResourceProperties('AWS::SNS::Subscription', {
+      Protocol: 'email',
+      Endpoint: 'alerts@example.com',
+    });
+  });
+
+  it('gives the web tasks only the app database account, never the schema owner', () => {
+    const defs = template.findResources('AWS::ECS::TaskDefinition');
+    const web = Object.entries(defs).find(([id]) => id.startsWith('WebTask'))![1];
+    const secrets = web.Properties.ContainerDefinitions[0].Secrets.map(
+      (s: { Name: string; ValueFrom: unknown }) => JSON.stringify(s),
+    );
+    expect(secrets.some((s: string) => s.includes('DbAppSecret'))).toBe(true);
+    expect(secrets.some((s: string) => s.includes('DbAdminSecret'))).toBe(false);
+  });
+});
