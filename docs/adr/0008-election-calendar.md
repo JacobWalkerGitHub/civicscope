@@ -37,12 +37,34 @@ wrote them.
     outright.
 - **The explanations describe the rules only.** They never say who a system favors.
 
-## Not in this part
+## Addendum: the reviewed 2027 calendar (Phase 4, part 2)
 
-- Loading the real 2027 dates and races. Each one needs the official calendar opened and
-  checked, and the development environment can't reach the state election sites yet
-  (elect.ky.gov, sos.la.gov, sos.ms.gov, elections.virginia.gov). Search results point to a
-  published Kentucky 2027 calendar and a Louisiana 2027 calendar "subject to change by the
-  Legislature". Neither has been opened, so nothing from them is recorded.
-- Candidates for the 2027 races. Filing opens in late 2026 or 2027 depending on the state, and
-  every published candidate must trace to the official state list.
+- **The 2027 dates live in a reviewed file**, `packages/cms/src/calendar-data/2027.ts`. They
+  were typed in by hand from the official documents and checked against them on 2026-11-03.
+  `pnpm data:calendar --as <admin email>` loads the file through the normal CMS functions,
+  so every record is validated and audited under that admin's name. Elections are created
+  as drafts and go public only when a reviewer publishes them. Loading again changes
+  nothing. A stored value that differs from the file is listed and left alone, because an
+  editor may have corrected it.
+- **Each election's official source is its `official_url`.** That is the document that
+  sets or announces its date, and the public pages label it "Official source".
+- **What is in the file:**
+  - Louisiana's gubernatorial primary (October 9, 2027, one ballot for all parties) and
+    general election (November 20, 2027), with qualifying, petition, registration,
+    mail-ballot and early-voting dates. These come from the Secretary of State's "2027
+    Elections" schedule, revised 10/2026, which says its dates are subject to change by the
+    Legislature.
+  - Virginia's primary (June 15, 2027, Code § 24.2-515) and general election (November 2,
+    2027, Code § 24.2-101). Their key dates wait for the Department of Elections' 2027
+    General Assembly bulletins, which are not published yet.
+  - Official links for both states.
+- **Not in the file:**
+  - Kentucky and Mississippi. elect.ky.gov and sos.ms.gov refuse automated requests from
+    the build environment, even with the domains allowed. Their dates go in once someone
+    opens the official calendars and checks each entry.
+  - Races. They come next, office by office.
+
+## Still not in this part
+
+- Candidates for the 2027 races. Filing opens in late 2026 or 2027 depending on the state,
+  and every published candidate must trace to the official state list.

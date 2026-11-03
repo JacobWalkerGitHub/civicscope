@@ -3,7 +3,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { schema, seedJurisdictions, type Db } from '@civicscope/db';
 import { startTestDatabase, type TestDatabase } from '@civicscope/db/testing';
 import {
+  CALENDAR_2027,
   CmsError,
+  loadCalendar,
   createDeadline,
   createElection,
   createOffice,
@@ -295,5 +297,62 @@ describe('public calendar', () => {
 
     expect(await getPublicElection(db, ids.draft!)).toBeNull();
     expect(await getPublicElection(db, ids.draft!, { preview: true })).not.toBeNull();
+  });
+});
+
+describe('the reviewed 2027 calendar file', () => {
+  it('loads as drafts with every date and link, and changes nothing when loaded again', async () => {
+    // This database already has fixture Louisiana elections on the two 2027 Louisiana
+    // dates: the file's dates and links attach to those instead of duplicating them.
+    const first = await loadCalendar(db, owner, CALENDAR_2027);
+    expect(first).toMatchObject({
+      electionsCreated: 2,
+      electionsExisting: 2,
+      deadlinesCreated: 16,
+      resourcesCreated: 7,
+      differences: [],
+    });
+    const revisions = (await db.select().from(schema.revision)).length;
+    const again = await loadCalendar(db, owner, CALENDAR_2027);
+    expect(again).toMatchObject({
+      electionsCreated: 0,
+      electionsExisting: 4,
+      deadlinesCreated: 0,
+      deadlinesExisting: 16,
+      resourcesCreated: 0,
+      resourcesExisting: 7,
+    });
+    expect((await db.select().from(schema.revision)).length).toBe(revisions);
+
+    const [va] = await db
+      .select()
+      .from(schema.election)
+      .where(eq(schema.election.name, 'Virginia Primary Elections 2027'));
+    expect(va).toMatchObject({
+      publishState: 'draft',
+      primarySystem: 'open_partisan',
+      date: '2027-06-15',
+    });
+    // Drafts: not on the public calendar until a reviewer publishes them.
+    expect((await listPublicElections(db, { year: 2027 })).map((e) => e.name)).not.toContain(
+      'Virginia Primary Elections 2027',
+    );
+    expect((await listDeadlines(db, ids.primary!)).map((d) => d.label)).toContain(
+      'Candidate qualifying ends',
+    );
+  });
+
+  it('reports a date an editor has since changed instead of overwriting it', async () => {
+    await db
+      .update(schema.electionDeadline)
+      .set({ date: '2027-08-06' })
+      .where(eq(schema.electionDeadline.label, 'Candidate qualifying ends'));
+    const s = await loadCalendar(db, owner, CALENDAR_2027);
+    expect(s.differences).toEqual([expect.stringContaining('Candidate qualifying ends')]);
+    const [d] = await db
+      .select()
+      .from(schema.electionDeadline)
+      .where(eq(schema.electionDeadline.label, 'Candidate qualifying ends'));
+    expect(d!.date).toBe('2027-08-06');
   });
 });

@@ -47,10 +47,10 @@ export function ElectionOverview({
         )}
         {e.officialUrl && (
           <>
-            <dt>Official information</dt>
+            <dt>Official source</dt>
             <dd>
               <a href={e.officialUrl} rel="noopener noreferrer" target="_blank">
-                Election office page
+                {new URL(e.officialUrl).hostname}
               </a>
             </dd>
           </>

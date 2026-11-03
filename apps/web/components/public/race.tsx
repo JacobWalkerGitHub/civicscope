@@ -74,10 +74,10 @@ export function RaceOverview({
         )}
         {race.electionUrl && (
           <>
-            <dt>Official information</dt>
+            <dt>Official source</dt>
             <dd>
               <a href={race.electionUrl} rel="noopener noreferrer" target="_blank">
-                Election office page
+                {new URL(race.electionUrl).hostname}
               </a>
             </dd>
           </>
