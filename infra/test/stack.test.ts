@@ -78,3 +78,21 @@ describe('CivicScope stack', () => {
     expect(secrets.some((s: string) => s.includes('DbAdminSecret'))).toBe(false);
   });
 });
+
+describe('bootstrap deploy', () => {
+  it('creates everything but runs nothing before images exist', () => {
+    const t = Template.fromStack(
+      new CivicScopeStack(new App(), 'Boot', {
+        imageTag: 'bootstrap',
+        multiAz: false,
+        fecCycle: 2028,
+        congress: 119,
+      }),
+    );
+    t.hasResourceProperties('AWS::ECS::Service', { DesiredCount: 0 });
+    t.resourceCountIs('AWS::ECR::Repository', 2);
+    for (const rule of Object.values(t.findResources('AWS::Events::Rule'))) {
+      if (rule.Properties.ScheduleExpression) expect(rule.Properties.State).toBe('DISABLED');
+    }
+  });
+});

@@ -13,7 +13,7 @@ new CivicScopeStack(app, 'CivicScope', {
   alertEmail: ctx('alertEmail') || undefined,
   domainName: ctx('domainName') || undefined,
   certificateArn: ctx('certificateArn') || undefined,
-  imageTag: String(ctx('imageTag') ?? 'latest'),
+  imageTag: String(ctx('imageTag') ?? 'bootstrap'),
   multiAz: ctx('multiAz') !== false && ctx('multiAz') !== 'false',
   fecCycle: Number(ctx('fecCycle') ?? 2028),
   congress: Number(ctx('congress') ?? 119),

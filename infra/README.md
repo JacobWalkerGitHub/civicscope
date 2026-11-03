@@ -14,70 +14,63 @@ The AWS CDK app in this folder creates everything CivicScope needs in `us-east-1
 
 ## First deploy
 
-You need an AWS account, the AWS CLI signed in, and Docker.
+A step-by-step version for a Mac, naming the app for each step, is in the project's
+"CivicScope AWS setup guide" doc. In short:
 
-1. Set the context in `cdk.json`: at least `civicscope:alertEmail`. For a custom domain, request an
-   ACM certificate **in us-east-1**, then set `civicscope:domainName` and `civicscope:certificateArn`.
-   Set `civicscope:multiAz` to `false` while building to halve the database cost.
-2. Bootstrap CDK once per account: `pnpm --filter @civicscope/infra exec cdk bootstrap`.
-3. Create the image repositories and everything else. The web service can't start until an image
-   exists, so the first deploy creates the repositories first:
-   ```sh
-   cd infra
-   pnpm exec cdk deploy --exclusively CivicScope   # stops waiting on the service; that's expected the first time
+1. Put your own settings in `~/.cdk.json` in your home folder, so your email stays out of
+   this public repository:
+   ```json
+   { "context": { "civicscope:alertEmail": "you@example.com" } }
    ```
-   If the first deploy waits too long on the web service, push the images (step 4) and it finishes.
-4. Build and push the images, tagged with the git commit:
+   Add `civicscope:domainName` and `civicscope:certificateArn` (an ACM certificate in us-east-1)
+   for a custom domain. Run `pnpm exec cdk bootstrap` once per account.
+2. `pnpm exec cdk deploy` with the default `imageTag` of `bootstrap`. That creates everything,
+   including the image repositories, but runs nothing: no web tasks and no schedules.
+3. Build and push both images, tagged with the git commit:
    ```sh
    TAG=$(git rev-parse --short HEAD)
-   ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
-   REGISTRY=$ACCOUNT.dkr.ecr.us-east-1.amazonaws.com
+   REGISTRY=$(aws sts get-caller-identity --query Account --output text).dkr.ecr.us-east-1.amazonaws.com
    aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $REGISTRY
    docker build --platform linux/amd64 --target web -t $REGISTRY/civicscope-web:$TAG .
    docker build --platform linux/amd64 --target worker -t $REGISTRY/civicscope-worker:$TAG .
    docker push $REGISTRY/civicscope-web:$TAG && docker push $REGISTRY/civicscope-worker:$TAG
    ```
-5. Fill in the app secret (the `AppSecretArn` output) in the Secrets Manager console:
-   `AUTH_ENCRYPTION_KEY` (`openssl rand -base64 32`, and keep a copy somewhere safe: losing it
-   means every admin re-enrols their authenticator app), `FEC_API_KEY`, `CONGRESS_API_KEY`, and
-   optionally `ALERT_WEBHOOK_URL` (an https Slack-style webhook). Leave the field names as they are.
-6. Deploy with the tag, run migrations, then load the reference data and the first owner:
+4. Fill in the app secret (`AppSecretArn` output): `AUTH_ENCRYPTION_KEY` (`openssl rand -base64 32`,
+   and keep a copy: losing it means every admin re-enrols their authenticator app), `FEC_API_KEY`,
+   `CONGRESS_API_KEY`, optionally `ALERT_WEBHOOK_URL`, and `BOOTSTRAP_ADMIN_PASSWORD` (12+
+   characters, for the first owner). Never change these placeholders in the code afterwards.
+5. Deploy the images, then prepare the database:
    ```sh
    pnpm exec cdk deploy -c civicscope:imageTag=$TAG
-   ./run-task.sh migrate                     # schema, plus the app account and its grants
-   ./run-task.sh admin db:seed               # the 50 states, DC and the issue list
+   ./run-task.sh migrate
+   ./run-task.sh admin db:seed
+   ./run-task.sh admin admin:create-user --email you@example.com --name "Your Name" --role owner
    ```
-   For the first owner, put a password of 12 or more characters in the app secret's
-   `BOOTSTRAP_ADMIN_PASSWORD` field, then:
-   ```sh
-   ./run-task.sh admin admin:create-user -- --email you@example.com --name "Your Name" --role owner
-   ```
-   Sign in, set up two-step sign-in, then set `BOOTSTRAP_ADMIN_PASSWORD` back to `unset`.
-7. Confirm the email from SNS so alarms reach you.
+   Then set `BOOTSTRAP_ADMIN_PASSWORD` back to `unset`, sign in and set up two-step sign-in.
+6. Confirm the email from SNS so alarms reach you.
 
 ## Every deploy
 
-Build and push both images with a new tag (step 4), run `./run-task.sh migrate` with the new
-worker image, then `pnpm exec cdk deploy -c civicscope:imageTag=$TAG`. ECS replaces web tasks one
-at a time and rolls back on its own if the new ones fail their health check.
+Commit, open Docker Desktop, then run `infra/deploy.sh`. It builds and uploads both images
+tagged with the commit, deploys them, and runs `./run-task.sh migrate`. ECS replaces web tasks
+one at a time and rolls back on its own if the new ones fail their health check. Migrations
+run right after the new site starts, so a release that adds a column can show errors on the
+pages that use it for a minute or two.
 
 ## Backup restore drill
 
-Do this before launch and then every three months. It proves the backups work and how long a
-restore takes.
+Before launch, then every three months:
 
-1. In the RDS console, pick the database, **Actions → Restore to point in time**, latest restorable
-   time. Name it `civicscope-drill`, same subnet group and security group, Single-AZ.
-2. Run the check against it from the worker (it reads `RESTORE_DATABASE_URL`):
-   ```sh
-   ./run-task.sh drill db:verify-restore --target "mysql://civicscope_admin:<password>@<drill endpoint>/civicscope?ssl={\"rejectUnauthorized\":true}"
-   ```
-   It checks every migration is present, the key tables have rows, and no published entry has lost
-   its citations, and prints row counts and the newest audit entry.
-3. Write down the date, the restore time and the result in `docs/restore-drills.md`.
-4. Delete `civicscope-drill` (skip the final snapshot).
+1. RDS console: the database → **Actions → Restore to point in time** → latest restorable time.
+   Name it `civicscope-drill`, Single-AZ, same subnet group and the database's security group.
+2. When it's available, copy its endpoint and run `./run-task.sh drill <endpoint>`. It runs
+   `pnpm db:verify-restore --host <endpoint>` as the schema owner: every migration present, key
+   tables with rows, no published entry without its citations, plus row counts and the newest
+   audit entry in the logs.
+3. Note the date, how long the restore took and the result in `docs/restore-drills.md`.
+4. Delete `civicscope-drill` (no final snapshot).
 
-`pnpm test` also runs the same check on every commit against a local dump and restore
+`pnpm test` also runs a full dump-and-restore drill locally on every commit
 (`packages/db/test/restore.integration.test.ts`).
 
 ## Costs, roughly

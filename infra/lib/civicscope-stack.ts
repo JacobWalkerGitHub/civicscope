@@ -32,7 +32,10 @@ export interface CivicScopeStackProps extends StackProps {
   /** e.g. civicscope.org, with an ACM certificate for it in us-east-1. */
   domainName?: string;
   certificateArn?: string;
-  /** Tag of the web and worker images in ECR. */
+  /**
+   * Tag of the web and worker images in ECR. "bootstrap" (the first deploy, before any
+   * image exists) creates everything but runs nothing: no web tasks, no schedules.
+   */
   imageTag: string;
   /** A standby database in a second zone. Plan: off while building, on at launch. */
   multiAz: boolean;
@@ -56,6 +59,7 @@ const APP_PORT = 3000;
 export class CivicScopeStack extends Stack {
   constructor(scope: Construct, id: string, props: CivicScopeStackProps) {
     super(scope, id, props);
+    const bootstrap = props.imageTag === 'bootstrap';
 
     // ---------------------------------------------------------------- network
     const vpc = new ec2.Vpc(this, 'Vpc', {
@@ -255,7 +259,7 @@ export class CivicScopeStack extends Stack {
     const service = new ecs.FargateService(this, 'WebService', {
       cluster,
       taskDefinition: webTask,
-      desiredCount: 2,
+      desiredCount: bootstrap ? 0 : 2,
       minHealthyPercent: 100,
       maxHealthyPercent: 200,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
@@ -271,7 +275,10 @@ export class CivicScopeStack extends Stack {
       healthCheck: { path: '/api/health', healthyHttpCodes: '200', interval: Duration.seconds(15) },
       deregistrationDelay: Duration.seconds(30),
     });
-    const scaling = service.autoScaleTaskCount({ minCapacity: 2, maxCapacity: 6 });
+    const scaling = service.autoScaleTaskCount({
+      minCapacity: bootstrap ? 0 : 2,
+      maxCapacity: bootstrap ? 0 : 6,
+    });
     scaling.scaleOnCpuUtilization('Cpu', { targetUtilizationPercent: 60 });
     db.connections.allowDefaultPortFrom(webSecurityGroup, 'web tasks');
 
@@ -436,7 +443,11 @@ export class CivicScopeStack extends Stack {
     });
 
     const schedule = (id: string, cron: events.CronOptions, command: string[]) => {
-      const rule = new events.Rule(this, id, { schedule: events.Schedule.cron(cron) });
+      const rule = new events.Rule(this, id, {
+        schedule: events.Schedule.cron(cron),
+        // Off until images exist and the database is migrated and seeded.
+        enabled: !bootstrap,
+      });
       rule.addTarget(
         new targets.EcsTask({
           cluster,

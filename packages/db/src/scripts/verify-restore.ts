@@ -1,6 +1,6 @@
 import { parseArgs } from 'node:util';
 import { sql } from 'drizzle-orm';
-import { createDb, createPool } from '../client';
+import { createDb, createPool, databaseUrlFromEnv } from '../client';
 import { checkRestoredDatabase, compareFingerprints, fingerprintDatabase } from '../verify';
 import { loadRootEnv, runCli } from './env';
 
@@ -8,6 +8,10 @@ import { loadRootEnv, runCli } from './env';
  * Backup restore drill, step 2: check a restored copy of the database.
  *   pnpm db:verify-restore --target mysql://…restored…
  *   pnpm db:verify-restore --target mysql://…restored… --source mysql://…original…
+ *   pnpm db:verify-restore --host <restored endpoint>
+ * --host reuses the database name, user and password from the environment (DB_NAME,
+ * DB_USER, DB_PASSWORD, DB_TLS), so no password goes on the command line. In AWS the
+ * drill runs in the migrate task, which has the schema owner's credentials.
  * Without --source it checks the copy on its own (migrations, key tables, citations)
  * and prints row counts and the newest audit entry, which shows how recent the backup
  * is. With --source it also requires every table to match exactly, which only makes
@@ -17,10 +21,18 @@ import { loadRootEnv, runCli } from './env';
 await runCli(async () => {
   loadRootEnv();
   const { values } = parseArgs({
-    options: { target: { type: 'string' }, source: { type: 'string' } },
+    options: { target: { type: 'string' }, source: { type: 'string' }, host: { type: 'string' } },
   });
-  const target = values.target ?? process.env.RESTORE_DATABASE_URL;
-  if (!target) throw new Error('Give the restored database: --target mysql://user:pass@host/db');
+  const target =
+    values.target ??
+    (values.host
+      ? databaseUrlFromEnv({ ...process.env, DATABASE_URL: undefined, DB_HOST: values.host })
+      : process.env.RESTORE_DATABASE_URL);
+  if (!target) {
+    throw new Error(
+      'Give the restored database: --host <endpoint> (with DB_NAME, DB_USER, DB_PASSWORD set) or --target mysql://user:pass@host/db',
+    );
+  }
   const targetPool = createPool(target);
   const sourcePool = values.source ? createPool(values.source) : null;
   try {
