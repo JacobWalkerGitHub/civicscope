@@ -16,3 +16,4 @@ export * from './reference';
 export * from './sources';
 export * from './public';
 export * from './accountability';
+export * from './fec-import';

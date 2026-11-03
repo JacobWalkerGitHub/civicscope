@@ -11,6 +11,7 @@ import {
 } from 'drizzle-orm/mysql-core';
 import { sql } from 'drizzle-orm';
 import { CONFLICT_STATES, IMPORT_KINDS, IMPORT_STATES } from '@civicscope/core';
+import { ingestRun } from './ingest';
 import { adminUser } from './auth';
 import { race } from './elections';
 import { source } from './sources';
@@ -67,6 +68,8 @@ export const importBatch = mysqlTable(
     createdAt,
     closedBy: int('closed_by').references(() => adminUser.id),
     closedAt: datetime('closed_at', { mode: 'date', fsp: 3 }),
+    /** For automated imports: the run that wrote this batch. */
+    ingestRunId: int('ingest_run_id').references(() => ingestRun.id),
   },
   (t) => [index('import_batch_state_idx').on(t.state, t.createdAt)],
 );

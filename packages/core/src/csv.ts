@@ -91,3 +91,15 @@ export function csvHeaderKey(cell: string): string {
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_|_$/g, '');
 }
+
+/** One CSV line from cells, quoting where needed. */
+export function toCsvLine(
+  cells: readonly (string | number | boolean | null | undefined)[],
+): string {
+  return cells
+    .map((cell) => {
+      const text = cell == null ? '' : String(cell);
+      return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+    })
+    .join(',');
+}

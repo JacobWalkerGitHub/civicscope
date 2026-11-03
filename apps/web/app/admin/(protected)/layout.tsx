@@ -28,6 +28,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           <Link href="/admin/sources">Sources</Link>
           <Link href="/admin/issues">Issues</Link>
           <Link href="/admin/imports">Imports</Link>
+          <Link href="/admin/ingest">FEC data</Link>
           <Link href="/admin/review">
             Review
             {waiting > 0 && (
