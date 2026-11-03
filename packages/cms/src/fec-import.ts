@@ -86,6 +86,8 @@ interface RaceKey {
   district: number | null;
 }
 
+type NamedFecCandidate = FecCandidate & { name: string };
+
 const keyOf = (c: FecCandidate): RaceKey => {
   const d = c.office === 'H' && c.district ? Number(c.district) : 0;
   return { office: c.office, state: c.office === 'P' ? 'US' : c.state, district: d || null };
@@ -324,7 +326,7 @@ export async function runFecImport(
         .map((p) => [p.fecCode!, p.fecCode!]),
     );
     const unknownCodes = new Set<string>();
-    const groups = new Map<string, { key: RaceKey; rows: FecCandidate[] }>();
+    const groups = new Map<string, { key: RaceKey; rows: NamedFecCandidate[] }>();
     const seenIds = new Set<string>();
     for (const c of candidates) {
       if (c.candidate_inactive || (c.candidate_status && c.candidate_status !== 'C')) {
@@ -333,21 +335,34 @@ export async function runFecImport(
       }
       if (seenIds.has(c.candidate_id)) continue;
       seenIds.add(c.candidate_id);
+      // Seen live for 2026 (H6AZ08210): a registration listed with no name, district or
+      // party. There is nothing to import until the FEC fills it in.
+      if (!c.name) {
+        summary.attention.push({
+          fecId: c.candidate_id,
+          name: c.candidate_id,
+          race: `${c.office} ${c.state}`,
+          problem:
+            'The FEC lists this registration with no name. It will be imported once the FEC record has one; check the filing on fec.gov if it stays blank.',
+        });
+        continue;
+      }
+      const named = { ...c, name: c.name };
       // Senate and House IDs are issued for one state. When the registration names
       // another (S6MD03441 was listed under DC for 2028), a person decides which is right.
       const idState = fecIdState(c.candidate_id);
       if (idState && idState !== c.state) {
         summary.attention.push({
           fecId: c.candidate_id,
-          name: formatFecName(c.name),
+          name: formatFecName(named.name),
           race: `${c.office} ${c.state}`,
           problem: `The FEC lists this registration under ${c.state}, but the candidate ID was issued for ${idState}. Check which state is right and add the candidate by hand.`,
         });
         continue;
       }
-      const key = keyOf(c);
+      const key = keyOf(named);
       const k = keyString(key);
-      groups.set(k, { key, rows: [...(groups.get(k)?.rows ?? []), c] });
+      groups.set(k, { key, rows: [...(groups.get(k)?.rows ?? []), named] });
     }
 
     const today = opts.today ?? new Date().toISOString().slice(0, 10);
