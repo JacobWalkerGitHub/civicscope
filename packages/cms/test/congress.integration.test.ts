@@ -354,6 +354,11 @@ describe('Congress.gov import', () => {
       .where(eq(schema.ingestSnapshot.runId, runId));
     expect(snaps.length).toBe(summary.requests);
     expect(snaps.every((s) => !s.url.includes('test-key-123'))).toBe(true);
+
+    // Congress.gov reads "+" in the sort as a space and ignores an encoded "%2B".
+    const billList = new URL(requested.find((u) => new URL(u).pathname === '/v3/bill/119')!);
+    expect(billList.search).toContain('sort=updateDate+asc');
+    expect(billList.searchParams.get('sort')).toBe('updateDate asc');
   });
 
   it('changes nothing when run again on the same data', async () => {

@@ -418,9 +418,11 @@ export async function runCongressImport(
       ),
     );
     let detailed = 0;
+    // Oldest change first. The space is sent as "+", which is what Congress.gov expects;
+    // a literal "+" would be sent as %2B, and the API then ignores the sort.
     for await (const page of api.pages(
       `/v3/bill/${congress}`,
-      { sort: 'updateDate+asc' },
+      { sort: 'updateDate asc' },
       congressBillPageSchema,
       `Bills of the ${congress}th Congress`,
     )) {
