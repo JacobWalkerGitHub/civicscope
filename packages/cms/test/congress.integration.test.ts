@@ -85,6 +85,8 @@ const BILLS = () => [
     latestAction: { actionDate: '2026-02-01', text: 'Referred to committee.' },
   },
 ];
+/** Replaces the bill list for one test. */
+let BILL_LIST: Rec[] | null = null;
 let COSPONSORS: Rec[] = [
   {
     bioguideId: 'X000002',
@@ -155,7 +157,7 @@ const fakeFetch = (async (input: string | URL | Request) => {
   if (p === '/v3/member/congress/119') {
     return json(broken ? { members: [{ bioguideId: 'bad' }] } : page('members', MEMBERS));
   }
-  if (p === '/v3/bill/119') return json(page('bills', BILLS()));
+  if (p === '/v3/bill/119') return json(page('bills', BILL_LIST ?? BILLS()));
   if (p === '/v3/bill/119/hr/101') {
     return json({
       bill: {
@@ -412,6 +414,21 @@ describe('Congress.gov import', () => {
     });
     // Positions are replaced, not duplicated.
     expect((await db.select().from(schema.votePosition)).length).toBe(6);
+  });
+
+  it('handles a bill listed twice in one run', async () => {
+    // Congress.gov pages its list by offset over a date-only sort, so a bill can turn up
+    // on two pages of the same run. The second time it must update, not insert again.
+    await db.delete(schema.billSponsorship);
+    await db.delete(schema.bill);
+    BILL_LIST = [...BILLS(), ...BILLS()];
+    try {
+      const { summary } = await congressRun({ parts: ['bills'] });
+      expect(summary.bills).toMatchObject({ listed: 2, created: 1 });
+      expect(await db.select().from(schema.bill)).toHaveLength(1);
+    } finally {
+      BILL_LIST = null;
+    }
   });
 
   it('attaches records once an editor gives the person the Bioguide ID', async () => {
