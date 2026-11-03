@@ -170,6 +170,26 @@ class CongressClient {
   }
 }
 
+/**
+ * Whether a stored bill already reflects the bill list's `updateDate`. The list gives
+ * only a date ("2025-01-14") while the detail gives a timestamp
+ * ("2025-01-14T09:05:19Z"), so equal strings almost never happen. The stored record is
+ * current when its own stamp is on or after that date and it was fetched after that
+ * date ended everywhere in the U.S. (noon UTC the next day); a bill changed again later
+ * the same day it was fetched is fetched once more.
+ */
+export function billUpToDate(
+  stored: { sourceUpdatedAt: string; sourceCheckedAt: Date | null },
+  listed: string,
+): boolean {
+  if (stored.sourceUpdatedAt === listed) return true;
+  const day = /^\d{4}-\d{2}-\d{2}$/.test(listed) ? Date.parse(`${listed}T00:00:00Z`) : NaN;
+  const storedAt = Date.parse(stored.sourceUpdatedAt);
+  if (Number.isNaN(day) || Number.isNaN(storedAt) || !stored.sourceCheckedAt) return false;
+  const storedDay = new Date(storedAt).toISOString().slice(0, 10);
+  return storedDay >= listed && stored.sourceCheckedAt.getTime() >= day + 36 * 3600 * 1000;
+}
+
 /** Compares the stored row with the new values, ignoring bookkeeping columns. */
 function differs(row: Record<string, unknown>, values: Record<string, unknown>): boolean {
   return Object.entries(values).some(([k, v]) => {
@@ -418,9 +438,11 @@ export async function runCongressImport(
       ),
     );
     let detailed = 0;
+    // Oldest change first. The space is sent as "+", which is what Congress.gov expects;
+    // a literal "+" would be sent as %2B, and the API then ignores the sort.
     for await (const page of api.pages(
       `/v3/bill/${congress}`,
-      { sort: 'updateDate+asc' },
+      { sort: 'updateDate asc' },
       congressBillPageSchema,
       `Bills of the ${congress}th Congress`,
     )) {
@@ -428,7 +450,7 @@ export async function runCongressImport(
         summary.bills.listed++;
         const number = Number(b.number);
         const before = existing.get(`${b.type}:${number}`);
-        if (before && before.sourceUpdatedAt === b.updateDate) {
+        if (before && billUpToDate(before, b.updateDate)) {
           summary.bills.unchanged++;
           continue;
         }
@@ -444,6 +466,7 @@ export async function runCongressImport(
 
   async function importBill(type: BillType, number: number, before?: typeof bill.$inferSelect) {
     const label = billLabel(type, number);
+    const checkedAt = new Date();
     const { bill: d } = await api.get(
       `/v3/bill/${congress}/${type}/${number}`,
       {},
@@ -522,10 +545,22 @@ export async function runCongressImport(
         },
         'From Congress.gov',
       );
-      summary.bills.sponsorships += await syncSponsorships(tx, r.id, [...rows.values()]);
-      return r;
+      const sponsorships = await syncSponsorships(tx, r.id, [...rows.values()]);
+      summary.bills.sponsorships += sponsorships;
+      // Bookkeeping only: keep updated_at as the time the bill's data last changed.
+      await tx
+        .update(bill)
+        .set({ sourceCheckedAt: checkedAt, updatedAt: sql`${bill.updatedAt}` })
+        .where(eq(bill.id, r.id));
+      return { ...r, sponsorships };
     });
-    summary.bills[result.action === 'unchanged' ? 'updated' : result.action]++;
+    summary.bills[
+      result.action === 'unchanged'
+        ? result.sponsorships
+          ? 'updated'
+          : 'unchanged'
+        : result.action
+    ]++;
   }
 
   /** Makes the stored sponsors match the source; returns how many rows changed. */

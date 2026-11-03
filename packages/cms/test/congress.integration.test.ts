@@ -80,7 +80,8 @@ const BILLS = () => [
     type: 'HR',
     number: '101',
     title: 'Example Act',
-    updateDate: BILL_UPDATED,
+    // Like Congress.gov, the list gives only the date; the detail gives the timestamp.
+    updateDate: BILL_UPDATED.slice(0, 10),
     latestAction: { actionDate: '2026-02-01', text: 'Referred to committee.' },
   },
 ];
@@ -354,6 +355,11 @@ describe('Congress.gov import', () => {
       .where(eq(schema.ingestSnapshot.runId, runId));
     expect(snaps.length).toBe(summary.requests);
     expect(snaps.every((s) => !s.url.includes('test-key-123'))).toBe(true);
+
+    // Congress.gov reads "+" in the sort as a space and ignores an encoded "%2B".
+    const billList = new URL(requested.find((u) => new URL(u).pathname === '/v3/bill/119')!);
+    expect(billList.search).toContain('sort=updateDate+asc');
+    expect(billList.searchParams.get('sort')).toBe('updateDate asc');
   });
 
   it('changes nothing when run again on the same data', async () => {
@@ -366,6 +372,23 @@ describe('Congress.gov import', () => {
     expect((await db.select().from(schema.revision)).length).toBe(revisions);
     // Only the list pages are fetched: 1 member page, 1 bill page, 2 vote pages.
     expect(requested.length - calls).toBe(4);
+  });
+
+  it('fetches a bill again when it was last fetched on the day it changed', async () => {
+    // Fetched at 10:00 on the day of its last change: a later change that day would
+    // have the same date in the list, so the bill must be checked again.
+    await db.update(schema.bill).set({ sourceCheckedAt: new Date('2026-10-02T10:00:00Z') });
+    const calls = requested.length;
+    const { summary } = await congressRun({ parts: ['bills'] });
+    expect(summary.bills).toMatchObject({ created: 0, updated: 0, unchanged: 1 });
+    // The list page, the bill and its cosponsors.
+    expect(requested.length - calls).toBe(3);
+    const [b] = await db.select().from(schema.bill);
+    expect(b!.sourceCheckedAt!.getTime()).toBeGreaterThan(Date.parse('2026-10-03T12:00:00Z'));
+    // Now it is known to be current: the next run only reads the list.
+    const again = requested.length;
+    await congressRun({ parts: ['bills'] });
+    expect(requested.length - again).toBe(1);
   });
 
   it('updates changed records without undoing a reviewer’s publish decision', async () => {

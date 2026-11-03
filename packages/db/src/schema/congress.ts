@@ -72,6 +72,12 @@ export const bill = mysqlTable(
       .notNull()
       .references(() => source.id),
     sourceUpdatedAt,
+    /**
+     * When the importer last fetched this bill's detail. The bill list gives only a
+     * date, not the detail's timestamp, so this is how a re-run knows the stored record
+     * already reflects every change made on that date. Bookkeeping: not audited.
+     */
+    sourceCheckedAt: datetime('source_checked_at', { mode: 'date', fsp: 3 }),
     ...publishable,
     ...timestamps,
   },
