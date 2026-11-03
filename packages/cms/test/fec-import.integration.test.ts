@@ -77,6 +77,16 @@ const FIXTURE: Rec[] = [
   // The live 2028 data listed a Maryland senator's registration under DC.
   rec({ candidate_id: 'S8MD00901', name: 'MISFILED, MAX', office: 'S', state: 'DC' }),
   rec({ candidate_id: 'S8DC00901', name: 'CAPITAL, CASEY', office: 'S', state: 'DC' }),
+  // The live 2026 data had a registration with no name, district or party yet.
+  rec({
+    candidate_id: 'H8AZ08901',
+    name: null,
+    office: 'H',
+    state: 'AZ',
+    district: null,
+    party: null,
+    first_file_date: null,
+  }),
 ];
 
 let test: TestDatabase;
@@ -146,7 +156,7 @@ afterAll(async () => {
 describe('FEC import', () => {
   it('creates draft races, people and candidacies from registrations', async () => {
     const { summary, runId } = await run();
-    expect(summary.fetched).toBe(10);
+    expect(summary.fetched).toBe(11);
     expect(summary.skippedInactive).toBe(1);
     expect(summary.counts.create).toBe(5);
     expect(summary.unknownPartyCodes).toEqual(['ZZZ']);
@@ -205,8 +215,10 @@ describe('FEC import', () => {
     for (const id of ['H8GU00901', 'H8KY06903', 'S8MD00901', 'S8DC00901']) {
       expect(await candidacyFor(id)).toBeUndefined();
     }
+    expect(await candidacyFor('H8AZ08901')).toBeUndefined();
     expect(summary.attention.map((a) => [a.fecId, a.problem])).toEqual([
       ['S8MD00901', expect.stringContaining('issued for MD')],
+      ['H8AZ08901', expect.stringContaining('no name')],
       ['H8GU00901', expect.stringContaining('territories')],
       ['H8KY06903', expect.stringContaining('Possible duplicate of Jamie Sample')],
       ['S8DC00901', expect.stringContaining('no U.S. Senate or voting House seat')],
@@ -217,7 +229,7 @@ describe('FEC import', () => {
     // The raw pages are kept, without the API key.
     const detail = await getIngestRun(db, runId);
     expect(detail?.run.state).toBe('succeeded');
-    expect(detail?.pages).toBe(5);
+    expect(detail?.pages).toBe(6);
     const snaps = await db.select().from(schema.ingestSnapshot);
     expect(snaps.every((s) => !s.url.includes('test-key-123'))).toBe(true);
     expect(requested[0]).toContain('candidate_status=C');
