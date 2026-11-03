@@ -350,8 +350,10 @@ export class CivicScopeStack extends Stack {
         managed('AWSManagedRulesCommonRuleSet', 1, ['SizeRestrictions_BODY']),
         managed('AWSManagedRulesKnownBadInputsRuleSet', 2),
         managed('AWSManagedRulesSQLiRuleSet', 3),
-        // Requests per IP per 5 minutes. Sign-in also has its own lockout in the app.
-        rateLimit('admin-rate', 10, 300, '/admin'),
+        // Requests per IP per 5 minutes. Only sign-in gets a tight limit (the app also
+        // locks accounts after failed attempts): the rest of /admin fetches a page's data
+        // for every link it shows, so an editor reaches hundreds of requests quickly.
+        rateLimit('sign-in-rate', 10, 100, '/admin/sign-in'),
         rateLimit('search-rate', 11, 600, '/search'),
         rateLimit('overall-rate', 12, 3000),
       ],

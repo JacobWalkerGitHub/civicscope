@@ -53,7 +53,7 @@ describe('CivicScope stack', () => {
       Scope: 'CLOUDFRONT',
       Rules: Match.arrayWith([
         Match.objectLike({ Name: 'AWSManagedRulesCommonRuleSet' }),
-        Match.objectLike({ Name: 'admin-rate' }),
+        Match.objectLike({ Name: 'sign-in-rate' }),
       ]),
     });
     template.hasResourceProperties('AWS::CloudFront::Distribution', {
