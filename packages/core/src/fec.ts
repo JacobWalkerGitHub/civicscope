@@ -49,12 +49,7 @@ function titleCaseWord(word: string): string {
     .replace(/^Mc(\p{L})/u, (_, ch: string) => `Mc${ch.toUpperCase()}`);
 }
 
-/**
- * The FEC lists names as "LAST, FIRST MIDDLE SUFFIX" in capitals. This turns them into
- * "First Middle Last Suffix". Capitalization is a best guess (the FEC doesn't keep the
- * original), so editors should check names before publishing.
- */
-export function formatFecName(raw: string): string {
+function splitFecName(raw: string) {
   const clean = raw.replace(/\s+/g, ' ').trim();
   const comma = clean.indexOf(',');
   const last = comma === -1 ? '' : clean.slice(0, comma).trim();
@@ -68,8 +63,40 @@ export function formatFecName(raw: string): string {
       suffixes.push(key === 'JR' || key === 'SR' ? `${titleCaseWord(key)}.` : key);
     else given.push(token);
   }
-  const words = [...given, ...(last ? last.split(' ') : [])].map(titleCaseWord);
-  return [...words, ...suffixes].join(' ');
+  return {
+    given: given.map(titleCaseWord),
+    last: last ? last.split(' ').map(titleCaseWord) : [],
+    suffixes,
+  };
+}
+
+/**
+ * The FEC lists names as "LAST, FIRST MIDDLE SUFFIX" in capitals. This turns them into
+ * "First Middle Last Suffix". Capitalization is a best guess (the FEC doesn't keep the
+ * original), so editors should check names before publishing.
+ */
+export function formatFecName(raw: string): string {
+  const { given, last, suffixes } = splitFecName(raw);
+  return [...given, ...last, ...suffixes].join(' ');
+}
+
+/**
+ * The sort name ("Last Suffix, First Middle") for an FEC name. The FEC already says
+ * where the surname ends, so "VAN HOLLEN, CHRIS" sorts under V, not H, which guessing
+ * from the display name can't tell.
+ */
+export function fecSortName(raw: string): string {
+  const { given, last, suffixes } = splitFecName(raw);
+  if (!last.length || !given.length) return formatFecName(raw);
+  return `${[...last, ...suffixes].join(' ')}, ${given.join(' ')}`;
+}
+
+/**
+ * The state an FEC Senate or House candidate ID was issued for: characters 3 and 4,
+ * as in S6MD03441 (Maryland). Presidential IDs carry no state.
+ */
+export function fecIdState(candidateId: string): string | null {
+  return /^[HS]\d[A-Z]{2}/.test(candidateId) ? candidateId.slice(2, 4) : null;
 }
 
 /** U.S. general elections: the Tuesday after the first Monday in November. */

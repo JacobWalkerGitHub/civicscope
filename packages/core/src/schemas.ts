@@ -380,6 +380,8 @@ const yesNo = z.preprocess(
 export const candidateImportRowSchema = z
   .object({
     fullName: requiredText('a full name', 2, 200),
+    /** Only used when the row creates a person; otherwise guessed from the full name. */
+    sortName: optionalText(200),
     ballotName: optionalText(200),
     party: optionalText(200),
     incumbent: yesNo,
@@ -435,6 +437,7 @@ export type CandidateImportRow = z.infer<typeof candidateImportRowSchema>;
 /** CSV header (normalized with csvHeaderKey) → row field. */
 export const CANDIDATE_IMPORT_COLUMNS = {
   full_name: 'fullName',
+  sort_name: 'sortName',
   ballot_name: 'ballotName',
   party: 'party',
   incumbent: 'incumbent',

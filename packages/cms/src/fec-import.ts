@@ -2,6 +2,8 @@ import { and, count, desc, eq, gt, isNull, lte, or } from 'drizzle-orm';
 import {
   fecCandidateListUrl,
   fecCandidatePageSchema,
+  fecIdState,
+  fecSortName,
   formatFecName,
   generalElectionDate,
   toCsvLine,
@@ -185,6 +187,10 @@ async function ensureRace(
   if (!place || place.deletedAt) {
     return { skip: `CivicScope doesn’t cover ${key.state} yet (territories are not loaded).` };
   }
+  if (key.office !== 'P' && place.type !== 'state') {
+    // D.C. elects no senators and sends a non-voting delegate, not a Representative.
+    return { skip: `${place.name} has no U.S. Senate or voting House seat to import into.` };
+  }
   const date = generalElectionDate(cycle);
 
   let [electionRow] = await db
@@ -334,6 +340,7 @@ export interface FecRunSummary {
 
 const IMPORT_COLUMNS = [
   'full_name',
+  'sort_name',
   'party',
   'incumbent',
   'status',
@@ -389,6 +396,18 @@ export async function runFecImport(
       }
       if (seenIds.has(c.candidate_id)) continue;
       seenIds.add(c.candidate_id);
+      // Senate and House IDs are issued for one state. When the registration names
+      // another (S6MD03441 was listed under DC for 2028), a person decides which is right.
+      const idState = fecIdState(c.candidate_id);
+      if (idState && idState !== c.state) {
+        summary.attention.push({
+          fecId: c.candidate_id,
+          name: formatFecName(c.name),
+          race: `${c.office} ${c.state}`,
+          problem: `The FEC lists this registration under ${c.state}, but the candidate ID was issued for ${idState}. Check which state is right and add the candidate by hand.`,
+        });
+        continue;
+      }
       const key = keyOf(c);
       const k = keyString(key);
       groups.set(k, { key, rows: [...(groups.get(k)?.rows ?? []), c] });
@@ -420,6 +439,7 @@ export async function runFecImport(
           c,
           cells: [
             formatFecName(c.name),
+            fecSortName(c.name),
             code && partyByCode.has(code) ? code : '',
             c.incumbent_challenge === 'I' ? 'yes' : 'no',
             date ? 'registered' : '',

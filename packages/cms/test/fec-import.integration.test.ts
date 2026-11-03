@@ -74,6 +74,9 @@ const FIXTURE: Rec[] = [
     state: 'KY',
     district: '06',
   }),
+  // The live 2028 data listed a Maryland senator's registration under DC.
+  rec({ candidate_id: 'S8MD00901', name: 'MISFILED, MAX', office: 'S', state: 'DC' }),
+  rec({ candidate_id: 'S8DC00901', name: 'CAPITAL, CASEY', office: 'S', state: 'DC' }),
 ];
 
 let test: TestDatabase;
@@ -143,7 +146,7 @@ afterAll(async () => {
 describe('FEC import', () => {
   it('creates draft races, people and candidacies from registrations', async () => {
     const { summary, runId } = await run();
-    expect(summary.fetched).toBe(8);
+    expect(summary.fetched).toBe(10);
     expect(summary.skippedInactive).toBe(1);
     expect(summary.counts.create).toBe(5);
     expect(summary.unknownPartyCodes).toEqual(['ZZZ']);
@@ -162,7 +165,10 @@ describe('FEC import', () => {
 
     const senator = await candidacyFor('S8KY00902');
     expect(senator?.race.name).toBe('U.S. Senate, Kentucky');
-    expect(senator?.person.fullName).toBe('Morgan McExample Jr.');
+    expect(senator?.person).toMatchObject({
+      fullName: 'Morgan McExample Jr.',
+      sortName: 'McExample Jr., Morgan',
+    });
     expect(senator?.candidacy).toMatchObject({ isIncumbent: true, partyId: null });
 
     const house = await candidacyFor('H8KY06901');
@@ -194,18 +200,24 @@ describe('FEC import', () => {
       type: 'government_record',
     });
 
-    // Never guessed: a territory and a possible duplicate wait for a person.
-    expect(await candidacyFor('H8GU00901')).toBeUndefined();
-    expect(await candidacyFor('H8KY06903')).toBeUndefined();
+    // Never guessed: a territory, a possible duplicate, a registration whose state
+    // disagrees with its ID, and a Senate seat D.C. doesn't have all wait for a person.
+    for (const id of ['H8GU00901', 'H8KY06903', 'S8MD00901', 'S8DC00901']) {
+      expect(await candidacyFor(id)).toBeUndefined();
+    }
     expect(summary.attention.map((a) => [a.fecId, a.problem])).toEqual([
+      ['S8MD00901', expect.stringContaining('issued for MD')],
       ['H8GU00901', expect.stringContaining('territories')],
       ['H8KY06903', expect.stringContaining('Possible duplicate of Jamie Sample')],
+      ['S8DC00901', expect.stringContaining('no U.S. Senate or voting House seat')],
     ]);
+    const races = await db.select({ name: schema.race.name }).from(schema.race);
+    expect(races.map((r) => r.name)).not.toContain('U.S. Senate, District of Columbia');
 
     // The raw pages are kept, without the API key.
     const detail = await getIngestRun(db, runId);
     expect(detail?.run.state).toBe('succeeded');
-    expect(detail?.pages).toBe(4);
+    expect(detail?.pages).toBe(5);
     const snaps = await db.select().from(schema.ingestSnapshot);
     expect(snaps.every((s) => !s.url.includes('test-key-123'))).toBe(true);
     expect(requested[0]).toContain('candidate_status=C');

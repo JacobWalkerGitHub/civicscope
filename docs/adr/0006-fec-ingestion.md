@@ -28,7 +28,13 @@ appear on one.
   districts, elections and races are created as drafts. Districts are dated from the
   start of the election year, because the FEC names the district but not the map that
   drew it; an editor can record the plan later. Territories' delegates are listed for a
-  person, because territories are not loaded yet.
+  person, because territories are not loaded yet. So are Senate or House registrations
+  filed under D.C. (no senators, a non-voting delegate) and any Senate or House
+  registration whose state differs from the state in its candidate ID: the first live
+  run found S6MD03441 (a Maryland senator) listed under DC for 2028.
+- **Sort names come from the FEC's surname**, which it gives before the comma, so
+  "VAN HOLLEN, CHRIS" sorts as "Van Hollen, Chris". The CSV import accepts an optional
+  `sort_name` column for the same reason; it is used only when a row creates a person.
 - **The same pipeline as CSV imports.** Each race's registrations are turned into the
   rows of a candidate import and go through the same planner and apply step (ADR 4):
   - Rows are matched by FEC candidate ID first.

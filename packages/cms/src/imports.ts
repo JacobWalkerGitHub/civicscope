@@ -637,9 +637,11 @@ export async function applyImport(db: Db, actor: Actor, id: number): Promise<Imp
       let personId = row.personId;
       if (!personId) {
         const slug = await uniqueSlug(tx, person, person.slug, data.fullName);
-        const [res] = await tx
-          .insert(person)
-          .values({ fullName: data.fullName, sortName: defaultSortName(data.fullName), slug });
+        const [res] = await tx.insert(person).values({
+          fullName: data.fullName,
+          sortName: data.sortName || defaultSortName(data.fullName),
+          slug,
+        });
         personId = res.insertId;
         const [created] = await tx.select().from(person).where(eq(person.id, personId));
         await recordChange(tx, actor, {

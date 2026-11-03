@@ -3,6 +3,8 @@ import { parseCsv, toCsvLine } from './csv';
 import {
   fecCandidateListUrl,
   fecCandidatePageSchema,
+  fecIdState,
+  fecSortName,
   formatFecName,
   generalElectionDate,
 } from './fec';
@@ -21,6 +23,24 @@ describe('formatFecName', () => {
     expect(formatFecName('JONES, DR. ALEX MR')).toBe('Alex Jones');
     expect(formatFecName('CHER')).toBe('Cher');
     expect(formatFecName('  LEE ,  KIM  ')).toBe('Kim Lee');
+  });
+});
+
+describe('fecSortName', () => {
+  it('keeps the surname the FEC gives, even when it has several words', () => {
+    expect(fecSortName('VAN HOLLEN, CHRIS')).toBe('Van Hollen, Chris');
+    expect(fecSortName('CORTEZ MASTO, CATHERINE')).toBe('Cortez Masto, Catherine');
+    expect(fecSortName('SMITH, JOHN A. JR.')).toBe('Smith Jr., John A.');
+    expect(fecSortName('BOOZMAN, SEN. JOHN')).toBe('Boozman, John');
+    expect(fecSortName('CHER')).toBe('Cher');
+  });
+});
+
+describe('fecIdState', () => {
+  it('reads the state from Senate and House IDs only', () => {
+    expect(fecIdState('S6MD03441')).toBe('MD');
+    expect(fecIdState('H8KY06999')).toBe('KY');
+    expect(fecIdState('P80008345')).toBeNull();
   });
 });
 
