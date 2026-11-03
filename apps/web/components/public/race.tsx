@@ -16,11 +16,14 @@ export function RaceOverview({
   page,
   candidateHref,
   electionHref,
+  compareHref,
 }: {
   page: RacePage;
   candidateHref: (slug: string) => string;
   /** Link to the election's page with its dates; omitted where there is none (preview). */
   electionHref?: (id: number) => string;
+  /** Link to the side-by-side comparison; omitted in previews. */
+  compareHref?: (raceId: number) => string;
 }) {
   const { race, candidates } = page;
   return (
@@ -90,7 +93,15 @@ export function RaceOverview({
           <p className="muted">No candidates are published for this race yet.</p>
         ) : (
           <>
-            <p className="muted">Listed alphabetically by last name.</p>
+            <p className="muted">
+              Listed alphabetically by last name.
+              {compareHref && candidates.length > 1 && (
+                <>
+                  {' '}
+                  <Link href={compareHref(race.id)}>Compare these candidates side by side</Link>
+                </>
+              )}
+            </p>
             <ul className="candidate-list">
               {candidates.map((c) => (
                 <li key={c.candidacyId} className="with-thumb">

@@ -50,3 +50,6 @@ docs/adr          Architecture decision records
 ```
 
 See `docs/adr/0001-foundation-choices.md` for why things are the way they are.
+
+Public pages include `/search` (candidates, races, issues and entry text), `/issues`, and a
+side-by-side comparison for each race at `/races/<id>/compare` (see ADR 0009).

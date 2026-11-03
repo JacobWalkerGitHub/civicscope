@@ -30,6 +30,7 @@ export default async function RacePage({ params }: Params) {
       page={page}
       candidateHref={(slug) => `/candidates/${slug}`}
       electionHref={(id) => `/elections/${id}`}
+      compareHref={(id) => `/races/${id}/compare`}
     />
   );
 }
