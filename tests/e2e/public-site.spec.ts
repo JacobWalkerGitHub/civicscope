@@ -222,6 +222,45 @@ test('the candidate directory searches and filters', async ({ page }) => {
   await expect(page.getByRole('status')).toHaveText('No candidates match.');
 });
 
+test('search, comparison and issue pages show public records with sources', async ({ page }) => {
+  await page.goto('/');
+  await page
+    .getByRole('navigation', { name: 'Main' })
+    .getByRole('link', { name: 'Search' })
+    .click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Search');
+  await page.getByLabel('Name, office, state, district or issue').fill('dana e2e');
+  await page.getByRole('button', { name: 'Search' }).click();
+  await expect(page.getByRole('status')).toContainText('Results for');
+  await expect(page.getByRole('link', { name: NAME })).toBeVisible();
+  await expectNoSeriousA11yIssues(page);
+
+  await page.getByLabel('Name, office, state, district or issue').fill('public treasurer kentucky');
+  await page.getByRole('button', { name: 'Search' }).click();
+  await expect(page.getByRole('region', { name: 'Races' })).toContainText('E2E Public Treasurer');
+  await page.goto(`/search?q=${encodeURIComponent('no such e2e thing')}`);
+  await expect(page.getByRole('status')).toContainText('Nothing matches');
+
+  // Comparing: IDs from elsewhere are ignored, empty cells say so.
+  await page.goto(`/races/${raceId}/compare?c=999999`);
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Compare candidates');
+  const table = page.getByRole('table');
+  await expect(table.getByRole('columnheader', { name: NAME })).toBeVisible();
+  await expect(table.getByRole('row', { name: /Background/ })).toContainText('Nothing on file');
+  await expect(table.getByRole('row', { name: /On the ballot/ })).toContainText('Filed');
+  await expectNoSeriousA11yIssues(page);
+
+  await page
+    .getByRole('navigation', { name: 'Main' })
+    .getByRole('link', { name: 'Issues' })
+    .click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Issues');
+  await expectNoSeriousA11yIssues(page);
+  await page.locator('.issue-list a').first().click();
+  await expect(page.getByText('No positions on this issue are published')).toBeVisible();
+  await expectNoSeriousA11yIssues(page);
+});
+
 test('unpublishing takes a candidate off the public site at once', async ({ page }) => {
   await signIn(page, E2E_USERS.owner.email);
   await page.goto(`/admin/races/${raceId}`);

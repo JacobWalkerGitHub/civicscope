@@ -758,3 +758,57 @@ textarea {
   flex-wrap: wrap;
   gap: 16px;
 }
+
+/* Side-by-side comparison. Columns keep a readable width; the table scrolls inside its
+   own box on narrow screens, never the page. */
+table.compare th,
+table.compare td {
+  vertical-align: top;
+  min-width: 200px;
+}
+
+table.compare thead th .thumb {
+  display: block;
+  margin-bottom: 4px;
+}
+
+table.compare tbody th {
+  min-width: 140px;
+}
+
+.compare-entries {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.compare-entries li + li {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.compare-entries p {
+  margin: 4px 0;
+}
+
+.compare-empty {
+  font-style: italic;
+  margin: 0;
+}
+
+.compare-picker {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.issue-list li {
+  margin-bottom: 8px;
+}
+
+.issue-list p {
+  margin: 2px 0 0;
+}
