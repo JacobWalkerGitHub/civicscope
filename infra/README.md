@@ -51,10 +51,11 @@ A step-by-step version for a Mac, naming the app for each step, is in the projec
 
 ## Every deploy
 
-Build and push both images with a new tag (step 3), deploy with that tag, then run
-`./run-task.sh migrate`. Migrations only add to the schema, so the old site keeps working while
-they run. ECS replaces web tasks one at a time and rolls back on its own if the new ones fail
-their health check.
+Commit, open Docker Desktop, then run `infra/deploy.sh`. It builds and uploads both images
+tagged with the commit, deploys them, and runs `./run-task.sh migrate`. ECS replaces web tasks
+one at a time and rolls back on its own if the new ones fail their health check. Migrations
+run right after the new site starts, so a release that adds a column can show errors on the
+pages that use it for a minute or two.
 
 ## Backup restore drill
 
