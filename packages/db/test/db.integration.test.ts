@@ -59,10 +59,13 @@ describe('migrations', () => {
       'admin_session',
       'admin_user',
       'audit_log',
+      'bill',
+      'bill_sponsorship',
       'candidacy',
       'candidacy_status_event',
       'citation',
       'claim',
+      'congress_membership',
       'correction_request',
       'coverage_status',
       'district',
@@ -84,9 +87,11 @@ describe('migrations', () => {
       'race',
       'review_item',
       'revision',
+      'roll_call_vote',
       'sign_in_attempt',
       'sign_in_challenge',
       'source',
+      'vote_position',
     ]);
   });
 

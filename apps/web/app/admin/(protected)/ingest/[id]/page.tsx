@@ -1,10 +1,18 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getIngestRun, type FecRunSummary, type ImportSummary } from '@civicscope/cms';
+import {
+  getIngestRun,
+  type CongressRunSummary,
+  type CrosswalkSummary,
+  type FecRunSummary,
+  type ImportSummary,
+} from '@civicscope/cms';
+import { bioguideUrl } from '@civicscope/core';
 import { getDb } from '@/lib/db';
 import { dateTime } from '@/lib/labels';
 import { requirePermission } from '@/lib/session';
+import { runTitle } from '../summaries';
 
 export const metadata: Metadata = { title: 'Automated import run · CivicScope admin' };
 
@@ -17,8 +25,6 @@ export default async function IngestRunPage({ params }: { params: Promise<{ id: 
   const detail = await getIngestRun(getDb(), id);
   if (!detail) notFound();
   const { run, batches, pages } = detail;
-  const s = run.summary as FecRunSummary | null;
-  const cycle = (run.params as { cycle?: number }).cycle;
   return (
     <>
       <p>
@@ -26,7 +32,7 @@ export default async function IngestRunPage({ params }: { params: Promise<{ id: 
       </p>
       <div className="page-header">
         <h1>
-          FEC {cycle} import, {dateTime.format(run.startedAt)}
+          {runTitle(run.source, run.params)} import, {dateTime.format(run.startedAt)}
         </h1>
         <span className="badge">{STATE_LABELS[run.state]}</span>
       </div>
@@ -35,6 +41,32 @@ export default async function IngestRunPage({ params }: { params: Promise<{ id: 
           {run.error}
         </p>
       )}
+      {run.source === 'fec' && (
+        <FecDetail s={run.summary as FecRunSummary | null} pages={pages} batches={batches} />
+      )}
+      {run.source === 'congress_legislators' && run.summary != null && (
+        <CrosswalkDetail s={run.summary as CrosswalkSummary} pages={pages} />
+      )}
+      {run.source === 'congress_gov' && run.summary != null && (
+        <CongressDetail s={run.summary as CongressRunSummary} pages={pages} />
+      )}
+    </>
+  );
+}
+
+type Batches = NonNullable<Awaited<ReturnType<typeof getIngestRun>>>['batches'];
+
+function FecDetail({
+  s,
+  pages,
+  batches,
+}: {
+  s: FecRunSummary | null;
+  pages: number;
+  batches: Batches;
+}) {
+  return (
+    <>
       {s && (
         <dl className="facts">
           <dt>Fetched</dt>
@@ -143,6 +175,145 @@ export default async function IngestRunPage({ params }: { params: Promise<{ id: 
               );
             })}
           </ul>
+        )}
+      </section>
+    </>
+  );
+}
+
+function BioguideLink({ id }: { id: string }) {
+  return (
+    <a href={bioguideUrl(id)} target="_blank" rel="noopener noreferrer">
+      {id}
+    </a>
+  );
+}
+
+function CrosswalkDetail({ s, pages }: { s: CrosswalkSummary; pages: number }) {
+  return (
+    <>
+      <dl className="facts">
+        <dt>Fetched</dt>
+        <dd>
+          {s.fetched} legislators in {pages} files; {s.considered} current or recent members
+          considered
+        </dd>
+        <dt>People</dt>
+        <dd>
+          {s.created} new drafts, {s.linked} existing people linked, {s.unchanged} unchanged (
+          {s.identifiersAdded} IDs added)
+        </dd>
+      </dl>
+      <section aria-labelledby="attention-heading">
+        <h2 id="attention-heading">Needs a person ({s.attention.length})</h2>
+        {s.attention.length === 0 ? (
+          <p className="muted">Nothing.</p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Bioguide ID</th>
+                <th scope="col">Name</th>
+                <th scope="col">Why</th>
+              </tr>
+            </thead>
+            <tbody>
+              {s.attention.map((a) => (
+                <tr key={a.bioguideId}>
+                  <td>
+                    <BioguideLink id={a.bioguideId} />
+                  </td>
+                  <td>{a.name}</td>
+                  <td>{a.problem}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+    </>
+  );
+}
+
+function CongressDetail({ s, pages }: { s: CongressRunSummary; pages: number }) {
+  const tally = (t: { created: number; updated: number; unchanged: number; deferred: number }) =>
+    `${t.created} new, ${t.updated} updated, ${t.unchanged} unchanged${t.deferred ? `, ${t.deferred} left for the next run` : ''}`;
+  return (
+    <>
+      {s.stoppedEarly && <p className="hint">{s.stoppedEarly}</p>}
+      <dl className="facts">
+        <dt>Requests</dt>
+        <dd>
+          {s.requests} to Congress.gov ({pages} responses kept)
+        </dd>
+        {s.parts.includes('members') && (
+          <>
+            <dt>Members</dt>
+            <dd>{tally(s.members)}</dd>
+          </>
+        )}
+        {s.parts.includes('bills') && (
+          <>
+            <dt>Bills</dt>
+            <dd>
+              {tally(s.bills)}; {s.bills.sponsorships} sponsor and cosponsor rows changed
+            </dd>
+          </>
+        )}
+        {s.parts.includes('house-votes') && (
+          <>
+            <dt>House votes</dt>
+            <dd>
+              {tally(s.votes)}; {s.votes.positions} member votes stored
+            </dd>
+          </>
+        )}
+      </dl>
+      <section aria-labelledby="unmatched-heading">
+        <h2 id="unmatched-heading">Members with no person here ({s.unmatched.length})</h2>
+        {s.unmatched.length === 0 ? (
+          <p className="muted">Every member in this run matched a person.</p>
+        ) : (
+          <>
+            <p className="hint">
+              Their records are stored and attach as soon as a person has the Bioguide ID. Run the
+              crosswalk (<code>pnpm ingest:legislators</code>), or add the ID to the right person by
+              hand.
+            </p>
+            <ul>
+              {s.unmatched.map((u) => (
+                <li key={u.bioguideId}>
+                  <BioguideLink id={u.bioguideId} /> {u.name}
+                  {u.state && ` (${u.state})`}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </section>
+      <section aria-labelledby="attention-heading">
+        <h2 id="attention-heading">Needs a person ({s.attention.length})</h2>
+        {s.attention.length === 0 ? (
+          <p className="muted">Nothing.</p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Record</th>
+                <th scope="col">Name</th>
+                <th scope="col">Why</th>
+              </tr>
+            </thead>
+            <tbody>
+              {s.attention.map((a, i) => (
+                <tr key={`${a.ref}-${i}`}>
+                  <td>{a.ref}</td>
+                  <td>{a.name}</td>
+                  <td>{a.problem}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </section>
     </>
