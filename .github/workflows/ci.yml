@@ -47,3 +47,12 @@ jobs:
           name: playwright-results
           path: test-results/
           retention-days: 7
+
+  # The production images build (web: the Next.js server; worker: ingests and migrations).
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build --target web -t civicscope-web .
+      - run: docker build --target worker -t civicscope-worker .

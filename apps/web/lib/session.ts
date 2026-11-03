@@ -1,6 +1,7 @@
 import 'server-only';
 import { cache } from 'react';
 import { cookies, headers } from 'next/headers';
+import { clientIpFromForwarded } from '@civicscope/core';
 import { redirect } from 'next/navigation';
 import { can, type Permission } from '@civicscope/core';
 import { twoStepRequired, validateSession, type SessionUser } from '@civicscope/auth';
@@ -80,11 +81,18 @@ export async function clearChallengeCookie(): Promise<void> {
   (await cookies()).delete(CHALLENGE_COOKIE);
 }
 
-/** Client IP as reported by the load balancer (first X-Forwarded-For entry). */
+function trustedProxyCount(): number {
+  const n = Number(process.env.TRUSTED_PROXY_COUNT ?? 1);
+  return Number.isInteger(n) && n >= 1 && n <= 5 ? n : 1;
+}
+
 export async function getClientIp(): Promise<string | null> {
   const h = await headers();
-  const forwarded = h.get('x-forwarded-for')?.split(',')[0]?.trim();
-  return (forwarded || h.get('x-real-ip') || null)?.slice(0, 45) ?? null;
+  return (
+    clientIpFromForwarded(h.get('x-forwarded-for'), trustedProxyCount()) ??
+    h.get('x-real-ip')?.slice(0, 45) ??
+    null
+  );
 }
 
 export async function getUserAgent(): Promise<string | null> {

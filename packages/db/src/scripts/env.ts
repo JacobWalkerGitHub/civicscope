@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
+import { databaseUrlFromEnv } from '../client';
 
 /**
  * Loads the repository's root .env file (if there is one) so command-line scripts
@@ -22,7 +23,7 @@ export function loadRootEnv(start = process.cwd()): void {
 
 export function requireDatabaseUrl(): string {
   loadRootEnv();
-  const url = process.env.DATABASE_URL;
+  const url = databaseUrlFromEnv();
   if (!url) {
     throw new Error(
       'DATABASE_URL is not set. Run `cp .env.example .env` in the project folder, or set DATABASE_URL.',

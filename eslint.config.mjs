@@ -3,7 +3,13 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['**/node_modules/**', '**/.next/**', '**/dist/**', 'packages/db/migrations/**'],
+    ignores: [
+      '**/node_modules/**',
+      '**/.next/**',
+      '**/dist/**',
+      '**/cdk.out/**',
+      'packages/db/migrations/**',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
