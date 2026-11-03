@@ -26,7 +26,8 @@
     "admin:create-user": "pnpm --filter @civicscope/auth create-user",
     "test:e2e": "tsx tests/e2e/run.ts",
     "test:load": "tsx tests/load/run.ts",
-    "data:calendar": "tsx packages/cms/src/scripts/load-calendar.ts"
+    "data:calendar": "tsx packages/cms/src/scripts/load-calendar.ts",
+    "data:legislatures": "tsx packages/cms/src/scripts/load-legislatures.ts"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.10.2",
