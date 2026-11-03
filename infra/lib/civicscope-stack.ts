@@ -37,6 +37,12 @@ export interface CivicScopeStackProps extends StackProps {
    * image exists) creates everything but runs nothing: no web tasks, no schedules.
    */
   imageTag: string;
+  /**
+   * Registers the images' task definitions but keeps the site and schedules off, as in
+   * bootstrap. deploy.sh uses it on the first real deploy so the migration can run
+   * before any web task needs the database.
+   */
+  paused?: boolean;
   /** A standby database in a second zone. Plan: off while building, on at launch. */
   multiAz: boolean;
   fecCycle: number;
@@ -59,7 +65,7 @@ const APP_PORT = 3000;
 export class CivicScopeStack extends Stack {
   constructor(scope: Construct, id: string, props: CivicScopeStackProps) {
     super(scope, id, props);
-    const bootstrap = props.imageTag === 'bootstrap';
+    const bootstrap = props.imageTag === 'bootstrap' || props.paused === true;
 
     // ---------------------------------------------------------------- network
     const vpc = new ec2.Vpc(this, 'Vpc', {

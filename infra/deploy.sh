@@ -19,8 +19,23 @@ for target in web worker; do
   docker push "$REGISTRY/civicscope-$target:$TAG"
 done
 cd infra
-echo "Deploying $TAG..."
-pnpm exec cdk deploy -c "civicscope:imageTag=$TAG"
-echo "Applying database migrations..."
-./run-task.sh migrate
+# The site isn't running yet (first deploy, or an earlier one that stopped partway):
+# put the new images in place with the site still off, migrate, then turn it on.
+# Otherwise new web tasks would wait on a database with no tables or app account.
+running=$(aws ecs describe-services --region us-east-1 \
+  --cluster "$(./run-task.sh output ClusterName)" --services "$(./run-task.sh output WebServiceName)" \
+  --query 'services[0].desiredCount' --output text)
+if [ "$running" = "0" ] || [ "$running" = "None" ]; then
+  echo "First deploy of the site: setting up $TAG with the site off..."
+  pnpm exec cdk deploy --require-approval never -c "civicscope:imageTag=$TAG" -c civicscope:paused=true
+  echo "Applying database migrations..."
+  ./run-task.sh migrate
+  echo "Turning the site on..."
+  pnpm exec cdk deploy -c "civicscope:imageTag=$TAG"
+else
+  echo "Deploying $TAG..."
+  pnpm exec cdk deploy -c "civicscope:imageTag=$TAG"
+  echo "Applying database migrations..."
+  ./run-task.sh migrate
+fi
 echo "Done: $TAG is live."
