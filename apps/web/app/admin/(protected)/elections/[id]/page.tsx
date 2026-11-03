@@ -7,6 +7,8 @@ import {
   listOffices,
   listParties,
   listRaces,
+  listDeadlines,
+  listResources,
   listStates,
   NotFoundError,
 } from '@civicscope/cms';
@@ -23,6 +25,7 @@ import {
   updateElectionAction,
 } from '../../cms-actions';
 import { RaceForm } from '../../races/race-form';
+import { DeadlinesSection, ResourcesSection } from '../calendar-sections';
 import { ElectionForm } from '../election-form';
 
 export const metadata: Metadata = { title: 'Election · CivicScope admin' };
@@ -35,14 +38,18 @@ export default async function ElectionPage({ params }: { params: Promise<{ id: s
     if (e instanceof NotFoundError) notFound();
     throw e;
   });
-  const [states, races, stateOffices, federalOffices, districts, parties] = await Promise.all([
-    listStates(db),
-    listRaces(db, id),
-    listOffices(db, { jurisdictionId: election.jurisdictionId }),
-    listOffices(db).then((all) => all.filter((o) => o.level === 'federal')),
-    listDistricts(db, election.jurisdictionId),
-    listParties(db),
-  ]);
+  const [states, races, stateOffices, federalOffices, districts, parties, deadlines, resources] =
+    await Promise.all([
+      listStates(db),
+      listRaces(db, id),
+      listOffices(db, { jurisdictionId: election.jurisdictionId }),
+      listOffices(db).then((all) => all.filter((o) => o.level === 'federal')),
+      listDistricts(db, election.jurisdictionId),
+      listParties(db),
+      listDeadlines(db, id),
+      listResources(db, election.jurisdictionId, { includeArchived: true }),
+    ]);
+  const stateName = states.find((s) => s.id === election.jurisdictionId)?.name ?? 'this state';
   const archived = Boolean(election.deletedAt);
   const published = election.publishState === 'published';
 
@@ -132,6 +139,21 @@ export default async function ElectionPage({ params }: { params: Promise<{ id: s
           </details>
         )}
       </section>
+
+      <DeadlinesSection
+        electionId={id}
+        deadlines={deadlines}
+        role={user.role}
+        published={published}
+        archived={archived}
+      />
+
+      <ResourcesSection
+        jurisdictionId={election.jurisdictionId}
+        jurisdictionName={stateName}
+        resources={resources}
+        role={user.role}
+      />
 
       <History entityType="election" entityId={id} role={user.role} />
     </>

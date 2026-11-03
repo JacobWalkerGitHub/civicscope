@@ -4,6 +4,7 @@ import {
   CANDIDACY_STATUS_LABELS,
   ELECTION_TYPE_LABELS,
   formatDate,
+  PRIMARY_SYSTEM_EXPLANATIONS,
   PRIMARY_SYSTEM_LABELS,
 } from '@/lib/labels';
 import { NotPublic, ReportLink, Sources, Thumb } from './sources';
@@ -14,9 +15,12 @@ type RacePage = NonNullable<Awaited<ReturnType<typeof getPublicRace>>>;
 export function RaceOverview({
   page,
   candidateHref,
+  electionHref,
 }: {
   page: RacePage;
   candidateHref: (slug: string) => string;
+  /** Link to the election's page with its dates; omitted where there is none (preview). */
+  electionHref?: (id: number) => string;
 }) {
   const { race, candidates } = page;
   return (
@@ -26,7 +30,12 @@ export function RaceOverview({
           {race.name} <NotPublic state={race.publishState} />
         </h1>
         <p>
-          {race.electionName} · {formatDate(race.electionDate)}
+          {electionHref ? (
+            <Link href={electionHref(race.electionId)}>{race.electionName}</Link>
+          ) : (
+            race.electionName
+          )}{' '}
+          · {formatDate(race.electionDate)}
         </p>
       </header>
       <dl className="facts">
@@ -45,7 +54,10 @@ export function RaceOverview({
         {race.primarySystem !== 'not_applicable' && (
           <>
             <dt>Primary type</dt>
-            <dd>{PRIMARY_SYSTEM_LABELS[race.primarySystem]}</dd>
+            <dd>
+              {PRIMARY_SYSTEM_LABELS[race.primarySystem]}.{' '}
+              {PRIMARY_SYSTEM_EXPLANATIONS[race.primarySystem]}
+            </dd>
           </>
         )}
         {race.primaryPartyName && (

@@ -25,5 +25,11 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 export default async function RacePage({ params }: Params) {
   const page = await load((await params).id);
   if (!page) notFound();
-  return <RaceOverview page={page} candidateHref={(slug) => `/candidates/${slug}`} />;
+  return (
+    <RaceOverview
+      page={page}
+      candidateHref={(slug) => `/candidates/${slug}`}
+      electionHref={(id) => `/elections/${id}`}
+    />
+  );
 }

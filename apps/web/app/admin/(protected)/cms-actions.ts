@@ -42,6 +42,15 @@ import {
   updateOffice,
   updateParty,
   updateRace,
+  createDeadline,
+  createResource,
+  markResourceChecked,
+  removeDeadline,
+  setResourceArchived,
+  updateDeadline,
+  updateResource,
+  getDeadline,
+  getElection,
 } from '@civicscope/cms';
 import { getDb } from '@/lib/db';
 import { runButtonAction, runFormAction, type FormState } from '@/lib/admin-action';
@@ -126,6 +135,67 @@ export async function createRaceAction(electionId: number, _: FormState, formDat
 export async function updateRaceAction(id: number, _: FormState, formData: FormData) {
   return runFormAction('content:edit', formData, (actor, values) =>
     updateRace(getDb(), actor, id, values),
+  );
+}
+
+// Election calendar: key dates and official links.
+// Dates and links have no draft state of their own: once their election is published
+// they show at once. So changing a published election's dates, or any state's official
+// links (shown on every published election there), needs the right to publish.
+
+async function deadlinePermission(electionId: number) {
+  const e = await getElection(getDb(), electionId);
+  return e.publishState === 'published' ? 'content:publish' : 'content:edit';
+}
+
+/** Looked up from the date itself, never from what the browser sends. */
+async function electionOfDeadline(id: number) {
+  return (await getDeadline(getDb(), id)).electionId;
+}
+
+export async function createDeadlineAction(electionId: number, _: FormState, formData: FormData) {
+  return runFormAction(await deadlinePermission(electionId), formData, async (actor, values) => {
+    await createDeadline(getDb(), actor, { ...values, electionId });
+  });
+}
+
+export async function updateDeadlineAction(id: number, _: FormState, formData: FormData) {
+  const electionId = await electionOfDeadline(id);
+  return runFormAction(await deadlinePermission(electionId), formData, (actor, values) =>
+    updateDeadline(getDb(), actor, id, values),
+  );
+}
+
+export async function removeDeadlineAction(id: number, _: FormState) {
+  const permission = await deadlinePermission(await electionOfDeadline(id));
+  return runButtonAction(permission === 'content:edit' ? 'content:archive' : permission, (actor) =>
+    removeDeadline(getDb(), actor, id),
+  );
+}
+
+export async function createResourceAction(
+  jurisdictionId: number,
+  _: FormState,
+  formData: FormData,
+) {
+  return runFormAction('content:publish', formData, async (actor, values) => {
+    await createResource(getDb(), actor, { ...values, jurisdictionId });
+  });
+}
+
+export async function updateResourceAction(id: number, _: FormState, formData: FormData) {
+  return runFormAction('content:publish', formData, (actor, values) =>
+    updateResource(getDb(), actor, id, values),
+  );
+}
+
+export async function checkResourceAction(id: number, _: FormState) {
+  return runButtonAction('content:edit', (actor) => markResourceChecked(getDb(), actor, id));
+}
+
+export async function archiveResourceAction(id: number, archived: boolean, _: FormState) {
+  return runButtonAction('content:publish', (actor) =>
+    setResourceArchived(getDb(), actor, id, archived),
   );
 }
 
