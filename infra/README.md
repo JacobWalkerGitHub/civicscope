@@ -17,8 +17,13 @@ The AWS CDK app in this folder creates everything CivicScope needs in `us-east-1
 A step-by-step version for a Mac, naming the app for each step, is in the project's
 "CivicScope AWS setup guide" doc. In short:
 
-1. Set `civicscope:alertEmail` in `cdk.json` (and a domain plus a us-east-1 ACM certificate if
-   you have one). Run `pnpm exec cdk bootstrap` once per account.
+1. Put your own settings in `~/.cdk.json` in your home folder, so your email stays out of
+   this public repository:
+   ```json
+   { "context": { "civicscope:alertEmail": "you@example.com" } }
+   ```
+   Add `civicscope:domainName` and `civicscope:certificateArn` (an ACM certificate in us-east-1)
+   for a custom domain. Run `pnpm exec cdk bootstrap` once per account.
 2. `pnpm exec cdk deploy` with the default `imageTag` of `bootstrap`. That creates everything,
    including the image repositories, but runs nothing: no web tasks and no schedules.
 3. Build and push both images, tagged with the git commit:

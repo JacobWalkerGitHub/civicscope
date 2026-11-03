@@ -1,9 +1,6 @@
 {
   "app": "pnpm exec tsx bin/civicscope.ts",
   "context": {
-    "civicscope:alertEmail": "",
-    "civicscope:domainName": "",
-    "civicscope:certificateArn": "",
     "civicscope:imageTag": "bootstrap",
     "civicscope:multiAz": true,
     "civicscope:fecCycle": 2028,
