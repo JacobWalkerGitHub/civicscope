@@ -122,7 +122,7 @@ export function ComparisonTable({
                 <td />
                 {columns.map((c) => (
                   <th key={c.candidacyId} scope="col">
-                    <Thumb photoId={c.photoId} />
+                    <Thumb photoId={c.photoId} name={c.ballotName} />
                     <Link href={candidateHref(c.personSlug)}>{c.ballotName}</Link>{' '}
                     <NotPublic state={c.publishState} />
                   </th>

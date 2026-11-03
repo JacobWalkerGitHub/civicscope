@@ -341,17 +341,20 @@ export async function getPublicElection(db: Db, id: number, opts: ViewOptions = 
     .where(and(eq(election.id, id), visibleElection(opts)));
   if (!e) return null;
   const deadlines = await listDeadlines(db, id);
-  const races = await db
-    .select({
-      id: race.id,
-      name: race.name,
-      publishState: race.publishState,
-      officeTitle: office.title,
-    })
-    .from(race)
-    .innerJoin(office, eq(office.id, race.officeId))
-    .where(and(eq(race.electionId, id), visibleRace(opts)))
-    .orderBy(asc(race.name));
+  // Natural order, so District 2 comes before District 10.
+  const byName = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
+  const races = (
+    await db
+      .select({
+        id: race.id,
+        name: race.name,
+        publishState: race.publishState,
+        officeTitle: office.title,
+      })
+      .from(race)
+      .innerJoin(office, eq(office.id, race.officeId))
+      .where(and(eq(race.electionId, id), visibleRace(opts)))
+  ).sort((a, b) => byName.compare(a.name, b.name));
   const resources = await listResources(db, e.jurisdictionId);
   // Other public elections in the same state and year (e.g. the primary for a general).
   const year = e.date.slice(0, 4);

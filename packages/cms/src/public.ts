@@ -233,13 +233,15 @@ export async function getPublicRace(db: Db, id: number, opts: ViewOptions = {}) 
 
 /** Upcoming public races, soonest election first, with how many public candidates each has. */
 export async function listUpcomingPublicRaces(db: Db, today = todayIso()) {
-  return db
+  const rows = await db
     .select({
       id: race.id,
       name: race.name,
+      electionId: election.id,
       electionName: election.name,
       electionDate: election.date,
       jurisdictionName: jurisdiction.name,
+      officeTitle: office.title,
       // Aliased on purpose; see listSources.
       candidateCount: sql<number>`(select count(*) from candidacy c join person p on p.id = c.person_id
         where c.race_id = ${race}.id and c.publish_state = 'published' and c.deleted_at is null
@@ -248,8 +250,19 @@ export async function listUpcomingPublicRaces(db: Db, today = todayIso()) {
     .from(race)
     .innerJoin(election, eq(election.id, race.electionId))
     .innerJoin(jurisdiction, eq(jurisdiction.id, election.jurisdictionId))
+    .innerJoin(office, eq(office.id, race.officeId))
     .where(and(visible(race, {}), visible(election, {}), gte(election.date, today)))
-    .orderBy(asc(election.date), asc(jurisdiction.name), asc(race.name));
+    .orderBy(asc(election.date), asc(jurisdiction.name), asc(election.id));
+  // Natural order within an election, so District 2 comes before District 10.
+  const byName = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
+  const electionOrder = new Map<number, number>();
+  for (const r of rows)
+    if (!electionOrder.has(r.electionId)) electionOrder.set(r.electionId, electionOrder.size);
+  return rows.sort(
+    (a, b) =>
+      electionOrder.get(a.electionId)! - electionOrder.get(b.electionId)! ||
+      byName.compare(a.name, b.name),
+  );
 }
 
 export interface DirectoryFilters {

@@ -104,7 +104,7 @@ export default async function CandidatesPage({ searchParams }: { searchParams: P
         <ul className="candidate-list">
           {rows.map((r) => (
             <li key={r.candidacyId} className="with-thumb">
-              <Thumb photoId={r.photoId} />
+              <Thumb photoId={r.photoId} name={r.ballotName} />
               <h2 className="h3">
                 <Link href={`/candidates/${r.personSlug}`}>{r.ballotName}</Link>
               </h2>

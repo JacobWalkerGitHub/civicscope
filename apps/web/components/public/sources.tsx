@@ -54,11 +54,23 @@ export function NotPublic({ state }: { state: string }) {
 }
 
 /** A small candidate photo for lists. Decorative: the name beside it says who it is. */
-export function Thumb({ photoId }: { photoId: number | null }) {
-  return photoId ? (
-    <img className="thumb" src={`/photos/${photoId}`} alt="" loading="lazy" />
-  ) : (
-    <span className="thumb thumb-empty" aria-hidden="true" />
+/** Up to two initials from a ballot name, for candidates without a photo. */
+export function initials(name: string): string {
+  const words = name
+    .replace(/["“”(][^"“”)]*["“”)]/g, ' ')
+    .split(/[\s,]+/)
+    .filter((w) => /^\p{L}/u.test(w) && !/^(jr|sr|ii|iii|iv)\.?$/i.test(w));
+  const first = words[0]?.[0] ?? '';
+  const last = words.length > 1 ? words[words.length - 1]![0]! : '';
+  return (first + last).toUpperCase();
+}
+
+export function Thumb({ photoId, name }: { photoId: number | null; name?: string }) {
+  if (photoId) return <img className="thumb" src={`/photos/${photoId}`} alt="" loading="lazy" />;
+  return (
+    <span className="thumb thumb-empty" aria-hidden="true">
+      {name ? initials(name) : null}
+    </span>
   );
 }
 
