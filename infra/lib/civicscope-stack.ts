@@ -3,6 +3,7 @@ import {
   RemovalPolicy,
   SecretValue,
   Stack,
+  Token,
   type StackProps,
   CfnOutput,
   aws_backup as backup,
@@ -51,6 +52,8 @@ export interface CivicScopeStackProps extends StackProps {
 
 const DB_NAME = 'civicscope';
 const APP_PORT = 3000;
+/** com.amazonaws.global.cloudfront.origin-facing in us-east-1. */
+const CLOUDFRONT_ORIGIN_FACING_US_EAST_1 = 'pl-3b927c52';
 
 /**
  * CivicScope in AWS, as ADR 0001 and the plan describe:
@@ -249,8 +252,16 @@ export class CivicScopeStack extends Stack {
       vpc,
       description: 'CivicScope load balancer: reachable only from CloudFront VPC origin ENIs',
     });
-    // CloudFront's VPC origin connects from network interfaces inside this VPC.
-    albSecurityGroup.addIngressRule(ec2.Peer.ipv4(vpc.vpcCidrBlock), ec2.Port.tcp(80));
+    // CloudFront's VPC origin reaches the load balancer from CloudFront's own
+    // origin-facing addresses, not from addresses inside this VPC, so allow AWS's
+    // managed prefix list for them. Synth without an account (tests) uses the
+    // us-east-1 list's id.
+    const cloudFrontPrefixList = Token.isUnresolved(this.account)
+      ? CLOUDFRONT_ORIGIN_FACING_US_EAST_1
+      : ec2.PrefixList.fromLookup(this, 'CloudFrontOriginFacing', {
+          prefixListName: 'com.amazonaws.global.cloudfront.origin-facing',
+        }).prefixListId;
+    albSecurityGroup.addIngressRule(ec2.Peer.prefixList(cloudFrontPrefixList), ec2.Port.tcp(80));
     const alb = new elbv2.ApplicationLoadBalancer(this, 'Alb', {
       vpc,
       internetFacing: false,

@@ -14,6 +14,15 @@ const template = Template.fromStack(
 );
 
 describe('CivicScope stack', () => {
+  it("lets only CloudFront's origin-facing addresses reach the load balancer", () => {
+    template.hasResourceProperties('AWS::EC2::SecurityGroupIngress', {
+      SourcePrefixListId: 'pl-3b927c52',
+      FromPort: 80,
+      ToPort: 80,
+      GroupId: { 'Fn::GetAtt': [Match.stringLikeRegexp('^AlbSg'), 'GroupId'] },
+    });
+  });
+
   it('keeps the database private, encrypted, backed up and TLS-only', () => {
     template.hasResourceProperties('AWS::RDS::DBInstance', {
       Engine: 'mysql',
