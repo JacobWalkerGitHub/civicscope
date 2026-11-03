@@ -70,7 +70,11 @@ export const withoutKey = (url: URL | string) => {
 };
 
 /** GETs a URL, retrying rate limits, server errors and network failures with backoff. */
-export async function fetchText(url: URL, opts: FetchOptions): Promise<string> {
+export async function fetchText(
+  url: URL,
+  opts: FetchOptions,
+  accept = 'application/json',
+): Promise<string> {
   const doFetch = opts.fetch ?? fetch;
   const sleep = opts.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
   let lastError = '';
@@ -79,7 +83,7 @@ export async function fetchText(url: URL, opts: FetchOptions): Promise<string> {
     let res: Response;
     try {
       res = await doFetch(url, {
-        headers: { accept: 'application/json' },
+        headers: { accept },
         signal: AbortSignal.timeout(30_000),
       });
     } catch (error) {

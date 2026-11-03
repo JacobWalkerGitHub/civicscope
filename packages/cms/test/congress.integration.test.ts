@@ -9,6 +9,7 @@ import {
   listIngestRuns,
   runCongressImport,
   runLegislatorCrosswalk,
+  spotCheckVotes,
   type Actor,
 } from '../src/index';
 
@@ -50,9 +51,26 @@ const CURRENT: Rec[] = [
   // FEC ID and Bioguide ID belong to two different people.
   legislator('X000004', 'Casey', 'Conflict', ['H2TX01999'], [rep('TX', 1)]),
 ];
+const sen = (state: string, start = '2025-01-03', end = '2031-01-03') => ({
+  type: 'sen',
+  start,
+  end,
+  state,
+  party: 'Independent',
+});
+// Senators, with the LIS IDs the Senate's vote files use.
+CURRENT.push(
+  legislator('X000010', 'Avery', 'Senator', ['S6KY00999'], [sen('KY')], {}),
+  legislator('X000011', 'Blair', 'Appointee', [], [sen('OH', '2025-01-21', '2026-12-31')]),
+);
+(CURRENT.at(-2)!.id as Rec).lis = 'S901';
+(CURRENT.at(-1)!.id as Rec).lis = 'S902';
+
 const HISTORICAL: Rec[] = [
   // Left during the 119th Congress: in scope.
   legislator('X000005', 'Morgan', 'Former', [], [rep('NY', 21, '2023-01-03', '2025-04-01')]),
+  // Left the Senate early in the 119th Congress: only in the historical file.
+  legislator('X000012', 'Drew', 'Departed', [], [sen('OH', '2019-01-03', '2025-01-10')]),
   // Left long ago: out of scope.
   legislator('X000006', 'Old', 'Timer', ['H0CA01999'], [rep('CA', 1, '1991-01-03', '1993-01-03')]),
 ];
@@ -139,6 +157,64 @@ const voteMembers = (roll: number, session: number) => ({
   },
 });
 
+(HISTORICAL[1]!.id as Rec).lis = 'S903';
+
+/*
+ * Senate vote files in senate.gov's XML format (see packages/core/src/__fixtures__ for
+ * real ones). Made-up senators and votes.
+ */
+interface SenMember {
+  lis: string;
+  first: string;
+  last: string;
+  state: string;
+  cast: string;
+}
+let SENATE_MODIFIED = 'January 9, 2025,  06:00 PM';
+let SENATE_VOTES: Record<string, { date: string; members: SenMember[]; tie?: string }> = {
+  '1:1': {
+    date: 'January 9, 2025,  05:33 PM',
+    members: [
+      { lis: 'S901', first: 'Avery', last: 'Senator', state: 'KY', cast: 'Yea' },
+      { lis: 'S903', first: 'Drew', last: 'Departed', state: 'OH', cast: 'Nay' },
+      { lis: 'S999', first: 'Not', last: 'Listedyet', state: 'NJ', cast: 'Yea' },
+    ],
+  },
+  '1:2': {
+    date: 'July 15, 2025,  11:05 AM',
+    members: [
+      { lis: 'S901', first: 'Avery', last: 'Senator', state: 'KY', cast: 'Nay' },
+      { lis: 'S902', first: 'Blair', last: 'Appointee', state: 'OH', cast: 'Yea' },
+    ],
+  },
+  '2:1': {
+    date: 'March 4, 2026,  02:15 PM',
+    tie: 'Yea',
+    members: [{ lis: 'S901', first: 'Avery', last: 'Senator', state: 'KY', cast: 'Yea' }],
+  },
+};
+const senateMenu = (session: number) => {
+  const votes = Object.keys(SENATE_VOTES)
+    .filter((k) => k.startsWith(`${session}:`))
+    .map((k) => Number(k.split(':')[1]))
+    .sort((a, b) => b - a)
+    .map(
+      (n) =>
+        `<vote><vote_number>${String(n).padStart(5, '0')}</vote_number><vote_date>09-Jan</vote_date><issue>S. 5</issue><question>On Passage of the Bill\n         </question><result>Passed</result><vote_tally><yeas>1</yeas><nays>1</nays></vote_tally><title>Example</title></vote>`,
+    );
+  return `<?xml version="1.0" encoding="UTF-8"?><vote_summary><congress>119</congress><session>${session}</session><congress_year>${2024 + session}</congress_year><votes>${votes.join('')}</votes></vote_summary>`;
+};
+const senateVote = (session: number, roll: number) => {
+  const v = SENATE_VOTES[`${session}:${roll}`]!;
+  const members = v.members
+    .map(
+      (m) =>
+        `<member><member_full>${m.last} (I-${m.state})</member_full><last_name>${m.last}</last_name><first_name>${m.first}</first_name><party>I</party><state>${m.state}</state><vote_cast>${m.cast}</vote_cast><lis_member_id>${m.lis}</lis_member_id></member>`,
+    )
+    .join('');
+  return `<?xml version="1.0" encoding="UTF-8"?><roll_call_vote><congress>119</congress><session>${session}</session><congress_year>${2024 + session}</congress_year><vote_number>${roll}</vote_number><vote_date>${v.date}</vote_date><modify_date>${SENATE_MODIFIED}</modify_date><vote_question_text>On Passage of the Bill S. 5</vote_question_text><vote_document_text/><vote_result_text>Bill Passed (2-1)</vote_result_text><question>On Passage of the Bill</question><vote_title>S. 5 as Amended</vote_title><majority_requirement>1/2</majority_requirement><vote_result>Bill Passed</vote_result><document><document_congress>119</document_congress><document_type>S.</document_type><document_number>5</document_number><document_name>S. 5</document_name><document_title/><document_short_title/></document><amendment><amendment_number/><amendment_to_amendment_number/><amendment_to_amendment_to_amendment_number/><amendment_to_document_number/><amendment_to_document_short_title/><amendment_purpose/></amendment><count><yeas>2</yeas><nays>1</nays><present/><absent/></count><tie_breaker>${v.tie ? `<by_whom>Vice President</by_whom><tie_breaker_vote>${v.tie}</tie_breaker_vote>` : '<by_whom/><tie_breaker_vote/>'}</tie_breaker><members>${members}</members></roll_call_vote>`;
+};
+
 let broken = false;
 const requested: string[] = [];
 const fakeFetch = (async (input: string | URL | Request) => {
@@ -150,6 +226,16 @@ const fakeFetch = (async (input: string | URL | Request) => {
     pagination: { count: items.length, next: null },
   });
   const p = url.pathname;
+  const xml = (body: string) => new Response(body, { status: 200 });
+  const menu = p.match(/^\/legislative\/LIS\/roll_call_lists\/vote_menu_119_(\d)\.xml$/);
+  if (menu) return xml(senateMenu(Number(menu[1])));
+  const sv = p.match(
+    /^\/legislative\/LIS\/roll_call_votes\/vote119(\d)\/vote_119_\d_(\d{5})\.xml$/,
+  );
+  if (sv) {
+    if (broken) return xml('<html><body>Error</body></html>');
+    return xml(senateVote(Number(sv[1]), Number(sv[2])));
+  }
   if (p.endsWith('legislators-current.json')) return json(CURRENT);
   if (p.endsWith('legislators-historical.json')) return json(HISTORICAL);
   if (p === '/v3/member/congress/119') {
@@ -202,7 +288,13 @@ const opts = {
 };
 const crosswalk = () => runLegislatorCrosswalk(db, opts);
 const congressRun = (extra: Rec = {}) =>
-  runCongressImport(db, 119, { ...opts, apiKey: 'test-key-123', minIntervalMs: 0, ...extra });
+  runCongressImport(db, 119, {
+    ...opts,
+    apiKey: 'test-key-123',
+    minIntervalMs: 0,
+    parts: ['members', 'bills', 'house-votes'],
+    ...extra,
+  });
 
 let test: TestDatabase;
 let db: Db;
@@ -252,7 +344,8 @@ afterAll(async () => {
 describe('legislator crosswalk', () => {
   it('links existing people by FEC ID and creates the rest as cited drafts', async () => {
     const { summary } = await crosswalk();
-    expect(summary).toMatchObject({ fetched: 6, considered: 5, created: 2, linked: 1 });
+    // 6 representatives and 3 senators; 2 are out of scope or already linked.
+    expect(summary).toMatchObject({ fetched: 9, considered: 8, created: 5, linked: 1 });
 
     // Matched by FEC ID: gets the Bioguide and Wikidata IDs.
     expect(await idOwner('bioguide', 'X000001')).toBe(harperId);
@@ -293,7 +386,7 @@ describe('legislator crosswalk', () => {
   it('changes nothing when run again', async () => {
     const before = (await db.select().from(schema.revision)).length;
     const { summary } = await crosswalk();
-    expect(summary).toMatchObject({ created: 0, linked: 0, unchanged: 3 });
+    expect(summary).toMatchObject({ created: 0, linked: 0, unchanged: 6 });
     expect((await db.select().from(schema.revision)).length).toBe(before);
   });
 });
@@ -442,5 +535,152 @@ describe('Congress.gov import', () => {
       .where(eq(schema.adminUser.name, 'Automated import (Congress)'));
     expect(bot?.disabledAt).toBeInstanceOf(Date);
     expect(bot?.passwordHash).toBe('!');
+  });
+});
+
+describe('Senate votes from senate.gov', () => {
+  const senateRun = (extra: Rec = {}) =>
+    runCongressImport(db, 119, {
+      ...opts,
+      apiKey: '',
+      senateBaseUrl: 'https://senate.test',
+      minIntervalMs: 0,
+      parts: ['senate-votes'],
+      ...extra,
+    });
+  const personFor = async (bioguide: string) => (await idOwner('bioguide', bioguide))!;
+
+  it('imports Senate votes and attaches them by LIS ID, without a Congress.gov key', async () => {
+    const calls = requested.length;
+    const { summary } = await senateRun();
+    const urls = requested.slice(calls);
+    expect(urls.some((u) => u.includes('api_key') || u.includes('example.test/v3'))).toBe(false);
+    expect(summary.senateVotes).toMatchObject({ listed: 3, created: 3, positions: 5 });
+    // A senator congress-legislators doesn't list yet: named, not guessed.
+    expect(summary.attention).toEqual([
+      expect.objectContaining({ ref: 'Senate LIS ID S999', name: 'Not Listedyet' }),
+    ]);
+    // The historical file was needed for a senator who left in January 2025.
+    expect(urls.filter((u) => u.endsWith('legislators-historical.json'))).toHaveLength(1);
+
+    const avery = (await getCongressRecord(db, await personFor('X000010')))!;
+    expect(avery.voteCount).toBe(3);
+    expect(avery.votes.map((v) => [v.chamber, v.session, v.rollNumber, v.voteCast])).toEqual([
+      ['senate', 2, 1, 'Yea'],
+      ['senate', 1, 2, 'Nay'],
+      ['senate', 1, 1, 'Yea'],
+    ]);
+    // Eastern time: 11:05 AM in July is 15:05 UTC.
+    expect(avery.votes[1]!.votedAt.toISOString()).toBe('2025-07-15T15:05:00.000Z');
+    expect(avery.votes[0]!.result).toBe('Bill Passed (tie broken by the Vice President: Yea)');
+    expect(avery.votes[1]).toMatchObject({ legislationType: 'S.', legislationNumber: '5' });
+    const drew = (await getCongressRecord(db, await personFor('X000012')))!;
+    expect(drew.votes.map((v) => v.voteCast)).toEqual(['Nay']);
+
+    const [vote] = await db
+      .select({ publishState: schema.rollCallVote.publishState, url: schema.source.url })
+      .from(schema.rollCallVote)
+      .innerJoin(schema.source, eq(schema.source.id, schema.rollCallVote.sourceId))
+      .where(and(eq(schema.rollCallVote.chamber, 'senate'), eq(schema.rollCallVote.rollNumber, 2)));
+    expect(vote).toEqual({
+      publishState: 'draft',
+      url: 'https://www.senate.gov/legislative/LIS/roll_call_votes/vote1191/vote_119_1_00002.htm',
+    });
+  });
+
+  it('only fetches votes it doesn’t have, plus votes it couldn’t fully attach', async () => {
+    const revisions = (await db.select().from(schema.revision)).length;
+    const calls = requested.length;
+    const { summary } = await senateRun();
+    // Two menus, roll call 1 again (S999 is still unknown), and both legislators files.
+    expect(requested.length - calls).toBe(5);
+    expect(summary.senateVotes).toMatchObject({ listed: 3, created: 0, updated: 0, unchanged: 3 });
+    expect((await db.select().from(schema.revision)).length).toBe(revisions);
+  });
+
+  it('completes a vote once congress-legislators lists the missing senator', async () => {
+    CURRENT.push(legislator('X000013', 'Not', 'Listedyet', [], [sen('NJ', '2025-01-06')]));
+    (CURRENT.at(-1)!.id as Rec).lis = 'S999';
+    const { summary } = await senateRun();
+    expect(summary.senateVotes).toMatchObject({ updated: 1, positions: 3 });
+    expect(summary.attention).toEqual([]);
+    // Stored; attaches when the crosswalk creates the person.
+    expect(summary.unmatched).toEqual([
+      { bioguideId: 'X000013', name: 'Not Listedyet', state: 'NJ' },
+    ]);
+    await crosswalk();
+    const record = (await getCongressRecord(db, await personFor('X000013')))!;
+    expect(record.votes.map((v) => v.voteCast)).toEqual(['Yea']);
+
+    // Now every vote is complete: only the two menus are read.
+    const calls = requested.length;
+    await senateRun();
+    expect(requested.length - calls).toBe(2);
+  });
+
+  it('picks up corrections when asked to refresh, and leaves publish decisions alone', async () => {
+    await db
+      .update(schema.rollCallVote)
+      .set({ publishState: 'published' })
+      .where(eq(schema.rollCallVote.chamber, 'senate'));
+    const same = await senateRun({ refreshSenateVotes: true });
+    expect(same.summary.senateVotes).toMatchObject({ unchanged: 3, updated: 0 });
+
+    SENATE_MODIFIED = 'January 10, 2025,  09:00 AM';
+    SENATE_VOTES = {
+      ...SENATE_VOTES,
+      '1:2': {
+        ...SENATE_VOTES['1:2']!,
+        members: SENATE_VOTES['1:2']!.members.map((m) =>
+          m.lis === 'S902' ? { ...m, cast: 'Not Voting' } : m,
+        ),
+      },
+    };
+    const { summary } = await senateRun({ refreshSenateVotes: true });
+    expect(summary.senateVotes).toMatchObject({ updated: 3 });
+    const blair = (await getCongressRecord(db, await personFor('X000011')))!;
+    expect(blair.votes.map((v) => v.voteCast)).toEqual(['Not Voting']);
+    const states = await db
+      .select({ s: schema.rollCallVote.publishState })
+      .from(schema.rollCallVote)
+      .where(eq(schema.rollCallVote.chamber, 'senate'));
+    expect(states.every((r) => r.s === 'published')).toBe(true);
+    // Positions are replaced, not duplicated.
+    expect(blair.voteCount).toBe(1);
+  });
+
+  it('passes the spot check against the stored Senate files', async () => {
+    const res = await spotCheckVotes(db, { ...opts, chamber: 'senate', sample: 50 });
+    // Avery 3, Blair 1, Drew 1, Not Listedyet 1.
+    expect(res.checked).toBe(6);
+    expect(res.rows.filter((r) => r.problems.length)).toEqual([]);
+
+    // Swapping two senators' Bioguide IDs makes both fail.
+    const a = await personFor('X000010');
+    const b = await personFor('X000011');
+    const ids = schema.personIdentifier;
+    await db.update(ids).set({ value: 'TMP0000' }).where(eq(ids.value, 'X000010'));
+    await db.update(ids).set({ value: 'X000010' }).where(eq(ids.value, 'X000011'));
+    await db.update(ids).set({ value: 'X000011' }).where(eq(ids.value, 'TMP0000'));
+    const swapped = await spotCheckVotes(db, { ...opts, chamber: 'senate', sample: 50 });
+    expect(
+      swapped.rows
+        .filter((r) => r.problems.length)
+        .map((r) => r.personId)
+        .sort(),
+    ).toEqual([a, b, b, b].sort());
+    await db.update(ids).set({ value: 'TMP0000' }).where(eq(ids.value, 'X000010'));
+    await db.update(ids).set({ value: 'X000010' }).where(eq(ids.value, 'X000011'));
+    await db.update(ids).set({ value: 'X000011' }).where(eq(ids.value, 'TMP0000'));
+  });
+
+  it('fails loudly when senate.gov sends something that is not a vote', async () => {
+    broken = true;
+    await expect(senateRun({ refreshSenateVotes: true })).rejects.toThrow(
+      /from senate\.gov is not in the expected format/,
+    );
+    broken = false;
+    const [failed] = await listIngestRuns(db, 1);
+    expect(failed).toMatchObject({ state: 'failed', source: 'congress_gov' });
   });
 });

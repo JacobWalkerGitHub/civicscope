@@ -12,6 +12,17 @@ import {
   congressYears,
   houseVoteMembersSchema,
   houseVotePageSchema,
+  legislatorFileSchema,
+  LEGISLATORS_BASE,
+  parseSenateDateTime,
+  parseSenateXml,
+  SENATE_BASE,
+  senateVoteMeasure,
+  senateVoteMenuSchema,
+  senateVoteMenuUrl,
+  senateVotePageUrl,
+  senateVoteSchema,
+  senateVoteXmlUrl,
   stateCode,
   type BillType,
   type CongressChamber,
@@ -42,13 +53,15 @@ const {
 
 /*
  * Congress.gov ingestion: members, bills with their sponsors and cosponsors, and House
- * roll-call votes for one Congress. Records are stored by Bioguide ID and reach a
+ * roll-call votes for one Congress. Senate roll-call votes come from senate.gov's own
+ * XML files (Congress.gov has none) and are matched to members by their LIS ID, which
+ * congress-legislators lists next to the Bioguide ID. Records are stored by Bioguide ID and reach a
  * CivicScope person through the crosswalk (see congress-crosswalk.ts). Everything is a
  * draft, keeps the source it came from, and is only rewritten when Congress.gov's own
  * "updated" stamp changes, so a second run on the same data changes nothing.
  */
 
-export const CONGRESS_PARTS = ['members', 'bills', 'house-votes'] as const;
+export const CONGRESS_PARTS = ['members', 'bills', 'house-votes', 'senate-votes'] as const;
 export type CongressPart = (typeof CONGRESS_PARTS)[number];
 
 export interface CongressAttention {
@@ -76,14 +89,25 @@ export interface CongressRunSummary {
   members: Tally;
   bills: Tally & { sponsorships: number };
   votes: Tally & { positions: number };
+  /** Senate votes. Older summaries don't have it. */
+  senateVotes?: Tally & { positions: number };
   /** Bioguide IDs in imported records that no CivicScope person has yet. */
   unmatched: { bioguideId: string; name: string; state: string | null }[];
   attention: CongressAttention[];
 }
 
 export interface CongressOptions extends FetchOptions {
+  /** Needed for every part except Senate votes. */
   apiKey: string;
   baseUrl?: string;
+  senateBaseUrl?: string;
+  legislatorsBaseUrl?: string;
+  /**
+   * Fetch Senate votes that are already stored again, to pick up corrections. The
+   * Senate's vote list has no "last changed" date, so a normal run fetches only votes it
+   * doesn't have (and votes it couldn't fully attach last time).
+   */
+  refreshSenateVotes?: boolean;
   parts?: readonly CongressPart[];
   /** At most this many bills / votes are fetched in detail per run (the rest wait). */
   maxBills?: number;
@@ -144,6 +168,50 @@ class CongressClient {
       );
     }
     await this.db.insert(ingestSnapshot).values({ runId: this.runId, url: withoutKey(url), body });
+    return parsed.data;
+  }
+
+  /**
+   * A file from another source (senate.gov, congress-legislators): same pacing, budget
+   * and snapshot, no API key. Returns the body.
+   */
+  async getRaw(url: URL, accept: string): Promise<string> {
+    if (this.opts.maxRequests != null && this.requests >= this.opts.maxRequests) {
+      throw new RequestBudgetReached(
+        `Stopped after ${this.requests} requests (the limit for this run). The next run continues where this one stopped.`,
+      );
+    }
+    const wait = (this.opts.minIntervalMs ?? 750) - (Date.now() - this.last);
+    if (wait > 0 && this.requests > 0) {
+      await (this.opts.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms))))(wait);
+    }
+    this.requests++;
+    this.last = Date.now();
+    const body = await fetchText(url, this.opts, accept);
+    await this.db.insert(ingestSnapshot).values({ runId: this.runId, url: url.toString(), body });
+    return body;
+  }
+
+  /** A senate.gov XML file, parsed and validated. */
+  async getSenateXml<S extends z.ZodType>(
+    url: string,
+    schemaFor: S,
+    what: string,
+  ): Promise<z.infer<S>> {
+    const body = await this.getRaw(new URL(url), 'application/xml, text/xml');
+    let xml: unknown;
+    try {
+      xml = parseSenateXml(body);
+    } catch {
+      throw new Error(`${what} from senate.gov is not XML.`);
+    }
+    const parsed = schemaFor.safeParse(xml);
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      throw new Error(
+        `${what} from senate.gov is not in the expected format (${issue?.path.join('.')}: ${issue?.message}). Nothing more was imported.`,
+      );
+    }
     return parsed.data;
   }
 
@@ -298,6 +366,7 @@ export async function runCongressImport(
     members: tally(),
     bills: { ...tally(), sponsorships: 0 },
     votes: { ...tally(), positions: 0 },
+    senateVotes: { ...tally(), positions: 0 },
     unmatched: [],
     attention: [],
   };
@@ -311,6 +380,7 @@ export async function runCongressImport(
     if (parts.includes('members')) await importMembers();
     if (parts.includes('bills')) await importBills();
     if (parts.includes('house-votes')) await importHouseVotes();
+    if (parts.includes('senate-votes')) await importSenateVotes();
   } catch (error) {
     if (error instanceof RequestBudgetReached) {
       summary.stoppedEarly = error.message;
@@ -714,6 +784,227 @@ export async function runCongressImport(
     });
     summary.votes.positions += positions.size;
     summary.votes[result.action === 'unchanged' ? 'updated' : result.action]++;
+  }
+
+  /** LIS member ID ("S428") -> Bioguide ID, from congress-legislators. */
+  async function loadLisMap(files: string[], into: Map<string, string>) {
+    for (const file of files) {
+      const body = await api.getRaw(
+        new URL(file, opts.legislatorsBaseUrl ?? LEGISLATORS_BASE),
+        'application/json',
+      );
+      let json: unknown;
+      try {
+        json = JSON.parse(body);
+      } catch {
+        throw new Error(`${file} is not JSON.`);
+      }
+      const parsed = legislatorFileSchema.safeParse(json);
+      if (!parsed.success) {
+        const issue = parsed.error.issues[0];
+        throw new Error(
+          `${file} is not in the expected format (${issue?.path.join('.')}: ${issue?.message}). Nothing more was imported.`,
+        );
+      }
+      for (const l of parsed.data) {
+        if (l.id.lis && !into.has(l.id.lis)) into.set(l.id.lis, l.id.bioguide);
+      }
+    }
+  }
+
+  async function importSenateVotes() {
+    const s = summary.senateVotes!;
+    const existing = new Map(
+      (
+        await db
+          .select()
+          .from(rollCallVote)
+          .where(and(eq(rollCallVote.chamber, 'senate'), eq(rollCallVote.congress, congress)))
+      ).map((r) => [`${r.session}:${r.rollNumber}`, r] as const),
+    );
+    const [first] = congressYears(congress);
+    const thisYear = Number(today.slice(0, 4));
+    const lis = new Map<string, string>();
+    let historicalLoaded = false;
+    const unknownLis = new Set<string>();
+    let detailed = 0;
+    for (const session of [1, 2]) {
+      if (first + session - 1 > thisYear) break;
+      const menu = await api.getSenateXml(
+        senateVoteMenuUrl(congress, session).replace(
+          SENATE_BASE,
+          opts.senateBaseUrl ?? SENATE_BASE,
+        ),
+        senateVoteMenuSchema,
+        `Senate votes, ${congress}th Congress, session ${session}`,
+      );
+      const m = menu.vote_summary;
+      if (m.congress !== congress || m.session !== session) {
+        throw new Error(
+          `Asked senate.gov for the ${congress}th Congress, session ${session}, and got the ${m.congress}th, session ${m.session}.`,
+        );
+      }
+      // The menu lists the newest first; import oldest first, so a capped run leaves
+      // the newest for next time and the stored record has no gaps in the middle.
+      const numbers = [...new Set(m.votes.map((v) => v.vote_number))].sort((a, b) => a - b);
+      for (const roll of numbers) {
+        s.listed++;
+        const before = existing.get(`${session}:${roll}`);
+        // An empty stamp marks a vote stored with members we couldn't attach: try again.
+        if (before && before.sourceUpdatedAt !== '' && !opts.refreshSenateVotes) {
+          s.unchanged++;
+          continue;
+        }
+        if (opts.maxVotes != null && detailed >= opts.maxVotes) {
+          s.deferred++;
+          continue;
+        }
+        detailed++;
+        if (!lis.size) await loadLisMap(['legislators-current.json'], lis);
+        await importSenateVote(session, roll, before);
+      }
+    }
+
+    async function importSenateVote(
+      session: number,
+      roll: number,
+      before?: typeof rollCallVote.$inferSelect,
+    ) {
+      const label = `Senate roll call ${roll} (${congress}th Congress, session ${session})`;
+      const { roll_call_vote: v } = await api.getSenateXml(
+        senateVoteXmlUrl(congress, session, roll).replace(
+          SENATE_BASE,
+          opts.senateBaseUrl ?? SENATE_BASE,
+        ),
+        senateVoteSchema,
+        label,
+      );
+      if (v.vote_number !== roll || v.session !== session || v.congress !== congress) {
+        throw new Error(
+          `Asked senate.gov for ${label} and got roll call ${v.vote_number} (${v.congress}th Congress, session ${v.session}).`,
+        );
+      }
+      const votedAt = parseSenateDateTime(v.vote_date);
+      if (!votedAt) {
+        throw new Error(
+          `${label}: the vote date “${v.vote_date}” is not in the expected form. Nothing more was imported.`,
+        );
+      }
+      // A senator who joined after congress-legislators' current file was loaded, or who
+      // has since left, may only be in the historical file. Load it once, when needed.
+      if (!historicalLoaded && v.members.member.some((p) => !lis.has(p.lis_member_id))) {
+        historicalLoaded = true;
+        await loadLisMap(['legislators-historical.json'], lis);
+      }
+      const year = votedAt.getUTCFullYear();
+      const stamp = v.modify_date ?? v.vote_date;
+      if (before && before.sourceUpdatedAt === stamp) {
+        s.unchanged++;
+        return;
+      }
+      const positions = new Map<string, typeof votePosition.$inferInsert>();
+      let incomplete = false;
+      for (const p of v.members.member) {
+        const name = [p.first_name, p.last_name].filter(Boolean).join(' ');
+        const bioguideId = lis.get(p.lis_member_id);
+        if (!bioguideId) {
+          incomplete = true;
+          if (!unknownLis.has(p.lis_member_id)) {
+            unknownLis.add(p.lis_member_id);
+            summary.attention.push({
+              ref: `Senate LIS ID ${p.lis_member_id}`,
+              name: name || p.lis_member_id,
+              problem:
+                'congress-legislators has no member with this Senate ID yet, so their Senate votes were not stored. Votes that include them are fetched again on the next run.',
+            });
+          }
+          continue;
+        }
+        see(bioguideId, name, p.state);
+        if (positions.has(bioguideId)) {
+          summary.attention.push({
+            ref: `Senate roll call ${roll}, ${year}`,
+            name: bioguideId,
+            problem: 'This senator is listed twice in the vote; the first entry was kept.',
+          });
+          continue;
+        }
+        positions.set(bioguideId, {
+          voteId: 0,
+          bioguideId,
+          voteCast: p.vote_cast,
+          party: p.party?.slice(0, 10) ?? null,
+          state: p.state,
+        });
+      }
+      const measure = senateVoteMeasure(v);
+      const tie =
+        v.tie_breaker?.by_whom && v.tie_breaker.tie_breaker_vote
+          ? ` (tie broken by the ${v.tie_breaker.by_whom}: ${v.tie_breaker.tie_breaker_vote})`
+          : '';
+      const result = await db.transaction(async (tx) => {
+        const sourceId = await ensureImportSource(
+          tx,
+          actor,
+          {
+            url: senateVotePageUrl(congress, session, roll),
+            title: `Senate roll call ${roll}, ${year}${v.vote_title ? `: ${v.vote_title}` : v.question ? `: ${v.question}` : ''}`,
+            publisher: 'U.S. Senate',
+            sourceType: 'legislative_record',
+          },
+          today,
+        );
+        const r = await upsert(
+          tx,
+          actor,
+          rollCallVote,
+          'roll_call_vote',
+          before,
+          {
+            chamber: 'senate',
+            congress,
+            session,
+            rollNumber: roll,
+            votedAt,
+            question: (v.vote_question_text ?? v.question)?.slice(0, 500) ?? null,
+            voteType: v.majority_requirement
+              ? `${v.majority_requirement} majority required`.slice(0, 100)
+              : null,
+            result: `${v.vote_result ?? v.vote_result_text ?? ''}${tie}`.slice(0, 100) || null,
+            legislationType: measure?.type.slice(0, 20) ?? null,
+            legislationNumber: measure?.number.slice(0, 20) ?? null,
+            sourceId,
+            sourceUpdatedAt: incomplete ? '' : stamp.slice(0, 40),
+          },
+          `From senate.gov; ${positions.size} senators recorded`,
+        );
+        const rows = [...positions.values()].map((p) => ({ ...p, voteId: r.id }));
+        if (r.action === 'unchanged') {
+          // Fetched again only because it was incomplete: rewrite the positions only if
+          // someone new can now be attached.
+          const key = (p: typeof votePosition.$inferInsert) =>
+            [p.bioguideId, p.voteCast, p.party, p.state].join('|');
+          const stored = await tx.select().from(votePosition).where(eq(votePosition.voteId, r.id));
+          const same =
+            stored.length === rows.length &&
+            new Set(stored.map(key)).size === new Set([...stored.map(key), ...rows.map(key)]).size;
+          if (same) return { ...r, positionsChanged: false };
+        }
+        await tx.delete(votePosition).where(eq(votePosition.voteId, r.id));
+        for (let i = 0; i < rows.length; i += 500) {
+          await tx.insert(votePosition).values(rows.slice(i, i + 500));
+        }
+        return { ...r, positionsChanged: true };
+      });
+      if (result.positionsChanged) s.positions += positions.size;
+      s[
+        result.action === 'unchanged'
+          ? result.positionsChanged
+            ? 'updated'
+            : 'unchanged'
+          : result.action
+      ]++;
+    }
   }
 }
 

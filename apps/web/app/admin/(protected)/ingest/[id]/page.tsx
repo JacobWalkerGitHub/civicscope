@@ -244,7 +244,7 @@ function CongressDetail({ s, pages }: { s: CongressRunSummary; pages: number }) 
       <dl className="facts">
         <dt>Requests</dt>
         <dd>
-          {s.requests} to Congress.gov ({pages} responses kept)
+          {s.requests} ({pages} responses kept)
         </dd>
         {s.parts.includes('members') && (
           <>
@@ -265,6 +265,14 @@ function CongressDetail({ s, pages }: { s: CongressRunSummary; pages: number }) 
             <dt>House votes</dt>
             <dd>
               {tally(s.votes)}; {s.votes.positions} member votes stored
+            </dd>
+          </>
+        )}
+        {s.parts.includes('senate-votes') && s.senateVotes && (
+          <>
+            <dt>Senate votes</dt>
+            <dd>
+              {tally(s.senateVotes)}; {s.senateVotes.positions} senator votes stored
             </dd>
           </>
         )}

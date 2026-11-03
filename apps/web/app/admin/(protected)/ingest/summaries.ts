@@ -3,14 +3,19 @@ import type { IngestSource } from '@civicscope/core';
 
 /** How each automated source's runs are named and summed up in one line. */
 export function runTitle(source: IngestSource, params: unknown): string {
-  const p = (params ?? {}) as { cycle?: number; congress?: number };
+  const p = (params ?? {}) as { cycle?: number; congress?: number; parts?: string[] };
   switch (source) {
     case 'fec':
       return `FEC ${p.cycle}`;
     case 'congress_legislators':
       return 'Congress ID crosswalk';
-    case 'congress_gov':
-      return `Congress.gov, ${p.congress}th Congress`;
+    case 'congress_gov': {
+      const parts = p.parts ?? [];
+      const senate = parts.includes('senate-votes');
+      const gov = parts.some((x) => x !== 'senate-votes');
+      const where = senate ? (gov ? 'Congress.gov and Senate.gov' : 'Senate.gov') : 'Congress.gov';
+      return `${where}, ${p.congress}th Congress`;
+    }
   }
 }
 
@@ -35,6 +40,9 @@ export function runResult(source: IngestSource, summary: unknown): string {
         s.parts.includes('members') && t(s.members, 'member', 'members'),
         s.parts.includes('bills') && t(s.bills, 'bill', 'bills'),
         s.parts.includes('house-votes') && t(s.votes, 'House vote', 'House votes'),
+        s.parts.includes('senate-votes') &&
+          s.senateVotes &&
+          t(s.senateVotes, 'Senate vote', 'Senate votes'),
         s.stoppedEarly && 'stopped early',
       ]
         .filter(Boolean)
