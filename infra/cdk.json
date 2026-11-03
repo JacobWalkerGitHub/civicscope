@@ -4,7 +4,7 @@
     "civicscope:alertEmail": "",
     "civicscope:domainName": "",
     "civicscope:certificateArn": "",
-    "civicscope:imageTag": "latest",
+    "civicscope:imageTag": "bootstrap",
     "civicscope:multiAz": true,
     "civicscope:fecCycle": 2028,
     "civicscope:congress": 119
