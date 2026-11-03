@@ -96,3 +96,22 @@ describe('bootstrap deploy', () => {
     }
   });
 });
+
+describe('paused deploy', () => {
+  it('registers the new images but keeps the site and schedules off', () => {
+    const t = Template.fromStack(
+      new CivicScopeStack(new App(), 'Paused', {
+        imageTag: 'abc1234',
+        paused: true,
+        multiAz: false,
+        fecCycle: 2028,
+        congress: 119,
+      }),
+    );
+    t.hasResourceProperties('AWS::ECS::Service', { DesiredCount: 0 });
+    expect(JSON.stringify(t.findResources('AWS::ECS::TaskDefinition'))).toContain(':abc1234');
+    for (const rule of Object.values(t.findResources('AWS::Events::Rule'))) {
+      if (rule.Properties.ScheduleExpression) expect(rule.Properties.State).toBe('DISABLED');
+    }
+  });
+});

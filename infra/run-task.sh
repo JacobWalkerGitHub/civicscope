@@ -3,11 +3,13 @@
 #   ./run-task.sh migrate                     # pnpm db:migrate as the schema owner
 #   ./run-task.sh admin <pnpm script> [args]  # anything else, as the app account
 #   ./run-task.sh drill <restored endpoint>   # restore drill check, as the schema owner
+#   ./run-task.sh output <name>               # print one of the stack's outputs
 set -euo pipefail
-kind=${1:?migrate, admin or drill}
+kind=${1:?migrate, admin, drill or output}
 shift || true
 out() { aws cloudformation describe-stacks --stack-name CivicScope --region us-east-1 \
   --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text; }
+if [ "$kind" = output ]; then out "${1:?output name}"; exit; fi
 cluster=$(out ClusterName)
 subnets=$(out TaskSubnets)
 sg=$(out WorkerSecurityGroup)
