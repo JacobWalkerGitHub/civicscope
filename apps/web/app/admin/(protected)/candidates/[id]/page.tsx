@@ -20,6 +20,7 @@ import {
 } from '@/components/admin/form';
 import { History } from '@/components/admin/history';
 import { CitationsPanel } from '@/components/admin/sources';
+import { CongressRecord } from '@/components/admin/congress-record';
 import { getDb } from '@/lib/db';
 import {
   CANDIDACY_STATUS_LABELS,
@@ -344,6 +345,8 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
           </details>
         )}
       </section>
+
+      <CongressRecord personId={id} />
 
       <History entityType="person" entityId={id} role={user.role} />
     </>

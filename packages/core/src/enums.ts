@@ -247,9 +247,21 @@ export type CorrectionState = (typeof CORRECTION_STATES)[number];
 export const COVERAGE_LEVELS = ['none', 'partial', 'complete'] as const;
 export type CoverageLevel = (typeof COVERAGE_LEVELS)[number];
 
-/** Automated data sources, each with its own connector. */
-export const INGEST_SOURCES = ['fec'] as const;
+/**
+ * Automated data sources, each with its own connector.
+ * - fec: OpenFEC candidate registrations
+ * - congress_legislators: the unitedstates/congress-legislators ID crosswalk
+ * - congress_gov: members, bills and House votes from the Congress.gov API
+ */
+export const INGEST_SOURCES = ['fec', 'congress_legislators', 'congress_gov'] as const;
 export type IngestSource = (typeof INGEST_SOURCES)[number];
 
 export const INGEST_RUN_STATES = ['running', 'succeeded', 'failed'] as const;
 export type IngestRunState = (typeof INGEST_RUN_STATES)[number];
+
+export const CONGRESS_CHAMBERS = ['house', 'senate'] as const;
+export type CongressChamber = (typeof CONGRESS_CHAMBERS)[number];
+
+/** A member's part in a bill: its sponsor, or a cosponsor who signed on. */
+export const SPONSORSHIP_ROLES = ['sponsor', 'cosponsor'] as const;
+export type SponsorshipRole = (typeof SPONSORSHIP_ROLES)[number];

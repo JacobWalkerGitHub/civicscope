@@ -9,14 +9,14 @@ import {
   toCsvLine,
   type FecCandidate,
 } from '@civicscope/core';
-import { recordAudit, schema, type Db } from '@civicscope/db';
+import { schema, type Db } from '@civicscope/db';
 import { recordChange, type Actor } from './changes';
 import { createElection, createRace } from './elections';
 import { applyImport, planCandidateImport, type RowAction } from './imports';
 import { createOffice } from './offices';
+import { fetchText, systemActor, withoutKey, type FetchOptions } from './ingest-common';
 
 const {
-  adminUser,
   district,
   election,
   importBatch,
@@ -31,76 +31,13 @@ const {
 
 export const FEC_API_BASE = 'https://api.open.fec.gov';
 
-/** The admin account that automated imports act as. It can never sign in. */
-const SYSTEM_EMAIL = 'fec-import@system.civicscope.invalid';
-
-export async function systemActor(db: Db): Promise<Actor> {
-  const [found] = await db
-    .select({ id: adminUser.id })
-    .from(adminUser)
-    .where(eq(adminUser.email, SYSTEM_EMAIL));
-  if (found) return { userId: found.id, ipAddress: null };
-  const [res] = await db.insert(adminUser).values({
-    email: SYSTEM_EMAIL,
-    name: 'Automated import (FEC)',
-    // Not a valid hash of anything, and the account is disabled, so no one can sign in as it.
-    passwordHash: '!',
-    role: 'editor',
-    disabledAt: new Date(),
-  });
-  await recordAudit(db, {
-    actorType: 'system',
-    actorId: 'fec-import',
-    action: 'create',
-    entityType: 'admin_user',
-    entityId: String(res.insertId),
-    diff: { email: [null, SYSTEM_EMAIL] },
-    note: 'Account for automated FEC imports (disabled; cannot sign in)',
-    ipAddress: null,
-  });
-  return { userId: res.insertId, ipAddress: null };
-}
-
 // ---------------------------------------------------------------------------------
 // Fetching
 
-export interface FecFetchOptions {
+export interface FecFetchOptions extends FetchOptions {
   apiKey: string;
   baseUrl?: string;
-  fetch?: typeof fetch;
-  /** Waits between retries; replaced in tests. */
-  sleep?: (ms: number) => Promise<void>;
   maxPages?: number;
-}
-
-const withoutKey = (url: URL) => {
-  const copy = new URL(url);
-  copy.searchParams.delete('api_key');
-  return copy.toString();
-};
-
-async function fetchPage(url: URL, opts: FecFetchOptions): Promise<string> {
-  const doFetch = opts.fetch ?? fetch;
-  const sleep = opts.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
-  let lastError = '';
-  for (let attempt = 0; attempt < 4; attempt++) {
-    if (attempt > 0) await sleep(2000 * 2 ** (attempt - 1));
-    let res: Response;
-    try {
-      res = await doFetch(url, {
-        headers: { accept: 'application/json' },
-        signal: AbortSignal.timeout(30_000),
-      });
-    } catch (error) {
-      lastError = error instanceof Error ? error.message : String(error);
-      continue;
-    }
-    if (res.ok) return res.text();
-    lastError = `HTTP ${res.status}`;
-    // Rate limits and server errors are worth retrying; anything else is not.
-    if (res.status !== 429 && res.status < 500) break;
-  }
-  throw new Error(`Could not fetch ${withoutKey(url)}: ${lastError}`);
 }
 
 /**
@@ -118,7 +55,7 @@ export async function* fetchFecCandidates(cycle: number, opts: FecFetchOptions) 
     url.searchParams.set('per_page', '100');
     url.searchParams.set('page', String(page));
     url.searchParams.set('api_key', opts.apiKey);
-    const body = await fetchPage(url, opts);
+    const body = await fetchText(url, opts);
     let json: unknown;
     try {
       json = JSON.parse(body);

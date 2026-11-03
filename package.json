@@ -17,6 +17,9 @@
     "db:migrate": "pnpm --filter @civicscope/db migrate",
     "db:seed": "pnpm --filter @civicscope/db seed",
     "ingest:fec": "tsx packages/cms/src/scripts/ingest-fec.ts",
+    "ingest:legislators": "tsx packages/cms/src/scripts/ingest-legislators.ts",
+    "ingest:congress": "tsx packages/cms/src/scripts/ingest-congress.ts",
+    "check:congress-votes": "tsx packages/cms/src/scripts/spot-check-congress.ts",
     "dev": "pnpm --filter @civicscope/web dev",
     "admin:create-user": "pnpm --filter @civicscope/auth create-user",
     "test:e2e": "tsx tests/e2e/run.ts"
