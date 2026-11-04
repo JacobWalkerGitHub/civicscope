@@ -558,6 +558,15 @@ export async function getStateVotes(
         and(eq(personIdentifier.personId, personId), eq(personIdentifier.scheme, 'openstates')),
       )
   ).map((r) => r.value);
+  return getStateVotesFor(db, ids, limit);
+}
+
+/** The most recent state legislative votes cast under these Open States person IDs. */
+export async function getStateVotesFor(
+  db: Db | Tx,
+  ids: string[],
+  limit = 20,
+): Promise<{ total: number; votes: StateVoteView[] }> {
   if (ids.length === 0) return { total: 0, votes: [] };
   const mine = inArray(stateVotePosition.osPersonId, ids);
   const [counted] = await db.select({ n: count() }).from(stateVotePosition).where(mine);

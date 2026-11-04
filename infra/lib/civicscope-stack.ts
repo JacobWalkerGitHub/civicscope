@@ -499,6 +499,8 @@ export class CivicScopeStack extends Stack {
     ]);
     // State legislative votes. About 300 spaced-out requests, so it runs for under an hour.
     schedule('OpenStatesDaily', { hour: '12', minute: '0' }, ['ingest:openstates']);
+    // Governors and state legislators in office (Open States' public files, no key).
+    schedule('StateOfficialsDaily', { hour: '13', minute: '0' }, ['ingest:state-officials']);
     schedule('IngestCheckHourly', { minute: '30' }, ['check:ingest', '--hours', '1']);
 
     // ---------------------------------------------------------------- alarms

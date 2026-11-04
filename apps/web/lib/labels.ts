@@ -261,3 +261,40 @@ export function seatLabel(chamber: CongressChamber, state: string, district: num
   if (district === 0 || district == null) return `U.S. Representative, ${name} at large`;
   return `U.S. Representative, ${name} District ${district}`;
 }
+
+// ---------------------------------------------------------------------------------
+// State legislatures
+
+/** Lower chambers not called the House of Representatives. */
+const LOWER_CHAMBERS: Record<string, string> = {
+  CA: 'Assembly',
+  NV: 'Assembly',
+  NY: 'Assembly',
+  WI: 'Assembly',
+  NJ: 'General Assembly',
+  MD: 'House of Delegates',
+  VA: 'House of Delegates',
+  WV: 'House of Delegates',
+};
+
+/** "Senate", "House of Delegates", "Legislature" (Nebraska's single chamber). */
+export function stateChamberName(state: string, chamber: 'upper' | 'lower' | 'legislature') {
+  if (chamber === 'legislature') return 'Legislature';
+  if (chamber === 'upper') return 'Senate';
+  return LOWER_CHAMBERS[state] ?? 'House of Representatives';
+}
+
+/** "Governor of Virginia", "Virginia House of Delegates, District 2". */
+export function stateSeatLabel(
+  role: 'governor' | 'upper' | 'lower' | 'legislature',
+  state: string,
+  district: string | null,
+) {
+  const name = stateNameFor(state);
+  if (role === 'governor') return `Governor of ${name}`;
+  const chamber = `${name} ${stateChamberName(state, role)}`;
+  if (!district) return chamber;
+  return /^\d+[A-Z]?$/i.test(district)
+    ? `${chamber}, District ${district}`
+    : `${chamber}, ${district}`;
+}

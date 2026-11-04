@@ -14,6 +14,7 @@ import {
 import { rollCallUrl, voteDate, voteMeasure } from '../congress-format';
 import { Chip, StatusBadge, statusTone, WhenChip } from './badges';
 import { initials, NotPublic, ReportLink, Sources } from './sources';
+import { stateChamberName as chamberName } from '@/lib/labels';
 
 type Profile = NonNullable<Awaited<ReturnType<typeof getPublicPerson>>>;
 type Claim = Profile['claims'][number];
@@ -242,12 +243,6 @@ export function CandidateProfile({
   );
 }
 
-const CHAMBER: Record<string, { upper: string; lower: string }> = {
-  NJ: { upper: 'Senate', lower: 'Assembly' },
-  VA: { upper: 'Senate', lower: 'House of Delegates' },
-};
-const chamberName = (state: string, c: 'upper' | 'lower' | 'legislature') =>
-  c === 'legislature' ? 'Legislature' : (CHAMBER[state] ?? { upper: 'Senate', lower: 'House' })[c];
 const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const RESULTS: Record<string, string> = { pass: 'Passed', fail: 'Failed' };
 

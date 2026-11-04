@@ -41,8 +41,9 @@ export default async function PoliticiansPage({ searchParams }: { searchParams: 
     <>
       <PageIntro eyebrow="Who represents you" title="Politicians">
         <p>
-          The people in office now, with the bills they sponsor and every recorded vote they cast.
-          Looking for who is running? See <Link href="/politicians/candidates">Candidates</Link>.
+          Members of Congress in office now, with the bills they sponsor and every recorded vote
+          they cast. Governors and state legislators are on their own tab. Looking for who is
+          running? See <Link href="/politicians/candidates">Candidates</Link>.
         </p>
       </PageIntro>
       <PoliticianTabs current="office" />
@@ -126,9 +127,9 @@ export default async function PoliticiansPage({ searchParams }: { searchParams: 
       ))}
 
       <SourceNote>
-        Members and their seats come from Congress.gov. CivicScope lists Members of Congress for
-        now; governors, state legislators and other state officeholders are not listed here yet. See{' '}
-        <Link href="/coverage">Coverage</Link>.
+        Members and their seats come from Congress.gov. Governors and state legislators are on the{' '}
+        <Link href="/politicians/state">States</Link> tab; other state officeholders are not listed
+        yet. See <Link href="/coverage">Coverage</Link>.
       </SourceNote>
     </>
   );

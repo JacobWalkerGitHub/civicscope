@@ -4,6 +4,7 @@ import type {
   FecRunSummary,
   FecTotalsSummary,
   OpenStatesSummary,
+  StateOfficialsSummary,
 } from '@civicscope/cms';
 import type { IngestSource } from '@civicscope/core';
 
@@ -28,6 +29,10 @@ export function runTitle(source: IngestSource, params: unknown): string {
       return `FEC money totals, ${(params as { cycle?: number })?.cycle}`;
     case 'openstates':
       return `Open States (${((params as { states?: string[] })?.states ?? []).join(', ')})`;
+    case 'state_officials': {
+      const n = ((params as { states?: string[] })?.states ?? []).length;
+      return `Governors and state legislators (${n} ${n === 1 ? 'state' : 'states'})`;
+    }
   }
 }
 
@@ -73,6 +78,13 @@ export function runResult(source: IngestSource, summary: unknown): string {
       const s = summary as OpenStatesSummary;
       const votes = s.states.reduce((n, x) => n + x.votes, 0);
       return `${s.created} new people, ${s.linked} linked, ${votes} votes read`;
+    }
+    case 'state_officials': {
+      const s = summary as StateOfficialsSummary;
+      const sum = (k: 'added' | 'updated' | 'left') => s.states.reduce((n, x) => n + x[k], 0);
+      const govs = s.states.filter((x) => x.governor).length;
+      const legs = s.states.reduce((n, x) => n + x.legislators, 0);
+      return `${govs} governors and ${legs} legislators read: ${sum('added')} added, ${sum('updated')} changed, ${sum('left')} left office`;
     }
   }
 }
