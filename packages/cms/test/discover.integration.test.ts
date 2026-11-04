@@ -235,6 +235,85 @@ describe('comparison', () => {
   it('returns null for a race that is not public', async () => {
     expect(await getPublicComparison(db, 999_999)).toBeNull();
   });
+
+  it('shows each record from official data and the roll calls they shared', async () => {
+    const before = await getPublicComparison(db, ids.auditor!);
+    expect(before!.columns[0]!.record.seats).toEqual([]);
+    expect(before!.sharedVotes.congress).toEqual([]);
+
+    // Fixture records only: example Bioguide IDs, not real members or roll calls.
+    const [src] = await db.insert(schema.source).values({
+      url: 'https://clerk.house.example/votes',
+      title: 'Roll calls (example)',
+      publisher: 'House Clerk (example)',
+      sourceType: 'legislative_record',
+      retrievedAt: '2026-01-01',
+    });
+    const sourceId = src.insertId;
+    await db.insert(schema.personIdentifier).values([
+      { personId: ids.ada!, scheme: 'bioguide', value: 'X000001' },
+      { personId: ids.ben!, scheme: 'bioguide', value: 'X000002' },
+    ]);
+    const seat = { chamber: 'house' as const, state: 'KY', sourceId, sourceUpdatedAt: 'x' };
+    await db.insert(schema.congressMembership).values([
+      {
+        ...seat,
+        bioguideId: 'X000001',
+        congress: 118,
+        district: 3,
+        startYear: 2023,
+        endYear: 2025,
+      },
+      { ...seat, bioguideId: 'X000001', congress: 119, district: 3, startYear: 2025 },
+    ]);
+    const vote = async (
+      rollNumber: number,
+      day: string,
+      publishState: 'published' | 'unpublished' = 'published',
+    ) => {
+      const [r] = await db.insert(schema.rollCallVote).values({
+        chamber: 'house',
+        congress: 119,
+        session: 1,
+        rollNumber,
+        votedAt: new Date(`${day}T15:00:00Z`),
+        question: `Example question ${rollNumber}`,
+        result: 'Passed',
+        sourceId,
+        sourceUpdatedAt: 'x',
+        publishState,
+      });
+      return r.insertId;
+    };
+    const both = await vote(1, '2025-03-01');
+    const adaOnly = await vote(2, '2025-03-02');
+    const hidden = await vote(3, '2025-03-03', 'unpublished');
+    await db.insert(schema.votePosition).values([
+      { voteId: both, bioguideId: 'X000001', voteCast: 'Yea' },
+      { voteId: both, bioguideId: 'X000002', voteCast: 'Nay' },
+      { voteId: adaOnly, bioguideId: 'X000001', voteCast: 'Yea' },
+      { voteId: hidden, bioguideId: 'X000001', voteCast: 'Yea' },
+      { voteId: hidden, bioguideId: 'X000002', voteCast: 'Yea' },
+    ]);
+
+    const c = await getPublicComparison(db, ids.auditor!);
+    const [ada, ben] = c!.columns;
+    expect(ada!.record.seats).toEqual([
+      { chamber: 'house', state: 'KY', district: '3', startYear: 2023, endYear: null },
+    ]);
+    expect(ada!.record.congressVotes).toBe(2);
+    expect(ada!.record.bioguideId).toBe('X000001');
+    expect(ben!.record.seats).toEqual([]);
+    expect(ben!.record.congressVotes).toBe(1);
+    // Only the published roll call both of them voted on.
+    expect(c!.sharedVotes.congress.map((v) => v.rollNumber)).toEqual([1]);
+    const cast = c!.sharedVotes.congress[0]!.cast;
+    expect(cast.get(ids.ada!)).toBe('Yea');
+    expect(cast.get(ids.ben!)).toBe('Nay');
+    // An editor's preview still sees the unpublished one.
+    const preview = await getPublicComparison(db, ids.auditor!, [], { preview: true });
+    expect(preview!.sharedVotes.congress.map((v) => v.rollNumber)).toEqual([3, 1]);
+  });
 });
 
 describe('issue pages', () => {
