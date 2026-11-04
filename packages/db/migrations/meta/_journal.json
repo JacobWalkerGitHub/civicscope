@@ -169,6 +169,13 @@
       "when": 1793825376301,
       "tag": "0023_state_officials",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "5",
+      "when": 1793831882732,
+      "tag": "0024_promise_record_links",
+      "breakpoints": true
     }
   ]
 }

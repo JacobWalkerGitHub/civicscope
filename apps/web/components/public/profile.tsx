@@ -15,6 +15,7 @@ import { rollCallUrl, voteDate, voteMeasure } from '../congress-format';
 import { Chip, StatusBadge, statusTone, WhenChip } from './badges';
 import { initials, NotPublic, ReportLink, Sources } from './sources';
 import { stateChamberName as chamberName } from '@/lib/labels';
+import { PromisesAndRecord } from './promises';
 
 type Profile = NonNullable<Awaited<ReturnType<typeof getPublicPerson>>>;
 type Claim = Profile['claims'][number];
@@ -26,7 +27,7 @@ function years(c: Claim) {
   return null;
 }
 
-function Entry({ c, profile }: { c: Claim; profile: Profile }) {
+export function Entry({ c, profile }: { c: Claim; profile: Profile }) {
   const when = c.statedOn ? formatDate(c.statedOn) : years(c);
   return (
     <article className="entry" aria-labelledby={`entry-${c.id}`}>
@@ -69,8 +70,15 @@ export function CandidateProfile({
   raceHref: (raceId: number) => string;
 }) {
   const { person, candidacies, claims } = profile;
+  // Campaign promises get their own section, beside the record.
+  const promises = claims.filter(
+    (c) => c.kind === 'position' && c.positionType === 'campaign_promise',
+  );
   const byKind = new Map<ClaimKind, Claim[]>();
-  for (const c of claims) byKind.set(c.kind, [...(byKind.get(c.kind) ?? []), c]);
+  for (const c of claims) {
+    if (promises.includes(c)) continue;
+    byKind.set(c.kind, [...(byKind.get(c.kind) ?? []), c]);
+  }
   const positionsByIssue = new Map<string, Claim[]>();
   for (const c of byKind.get('position') ?? []) {
     const key = c.issueName ?? 'Other';
@@ -81,6 +89,7 @@ export function CandidateProfile({
   const current = candidacies[0];
   const sections: [string, string][] = [
     ['running-heading', 'Candidacies'],
+    ...(promises.length ? [['promises-heading', 'Promises and record'] as [string, string]] : []),
     ...CLAIM_KINDS.filter((k) => byKind.get(k)?.length).map(
       (k) => [`${k}-heading`, CLAIM_KIND_PLURALS[k]] as [string, string],
     ),
@@ -200,6 +209,8 @@ export function CandidateProfile({
           </ul>
         )}
       </section>
+
+      <PromisesAndRecord promises={promises} profile={profile} />
 
       {CLAIM_KINDS.map((kind) => {
         const entries = byKind.get(kind);
