@@ -12,6 +12,7 @@ import {
   VERIFICATION_LABELS,
 } from '@/lib/labels';
 import { rollCallUrl, voteDate, voteMeasure } from '../congress-format';
+import { Chip, StatusBadge, statusTone, WhenChip } from './badges';
 import { initials, NotPublic, ReportLink, Sources } from './sources';
 
 type Profile = NonNullable<Awaited<ReturnType<typeof getPublicPerson>>>;
@@ -75,9 +76,24 @@ export function CandidateProfile({
     positionsByIssue.set(key, [...(positionsByIssue.get(key) ?? []), c]);
   }
 
+  // The newest candidacy (the list is newest election first) leads the header.
+  const current = candidacies[0];
+  const sections: [string, string][] = [
+    ['running-heading', 'Candidacies'],
+    ...CLAIM_KINDS.filter((k) => byKind.get(k)?.length).map(
+      (k) => [`${k}-heading`, CLAIM_KIND_PLURALS[k]] as [string, string],
+    ),
+    ...(profile.money.length ? [['money-heading', 'Campaign money'] as [string, string]] : []),
+    ...(profile.congress?.votes.length || profile.congress?.memberships.length
+      ? [['congress-heading', 'Record in Congress'] as [string, string]]
+      : []),
+    ...(profile.stateVotes.total
+      ? [['state-votes-heading', 'State votes'] as [string, string]]
+      : []),
+  ];
   return (
     <>
-      <header className="profile-header">
+      <header className="profile-header profile-hero">
         {person.photoId && (
           <figure className="profile-photo">
             <img src={`/photos/${person.photoId}`} alt={`Photo of ${person.fullName}`} />
@@ -101,12 +117,32 @@ export function CandidateProfile({
         <h1>
           {person.fullName} <NotPublic state={person.publishState} />
         </h1>
+        {current && (
+          <p className="badge-row">
+            <StatusBadge status={current.status} date={current.statusDate} />
+            <Chip>
+              <Link href={raceHref(current.raceId)}>{current.raceName}</Link>
+            </Chip>
+            {current.isIncumbent && <Chip>Incumbent</Chip>}
+            <Chip>{current.partyName ?? 'No party listed'}</Chip>
+            <WhenChip date={current.electionDate} />
+          </p>
+        )}
         {person.preferredName && <p>Goes by {person.preferredName}</p>}
         {person.birthYear && <p>Born {person.birthYear}</p>}
         <Sources
           cites={profile.citations.get(`person:${person.id}`)}
           label="Sources for these details"
         />
+        {sections.length > 2 && (
+          <nav className="on-this-page" aria-label="On this page">
+            {sections.map(([id, label]) => (
+              <a key={id} href={`#${id}`}>
+                {label}
+              </a>
+            ))}
+          </nav>
+        )}
       </header>
 
       <section aria-labelledby="running-heading">
@@ -116,11 +152,16 @@ export function CandidateProfile({
         ) : (
           <ul className="candidacies">
             {candidacies.map((c) => (
-              <li key={c.id}>
+              <li key={c.id} className={`card-${statusTone(c.status)}`}>
                 <h3>
                   <Link href={raceHref(c.raceId)}>{c.raceName}</Link>{' '}
                   <NotPublic state={c.publishState} />
                 </h3>
+                <p className="badge-row">
+                  <StatusBadge status={c.status} date={c.statusDate} />
+                  {c.isIncumbent && <Chip>Incumbent</Chip>}
+                  <WhenChip date={c.electionDate} />
+                </p>
                 <p className="muted">
                   {c.electionName} · {ELECTION_TYPE_LABELS[c.electionType]} ·{' '}
                   {formatDate(c.electionDate)}

@@ -8,6 +8,7 @@ import {
   PRIMARY_SYSTEM_LABELS,
   RESOURCE_KIND_LABELS,
 } from '@/lib/labels';
+import { Chip, WhenChip } from './badges';
 import { NotPublic, ReportLink } from './sources';
 
 type ElectionPage = NonNullable<Awaited<ReturnType<typeof getPublicElection>>>;
@@ -23,14 +24,40 @@ export function ElectionOverview({
   electionHref: (id: number) => string;
 }) {
   const { election: e, deadlines, races, resources, related } = page;
+  const decided = races.filter((r) => r.won.length + r.advanced.length > 0).length;
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+  // Election day joins the deadlines; the first date not yet past is "next".
+  const timeline = [
+    ...deadlines.map((d) => ({
+      key: `d${d.id}`,
+      date: d.date,
+      what: DEADLINE_KIND_LABELS[d.kind],
+      label: d.label,
+      url: d.sourceUrl as string | null,
+    })),
+    { key: 'day', date: e.date, what: 'Election day', label: null, url: e.officialUrl },
+  ].sort((a, b) => a.date.localeCompare(b.date));
+  const next = timeline.find((t) => t.date >= today)?.key;
   return (
     <>
-      <header className="profile-header">
+      <header className="page-hero">
+        <p className="eyebrow">
+          {ELECTION_TYPE_LABELS[e.type]} · {e.jurisdictionName}
+        </p>
         <h1>
           {e.name} <NotPublic state={e.publishState} />
         </h1>
-        <p>
-          {formatDate(e.date)} · {e.jurisdictionName}
+        <p className="page-hero-meta">
+          <WhenChip date={e.date} />
+          <Chip>{formatDate(e.date)}</Chip>
+          <Chip>
+            {races.length} {races.length === 1 ? 'race' : 'races'} covered
+          </Chip>
+          {decided > 0 && (
+            <Chip>
+              {decided} of {races.length} with a recorded result
+            </Chip>
+          )}
         </p>
       </header>
       <dl className="facts">
@@ -59,50 +86,31 @@ export function ElectionOverview({
 
       <section aria-labelledby="dates-heading">
         <h2 id="dates-heading">Key dates</h2>
-        {deadlines.length === 0 ? (
+        {deadlines.length === 0 && (
           <p className="muted">
             We have not recorded this election’s deadlines yet. Check the state election office.
           </p>
-        ) : (
-          <table>
-            <thead>
-              <tr>
-                <th scope="col">Date</th>
-                <th scope="col">What</th>
-                <th scope="col">Source</th>
-              </tr>
-            </thead>
-            <tbody>
-              {deadlines.map((d) => (
-                <tr key={d.id}>
-                  <td>{formatDate(d.date)}</td>
-                  <td>
-                    <strong>{DEADLINE_KIND_LABELS[d.kind]}</strong>
-                    {d.label && <>. {d.label}</>}
-                  </td>
-                  <td>
-                    <a href={d.sourceUrl} rel="noopener noreferrer" target="_blank">
-                      {new URL(d.sourceUrl).hostname}
-                    </a>
-                  </td>
-                </tr>
-              ))}
-              <tr>
-                <td>{formatDate(e.date)}</td>
-                <td>
-                  <strong>Election day</strong>
-                </td>
-                <td>
-                  {e.officialUrl && (
-                    <a href={e.officialUrl} rel="noopener noreferrer" target="_blank">
-                      {new URL(e.officialUrl).hostname}
-                    </a>
-                  )}
-                </td>
-              </tr>
-            </tbody>
-          </table>
         )}
+        <ol className="timeline">
+          {timeline.map((t) => (
+            <li
+              key={t.key}
+              className={t.key === next ? 'next' : t.date < today ? 'past' : undefined}
+            >
+              <span className="timeline-date">{formatDate(t.date)}</span>
+              <span className="timeline-what">
+                <strong>{t.what}</strong>
+                {t.label && <>. {t.label}</>}
+                {t.key === next && <span className="chip when upcoming">Next</span>}
+              </span>
+              {t.url && (
+                <a href={t.url} rel="noopener noreferrer" target="_blank" className="small">
+                  {new URL(t.url).hostname}
+                </a>
+              )}
+            </li>
+          ))}
+        </ol>
       </section>
 
       <section aria-labelledby="races-heading">
@@ -113,22 +121,38 @@ export function ElectionOverview({
             <Link href="/coverage">Coverage</Link>.
           </p>
         ) : (
-          groupByOffice(races).map(([title, list]) => (
-            <div key={title} className="race-group">
-              {list.length > 1 && (
+          groupByOffice(races).map(([title, list], gi) => (
+            <div key={`${gi}-${title}`} className="race-group">
+              {title && (
                 <h3>
                   {title} <span className="muted">· {list.length} races</span>
                 </h3>
               )}
-              <ul className={list.length > 6 ? 'race-list race-grid' : 'race-list'}>
+              <ul className="race-cards">
                 {list.map((r) => (
-                  <li key={r.id}>
-                    <Link href={raceHref(r.id)}>
+                  <li key={r.id} className={r.won.length ? 'decided' : undefined}>
+                    <Link href={raceHref(r.id)} className="race-card-name">
                       {list.length > 1 && r.name.startsWith(`${title}, `)
                         ? r.name.slice(title.length + 2)
                         : r.name}
                     </Link>{' '}
                     <NotPublic state={r.publishState} />
+                    {r.won.length > 0 ? (
+                      <span className="race-card-meta">
+                        <span className="status-badge tone-won">✓ Won</span> {r.won.join(', ')}
+                      </span>
+                    ) : r.advanced.length > 0 ? (
+                      <span className="race-card-meta">
+                        <span className="status-badge tone-advanced">Advanced</span>{' '}
+                        {r.advanced.join(', ')}
+                      </span>
+                    ) : (
+                      <span className="race-card-meta muted">
+                        {r.candidates === 0
+                          ? 'No candidates published yet'
+                          : `${r.candidates} ${r.candidates === 1 ? 'candidate' : 'candidates'}`}
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -172,9 +196,19 @@ export function ElectionOverview({
   );
 }
 
-/** Races grouped by office, in the order they arrive. A legislature has a hundred or more. */
+/**
+ * Races grouped by office, in the order they arrive (a legislature has a hundred or
+ * more). Offices with one race each are gathered into one grid, so a page of single
+ * races reads as one set of cards rather than a column of one-card groups.
+ */
 function groupByOffice<T extends { officeTitle: string }>(races: T[]): [string, T[]][] {
   const groups = new Map<string, T[]>();
   for (const r of races) groups.set(r.officeTitle, [...(groups.get(r.officeTitle) ?? []), r]);
-  return [...groups];
+  const out: [string, T[]][] = [];
+  for (const [title, list] of groups) {
+    const last = out.at(-1);
+    if (list.length === 1 && last && last[1].length > 0 && last[0] === '') last[1].push(list[0]!);
+    else out.push([list.length === 1 ? '' : title, list]);
+  }
+  return out;
 }

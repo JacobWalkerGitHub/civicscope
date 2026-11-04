@@ -118,7 +118,7 @@ test('key dates and official links show on the public election calendar', async 
   await page.getByRole('link', { name: '2027 Kentucky General Election' }).click();
   await expect(page.getByRole('heading', { name: '2027 Kentucky General Election' })).toBeVisible();
   await expect(
-    page.getByRole('cell', { name: /Registration closes \(test fixture\)/ }),
+    page.locator('.timeline li').filter({ hasText: /Registration closes \(test fixture\)/ }),
   ).toBeVisible();
   await expect(page.getByRole('link', { name: 'elections.example.gov' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Example State Board of Elections' })).toBeVisible();
