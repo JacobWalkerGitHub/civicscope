@@ -37,6 +37,7 @@ import {
   setArchived,
   setOfficeArchived,
   setPartyArchived,
+  publishWithCandidates,
   setPublishState,
   updateElection,
   updateOffice,
@@ -218,6 +219,33 @@ export async function publishAction(
       default:
         return setPublishState(db, actor, entityType, id, state);
     }
+  });
+}
+
+/** Publishes an election or race with its races and every candidate that passes the checks. */
+export async function publishWithCandidatesAction(
+  target: 'election' | 'race',
+  id: number,
+  _: FormState,
+) {
+  return runButtonAction('content:publish', async (actor) => {
+    const s = await publishWithCandidates(
+      getDb(),
+      actor,
+      target === 'election' ? { electionId: id } : { raceId: id },
+    );
+    const n = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
+    const parts = [
+      s.races && n(s.races, 'race', 'races'),
+      n(s.candidacies, 'candidate', 'candidates'),
+    ].filter(Boolean);
+    const skipped = s.skipped.length
+      ? ` Skipped ${n(s.skipped.length, 'candidate', 'candidates')}: ${s.skipped
+          .slice(0, 5)
+          .map((x) => `${x.name}: ${x.reason}`)
+          .join(' ')}${s.skipped.length > 5 ? ` …and ${s.skipped.length - 5} more.` : ''}`
+      : '';
+    return `Published ${parts.join(' and ')}.${skipped}`;
   });
 }
 

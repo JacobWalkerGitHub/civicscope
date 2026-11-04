@@ -33,3 +33,4 @@ export * from './results';
 export * from './geocode';
 export * from './openstates';
 export * from './fec-totals';
+export * from './publish-bulk';
