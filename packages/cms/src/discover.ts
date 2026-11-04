@@ -10,6 +10,7 @@ import { and, asc, desc, eq, gte, inArray, isNull, sql, type SQL } from 'drizzle
 import type { MySqlColumn } from 'drizzle-orm/mysql-core';
 import { todayIso } from '@civicscope/core';
 import { schema, type Db } from '@civicscope/db';
+import { getCompareRecords, getSharedVotes } from './compare-record';
 import { getPublicRace, type PublicCitation, type ViewOptions } from './public';
 
 const {
@@ -292,6 +293,10 @@ export async function getPublicComparison(
     ),
     candidacy: page.citations,
   };
+  const [records, sharedVotes] = await Promise.all([
+    getCompareRecords(db, personIds, opts),
+    getSharedVotes(db, personIds, opts),
+  ]);
   const columns = chosen.map((c) => {
     const pid = personOf.get(c.candidacyId)!;
     const mine = claims.filter((x) => x.personId === pid);
@@ -300,6 +305,10 @@ export async function getPublicComparison(
       positions: mine.filter((x) => x.kind === 'position'),
       biography: mine.filter((x) => x.kind === 'biography'),
       accomplishments: mine.filter((x) => x.kind === 'accomplishment'),
+      /** Seats, bills and vote counts from official records; null fields mean none on file. */
+      record: records.get(pid)!,
+      /** The campaign's latest FEC totals, when the FEC reports on this candidate. */
+      money: page.money.get(c.candidacyId) ?? null,
     };
   });
   return {
@@ -308,6 +317,8 @@ export async function getPublicComparison(
     columns,
     issues,
     citations,
+    /** Roll calls at least two of the compared candidates voted on, keyed by person ID. */
+    sharedVotes,
     /** Requested IDs that are not public candidates in this race. */
     ignored,
   };

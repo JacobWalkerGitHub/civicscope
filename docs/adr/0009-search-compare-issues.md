@@ -20,6 +20,14 @@ why, or filled it from a candidate's party, would mislead.
   and accomplishments. Each entry shows its sources, its statement type and whose account it
   is. An empty cell says "Nothing on file", and the page explains that this is not the same
   as holding no view. Nothing is inferred from party or from anyone else.
+- **The comparison also sets out each candidate's public record.** A "Record in office" row
+  lists seats in Congress, bills sponsored and cosponsored, and how many recorded votes are on
+  file in Congress and in state legislatures; a "Campaign money" row shows the campaign's latest
+  FEC totals with a link to the filings. Below the table, "Votes they both cast" lists the most
+  recent roll calls (up to ten, in Congress and in state legislatures) on which at least two of
+  the compared candidates have a recorded vote, each linked to the official roll call. These
+  rows appear only when at least one candidate has such a record; a candidate without one gets
+  "Nothing on file", and a missing vote on a shared roll call says "No vote on file".
 - **Search covers names, offices, states, districts, issues and entry text.** Names, races
   and issues are short, so they use plain matching: every word of the query must appear
   (`LIKE`, with wildcards stripped from the input). Entry titles and summaries use a MySQL
