@@ -1664,3 +1664,76 @@ h2.contest-name {
 .public .updates-list a {
   color: inherit;
 }
+
+/* ------------------------------------------------------------------ my ballot */
+.public .ballot-privacy {
+  margin: 12px 0 0;
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+.public .ballot-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 300px) minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+  margin-top: 28px;
+}
+
+@media (max-width: 760px) {
+  .public .ballot-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.public .ballot-districts {
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-top: 6px solid var(--navy);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.public .ballot-districts h2 {
+  margin: 0 0 4px;
+  font-family: var(--display);
+}
+
+.public .ballot-districts dl {
+  margin: 12px 0;
+}
+
+.public .ballot-districts dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.public .ballot-districts dt {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.public .ballot-districts dd {
+  margin: 0;
+  font-weight: 700;
+  text-align: right;
+}
+
+.public .small {
+  font-size: 0.82rem;
+}
+
+.public .hero-alt {
+  margin: 16px 0 0;
+  font-weight: 600;
+}
+
+.public .hero-alt a {
+  color: #fff;
+}

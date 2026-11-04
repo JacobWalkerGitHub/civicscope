@@ -372,3 +372,72 @@ export async function directoryFilterOptions(db: Db) {
     .orderBy(asc(party.name));
   return { states, parties };
 }
+
+export interface BallotDistricts {
+  /** USPS code, e.g. "VA". */
+  state: string;
+  /** District number, or null for an at-large state (or no district found). */
+  congressional: number | null;
+  stateUpper: number | null;
+  stateLower: number | null;
+}
+
+/**
+ * Upcoming public races on one voter's ballot: statewide and national races in their
+ * state, and the races for their congressional and state legislative districts. Rows have
+ * the same shape as listUpcomingPublicRaces, in the same order.
+ */
+export async function listBallotRaces(db: Db, d: BallotDistricts, today = todayIso()) {
+  const [state] = await db
+    .select({ id: jurisdiction.id, ocdId: jurisdiction.ocdId, parentId: jurisdiction.parentId })
+    .from(jurisdiction)
+    .where(eq(jurisdiction.uspsCode, d.state.toUpperCase()));
+  if (!state) return [];
+  const ocdIds = [
+    d.congressional !== null && `${state.ocdId}/cd:${d.congressional}`,
+    d.stateUpper !== null && `${state.ocdId}/sldu:${d.stateUpper}`,
+    d.stateLower !== null && `${state.ocdId}/sldl:${d.stateLower}`,
+  ].filter((x): x is string => !!x);
+  const places = [state.id, ...(state.parentId ? [state.parentId] : [])];
+  const rows = await db
+    .select({
+      id: race.id,
+      name: race.name,
+      electionId: election.id,
+      electionName: election.name,
+      electionDate: election.date,
+      jurisdictionName: jurisdiction.name,
+      officeTitle: office.title,
+      districtType: district.type,
+      candidateCount: sql<number>`(select count(*) from candidacy c join person p on p.id = c.person_id
+        where c.race_id = ${race}.id and c.publish_state = 'published' and c.deleted_at is null
+        and p.publish_state = 'published' and p.deleted_at is null)`,
+    })
+    .from(race)
+    .innerJoin(election, eq(election.id, race.electionId))
+    .innerJoin(jurisdiction, eq(jurisdiction.id, election.jurisdictionId))
+    .innerJoin(office, eq(office.id, race.officeId))
+    .leftJoin(district, eq(district.id, race.districtId))
+    .where(
+      and(
+        visible(race, {}),
+        visible(election, {}),
+        gte(election.date, today),
+        or(
+          // The whole state (or country) votes: Senate, Governor, at-large seats.
+          and(isNull(race.districtId), inArray(election.jurisdictionId, places)),
+          ocdIds.length ? inArray(district.ocdId, ocdIds) : sql`false`,
+        ),
+      ),
+    )
+    .orderBy(asc(election.date), asc(election.id));
+  const byName = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
+  const electionOrder = new Map<number, number>();
+  for (const r of rows)
+    if (!electionOrder.has(r.electionId)) electionOrder.set(r.electionId, electionOrder.size);
+  return rows.sort(
+    (a, b) =>
+      electionOrder.get(a.electionId)! - electionOrder.get(b.electionId)! ||
+      byName.compare(a.name, b.name),
+  );
+}

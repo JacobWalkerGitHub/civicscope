@@ -355,7 +355,9 @@ export class CivicScopeStack extends Stack {
         // for every link it shows, so an editor reaches hundreds of requests quickly.
         rateLimit('sign-in-rate', 10, 100, '/admin/sign-in'),
         rateLimit('search-rate', 11, 600, '/search'),
-        rateLimit('overall-rate', 12, 3000),
+        // Each ballot lookup calls the Census geocoder: keep one visitor from hammering it.
+        rateLimit('ballot-rate', 12, 200, '/ballot'),
+        rateLimit('overall-rate', 13, 3000),
       ],
     });
 

@@ -11,7 +11,14 @@ if ! git diff --quiet HEAD; then
 fi
 docker info >/dev/null 2>&1 || { echo "Docker isn't running. Open Docker Desktop and try again." >&2; exit 1; }
 TAG=$(git rev-parse --short HEAD)
-REGISTRY=$(aws sts get-caller-identity --query Account --output text).dkr.ecr.us-east-1.amazonaws.com
+ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+# CDK can't always read an SSO sign-in the way the AWS CLI does: hand it the CLI's
+# temporary keys and the account, so every step below uses the same sign-in.
+if [ -z "${AWS_ACCESS_KEY_ID:-}" ]; then
+  eval "$(aws configure export-credentials --format env)"
+fi
+export CDK_DEFAULT_ACCOUNT="$ACCOUNT" CDK_DEFAULT_REGION=us-east-1
+REGISTRY=$ACCOUNT.dkr.ecr.us-east-1.amazonaws.com
 echo "Building and uploading $TAG..."
 aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin "$REGISTRY"
 for target in web worker; do

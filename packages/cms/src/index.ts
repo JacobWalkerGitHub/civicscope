@@ -30,3 +30,4 @@ export * from './discover';
 export * from './alerts';
 export * from './health';
 export * from './results';
+export * from './geocode';
