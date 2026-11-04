@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { getPublicPerson } from '@civicscope/cms';
-import { billLabel, CLAIM_KINDS, congressGovBillUrl, type ClaimKind } from '@civicscope/core';
+import { billLabel, CLAIM_KINDS, type ClaimKind } from '@civicscope/core';
 import {
   BIO_CATEGORY_LABELS,
   CANDIDACY_STATUS_LABELS,
@@ -337,6 +337,12 @@ function CongressRecord({ record }: { record: NonNullable<Profile['congress']> }
       <p className="muted">
         From Congress.gov, the House Clerk and senate.gov. Each vote links to the chamber’s own roll
         call.
+        {record.bioguideIds[0] && (
+          <>
+            {' '}
+            <Link href={`/politicians/${record.bioguideIds[0]}`}>See every bill and vote →</Link>
+          </>
+        )}
       </p>
       {memberships.length > 0 && (
         <>
@@ -364,13 +370,9 @@ function CongressRecord({ record }: { record: NonNullable<Profile['congress']> }
           <ul className="congress-bills">
             {bills.slice(0, 10).map((b) => (
               <li key={b.id}>
-                <a
-                  href={congressGovBillUrl(b.congress, b.billType, b.number)}
-                  rel="noopener noreferrer"
-                  target="_blank"
-                >
+                <Link href={`/bills/${b.congress}/${b.billType}/${b.number}`}>
                   {billLabel(b.billType, b.number)}
-                </a>{' '}
+                </Link>{' '}
                 {b.title}{' '}
                 <span className="muted">
                   · {b.role === 'sponsor' ? 'Sponsor' : 'Cosponsor'}

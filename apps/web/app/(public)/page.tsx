@@ -1,5 +1,11 @@
 import Link from 'next/link';
-import { FEED_ACTIVE_DAYS, listResultDates, listUpcomingPublicRaces } from '@civicscope/cms';
+import {
+  billOverview,
+  listCurrentMembers,
+  listPublicBills,
+  listUpcomingPublicRaces,
+} from '@civicscope/cms';
+import { StageBadge } from '@/components/public/ui';
 import { getDb } from '@/lib/db';
 import { formatDate } from '@/lib/labels';
 
@@ -52,34 +58,54 @@ function summarizeOffices(list: { officeTitle: string; candidateCount: number | 
 
 export default async function HomePage() {
   const db = getDb();
-  const [races, [resultsDate]] = await Promise.all([
+  // Bills and members are extras: never let them take the home page down.
+  const [races, overview, recent, moving, members] = await Promise.all([
     listUpcomingPublicRaces(db),
-    // Never let results take the home page down (e.g. mid-deploy, before the migration).
-    listResultDates(db).catch(() => [] as string[]),
+    billOverview(db).catch(() => null),
+    listPublicBills(db, { tab: 'outcomes' }).catch(() => null),
+    listPublicBills(db, { tab: 'progress' }).catch(() => null),
+    listCurrentMembers(db).catch(() => null),
   ]);
-  const liveResults = resultsDate && -daysUntil(resultsDate) < FEED_ACTIVE_DAYS;
   const byElection = new Map<number, typeof races>();
   for (const r of races) byElection.set(r.electionId, [...(byElection.get(r.electionId) ?? []), r]);
   const elections = [...byElection.values()];
   const candidates = races.reduce((n, r) => n + Number(r.candidateCount), 0);
-  const states = new Set(races.map((r) => r.jurisdictionName)).size;
+
+  const explore = [
+    {
+      href: '/elections',
+      title: 'Elections',
+      text: 'Dates, deadlines and every race on the ballot.',
+      stat: elections.length ? `${plural(elections.length, 'upcoming election')}` : null,
+    },
+    {
+      href: '/politicians',
+      title: 'Politicians',
+      text: 'Who holds office now, and everyone who has run.',
+      stat: members?.rows.length ? `${plural(members.rows.length, 'member')} of Congress` : null,
+    },
+    {
+      href: '/bills',
+      title: 'Bills',
+      text: 'What passed, what failed, and how each member voted.',
+      stat: overview?.total ? `${overview.total.toLocaleString('en-US')} bills` : null,
+    },
+    {
+      href: '/issues',
+      title: 'Issues',
+      text: 'Candidates’ stated positions, side by side, with sources.',
+      stat: null,
+    },
+  ];
 
   return (
     <>
-      {liveResults && (
-        <p className="live-banner">
-          <span>
-            <span className="live-dot" aria-hidden="true" /> Live results: {formatDate(resultsDate)}
-          </span>
-          <Link href="/results">See live results by state →</Link>
-        </p>
-      )}
       <section className="hero" aria-labelledby="home-title">
         <p className="eyebrow">Nonpartisan · Source-backed</p>
-        <h1 id="home-title">Know who’s on your ballot, and how we know it.</h1>
+        <h1 id="home-title">See who represents you, what they do, and how we know it.</h1>
         <p className="hero-lede">
-          CivicScope tracks candidates for federal and state office. Every fact links to its source,
-          and every candidate is listed in alphabetical order.
+          Candidates, officeholders and the bills they vote on, in one place. Every fact links to
+          its source, and everyone is listed in alphabetical order.
         </p>
         <form action="/search" role="search" className="hero-search">
           <label htmlFor="home-q" className="visually-hidden">
@@ -89,7 +115,7 @@ export default async function HomePage() {
           <button type="submit">Search</button>
         </form>
         <p className="hero-alt">
-          <Link href="/ballot">Enter your address to see what’s on your ballot →</Link>
+          <Link href="/ballot">Find what’s on your ballot by address →</Link>
         </p>
         {races.length > 0 && (
           <dl className="hero-stats">
@@ -105,16 +131,25 @@ export default async function HomePage() {
               <dt>Candidates</dt>
               <dd>{candidates}</dd>
             </div>
-            <div>
-              <dt>{states === 1 ? 'State' : 'States'}</dt>
-              <dd>{states}</dd>
-            </div>
           </dl>
         )}
       </section>
 
+      <nav aria-label="Explore CivicScope" className="explore-grid">
+        {explore.map((e) => (
+          <Link key={e.href} href={e.href} className="explore-card">
+            <span className="explore-title">{e.title}</span>
+            <span className="explore-text">{e.text}</span>
+            {e.stat && <span className="explore-stat">{e.stat}</span>}
+            <span className="explore-arrow" aria-hidden="true">
+              →
+            </span>
+          </Link>
+        ))}
+      </nav>
+
       <div className="section-heading">
-        <h2>Upcoming races</h2>
+        <h2>Upcoming elections</h2>
         <Link href="/elections">Full election calendar →</Link>
       </div>
 
@@ -191,6 +226,43 @@ export default async function HomePage() {
         </div>
       )}
 
+      {recent?.rows.length || moving?.rows.length ? (
+        <div className="home-bills">
+          {[
+            { key: 'recent', title: 'Recently passed or failed', data: recent, href: '/bills' },
+            {
+              key: 'moving',
+              title: 'Moving in Congress',
+              data: moving,
+              href: '/bills?tab=progress',
+            },
+          ].map((col) =>
+            col.data && col.data.rows.length > 0 ? (
+              <section key={col.key} aria-labelledby={`hb-${col.key}`} className="card">
+                <div className="section-heading">
+                  <h2 id={`hb-${col.key}`}>{col.title}</h2>
+                  <Link href={col.href}>See all →</Link>
+                </div>
+                <ul className="mini-bills">
+                  {col.data.rows.slice(0, 5).map((b) => (
+                    <li key={b.id}>
+                      <div className="bill-card-top">
+                        <span className="bill-number">{b.label}</span>
+                        <StageBadge stage={b.stage} />
+                      </div>
+                      <Link href={`/bills/${b.congress}/${b.billType}/${b.number}`}>{b.title}</Link>
+                      {b.latestActionOn && (
+                        <span className="muted small">{formatDate(b.latestActionOn)}</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null,
+          )}
+        </div>
+      ) : null}
+
       <section className="explainer" aria-labelledby="how-title">
         <h2 id="how-title">How CivicScope works</h2>
         <ul>
@@ -199,8 +271,8 @@ export default async function HomePage() {
             candidate’s own words, with a link you can check.
           </li>
           <li>
-            <strong>Even-handed.</strong> Candidates appear in alphabetical order, with the same
-            fields for everyone.
+            <strong>Even-handed.</strong> People appear in alphabetical order, with the same fields
+            for everyone and no party colors.
           </li>
           <li>
             <strong>Correctable.</strong> Spot a mistake? Every page has a link to report it, and we

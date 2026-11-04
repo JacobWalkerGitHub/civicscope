@@ -373,6 +373,11 @@ export function stateCode(name: string): string | null {
   return STATE_CODES[name.trim()] ?? null;
 }
 
+/** "KY" -> "Kentucky"; unknown codes are returned as given. */
+export function stateNameFor(code: string): string {
+  return Object.entries(STATE_CODES).find(([, c]) => c === code)?.[0] ?? code;
+}
+
 /** "Warren, Elizabeth" -> "Elizabeth Warren"; other shapes are returned as given. */
 export function memberDisplayName(name: string): string {
   const m = /^([^,]+),\s*(.+)$/.exec(name.trim());

@@ -16,7 +16,10 @@ import type {
   PrimarySystem,
   PublishState,
   RaceStatus,
+  BillStage,
+  CongressChamber,
 } from '@civicscope/core';
+import { stateNameFor } from '@civicscope/core';
 
 export const ELECTION_TYPE_LABELS: Record<ElectionType, string> = {
   primary: 'Primary',
@@ -212,3 +215,49 @@ export const VERIFICATION_LABELS: Record<VerificationStatus, string> = {
   disputed: 'Disputed',
   outdated: 'Outdated',
 };
+
+export const BILL_STAGE_LABELS: Record<BillStage, string> = {
+  introduced: 'Introduced',
+  committee: 'In committee',
+  reported: 'Out of committee',
+  passed_house: 'Passed the House',
+  passed_senate: 'Passed the Senate',
+  passed_both: 'Passed both chambers',
+  law: 'Became law',
+  adopted: 'Adopted',
+  vetoed: 'Vetoed',
+  failed: 'Failed a vote',
+};
+
+/** How each stage is drawn: outcomes stand out, everything else is neutral. */
+export const BILL_STAGE_TONES: Record<BillStage, string> = {
+  introduced: 'none',
+  committee: 'none',
+  reported: 'running',
+  passed_house: 'advanced',
+  passed_senate: 'advanced',
+  passed_both: 'advanced',
+  law: 'won',
+  adopted: 'won',
+  vetoed: 'out',
+  failed: 'lost',
+};
+
+export const CONGRESS_CHAMBER_LABELS: Record<CongressChamber, string> = {
+  house: 'House',
+  senate: 'Senate',
+};
+
+export const ordinal = (n: number) => {
+  const v = n % 100;
+  if (v >= 11 && v <= 13) return `${n}th`;
+  return `${n}${({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th'}`;
+};
+
+/** "Sen. · Kentucky" style seat description for a Member of Congress. */
+export function seatLabel(chamber: CongressChamber, state: string, district: number | null) {
+  const name = stateNameFor(state);
+  if (chamber === 'senate') return `U.S. Senator, ${name}`;
+  if (district === 0 || district == null) return `U.S. Representative, ${name} at large`;
+  return `U.S. Representative, ${name} District ${district}`;
+}
