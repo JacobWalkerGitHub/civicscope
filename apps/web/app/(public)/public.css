@@ -2592,6 +2592,7 @@
 .public .cal-month .election-cards {
   grid-template-columns: 1fr;
   max-width: 880px;
+}
 
 /* Follow: "Get email updates" opens a one-field form under the page's buttons. */
 .public .follow > summary {
