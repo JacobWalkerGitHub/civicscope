@@ -46,3 +46,18 @@ nothing appears publicly without one ("no citation, no publish").
   owner can, so a one-person team isn't stuck, and the audit log says so.
 - An editor's change to a published entry takes it off the public site until a reviewer
   approves it. A reviewer's change stays published and is recorded as verified by them.
+
+## Addendum: promises and record
+
+- A campaign promise (a position with statement type `campaign_promise`) can have official
+  records set next to it in `promise_record_link`: a congressional bill the person
+  sponsored or cosponsored, a roll call they voted in, or a state vote they cast. The CMS
+  only offers, and only accepts, records the person is on (through their Bioguide or Open
+  States ID).
+- Each link carries a short neutral note on what the record is. CivicScope does not rate
+  promises as kept or broken, by design: the same standard for every party, and no verdict
+  that a reviewer would have to defend as fact.
+- Links are part of the promise's content. Adding or removing one follows the same rules
+  as editing it (`reviewAfterEdit`): an editor's change takes a published promise down until
+  a reviewer approves it. Links show publicly only while the promise and the record are both
+  public.

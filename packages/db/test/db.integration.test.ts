@@ -86,6 +86,7 @@ describe('migrations', () => {
       'person',
       'person_identifier',
       'person_photo',
+      'promise_record_link',
       'race',
       'result_area',
       'result_candidate',

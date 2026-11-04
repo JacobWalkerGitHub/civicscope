@@ -2520,6 +2520,77 @@
   font-size: 1.05rem;
 }
 
+/* Promises and record: a promise in the candidate's words beside linked votes and bills. */
+.public .promise-list {
+  display: grid;
+  gap: 16px;
+}
+
+.public .promise-pair {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+@media (min-width: 900px) {
+  .public .promise-pair {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+.public .promise-said .entry {
+  margin: 0;
+}
+
+.public .promise-col-label {
+  margin: 0 0 6px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.public .promise-record ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.public .promise-record li {
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+
+.public .promise-record p {
+  margin: 0;
+}
+
+.public .promise-record-meta {
+  margin-top: 4px !important;
+  font-size: 0.9375rem;
+  color: var(--ink-soft);
+}
+
+.public .promise-note {
+  margin-top: 6px !important;
+  font-size: 0.9375rem;
+}
+
+/* Wide tables (vote lists) scroll inside their own box on phones, not the whole page. */
+.public .table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
 /* Election calendar: one card per election, its key dates listed inside. */
 .public .cal-month {
   margin-top: 28px;

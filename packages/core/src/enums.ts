@@ -292,3 +292,11 @@ export const RESULT_GROUPS = [
   'local',
 ] as const;
 export type ResultGroup = (typeof RESULT_GROUPS)[number];
+
+/**
+ * Official records an editor can set next to a campaign promise: a bill in Congress the
+ * person sponsored or cosponsored, a congressional roll call they voted in, or a state
+ * legislative vote they cast. CivicScope never rates a promise as kept or broken.
+ */
+export const PROMISE_RECORD_TYPES = ['bill', 'vote', 'state_vote'] as const;
+export type PromiseRecordType = (typeof PROMISE_RECORD_TYPES)[number];
