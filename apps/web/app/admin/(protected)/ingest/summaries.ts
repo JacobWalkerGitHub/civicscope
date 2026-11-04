@@ -3,7 +3,6 @@ import type {
   CrosswalkSummary,
   FecRunSummary,
   FecTotalsSummary,
-  FeedReadSummary,
   OpenStatesSummary,
 } from '@civicscope/cms';
 import type { IngestSource } from '@civicscope/core';
@@ -62,8 +61,9 @@ export function runResult(source: IngestSource, summary: unknown): string {
         .join(', ');
     }
     case 'state_results':
-      return (summary as FeedReadSummary[])
-        .map((f) => `${f.state} ${f.outcome}${f.error ? `: ${f.error}` : ''}`)
+      // Live results were removed; old runs still list here.
+      return (summary as { state: string; outcome: string }[])
+        .map((f) => `${f.state} ${f.outcome}`)
         .join('; ');
     case 'fec_totals': {
       const s = summary as FecTotalsSummary;

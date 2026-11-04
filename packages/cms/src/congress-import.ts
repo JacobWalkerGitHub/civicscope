@@ -1,18 +1,22 @@
-import { and, count, desc, eq, inArray, notInArray, sql } from 'drizzle-orm';
+import { and, count, desc, eq, inArray, isNull, notInArray, sql } from 'drizzle-orm';
 import type { MySqlColumn } from 'drizzle-orm/mysql-core';
 import type { z } from 'zod';
 import {
   billLabel,
+  billStage,
   bioguideUrl,
   CONGRESS_API_BASE,
   congressBillDetailSchema,
   congressBillPageSchema,
+  congressBillSummariesSchema,
+  congressBillTextSchema,
   congressCosponsorPageSchema,
   congressGovBillUrl,
   congressMemberPageSchema,
   congressYears,
   houseVoteMembersSchema,
   houseVotePageSchema,
+  htmlToPlainText,
   legislatorFileSchema,
   LEGISLATORS_BASE,
   parseSenateDateTime,
@@ -460,7 +464,11 @@ export async function runCongressImport(
         }
         for (const t of terms) {
           const before = existing.get(`${m.bioguideId}:${t.chamber}`);
-          if (before && before.sourceUpdatedAt === (m.updateDate ?? '')) {
+          if (
+            before &&
+            before.sourceUpdatedAt === (m.updateDate ?? '') &&
+            before.memberName === m.name.slice(0, 200)
+          ) {
             summary.members.unchanged++;
             continue;
           }
@@ -489,6 +497,7 @@ export async function runCongressImport(
                 state,
                 district: t.chamber === 'house' ? (m.district ?? 0) : null,
                 partyName: m.partyName ?? null,
+                memberName: m.name.slice(0, 200),
                 startYear: t.startYear,
                 endYear: t.endYear,
                 sourceId,
@@ -504,6 +513,7 @@ export async function runCongressImport(
   }
 
   async function importBills() {
+    await backfillStages();
     const existing = new Map(
       (await db.select().from(bill).where(eq(bill.congress, congress))).map(
         (r) => [`${r.billType}:${r.number}`, r] as const,
@@ -522,7 +532,8 @@ export async function runCongressImport(
         summary.bills.listed++;
         const number = Number(b.number);
         const before = existing.get(`${b.type}:${number}`);
-        if (before && billUpToDate(before, b.updateDate)) {
+        // Bills stored before summaries and text were read are read once more.
+        if (before && before.extrasCheckedAt && billUpToDate(before, b.updateDate)) {
           summary.bills.unchanged++;
           continue;
         }
@@ -537,6 +548,26 @@ export async function runCongressImport(
         const [row] = await db.select().from(bill).where(eq(bill.id, id));
         existing.set(`${b.type}:${number}`, row!);
       }
+    }
+  }
+
+  /**
+   * Gives bills stored before stages existed their stage, from the latest action already
+   * stored. Derived, like the stage itself, so it is not recorded as an edit.
+   */
+  async function backfillStages() {
+    const rows = await db
+      .select({ id: bill.id, billType: bill.billType, latestActionText: bill.latestActionText })
+      .from(bill)
+      .where(and(eq(bill.congress, congress), isNull(bill.stage)));
+    for (const r of rows) {
+      await db
+        .update(bill)
+        .set({
+          stage: billStage(r.billType, r.latestActionText),
+          updatedAt: sql`${bill.updatedAt}`,
+        })
+        .where(eq(bill.id, r.id));
     }
   }
 
@@ -560,6 +591,55 @@ export async function runCongressImport(
         cosponsors.push(...page.cosponsors);
       }
     }
+    let crs: { text: string; version: string | null; date: string | null } | null = null;
+    if ((d.summaries?.count ?? 0) > 0) {
+      const { summaries } = await api.get(
+        `/v3/bill/${congress}/${type}/${number}/summaries`,
+        {},
+        congressBillSummariesSchema,
+        `${label} summaries`,
+      );
+      // The summary of the latest version of the bill.
+      const latest = [...summaries].sort((a, b) =>
+        `${a.actionDate ?? ''}${a.updateDate ?? ''}`.localeCompare(
+          `${b.actionDate ?? ''}${b.updateDate ?? ''}`,
+        ),
+      )[summaries.length - 1];
+      const text = latest ? htmlToPlainText(latest.text) : null;
+      if (latest && text) {
+        crs = {
+          text: text.slice(0, 60_000),
+          version: latest.actionDesc?.slice(0, 200) ?? null,
+          date: latest.actionDate ?? null,
+        };
+      }
+    }
+    let printed: { url: string; version: string | null; date: string | null } | null = null;
+    if ((d.textVersions?.count ?? 0) > 0) {
+      const { textVersions } = await api.get(
+        `/v3/bill/${congress}/${type}/${number}/text`,
+        {},
+        congressBillTextSchema,
+        `${label} text`,
+      );
+      const latest = [...textVersions]
+        .filter((v) => v.formats.length > 0)
+        .sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''))
+        .at(-1);
+      const format =
+        latest?.formats.find((f) => f.type === 'Formatted Text') ??
+        latest?.formats.find((f) => f.type === 'PDF') ??
+        latest?.formats[0];
+      if (latest && format && format.url.length <= 1000) {
+        printed = {
+          url: format.url,
+          version: latest.type?.slice(0, 200) ?? null,
+          date:
+            latest.date && /^\d{4}-\d{2}-\d{2}/.test(latest.date) ? latest.date.slice(0, 10) : null,
+        };
+      }
+    }
+
     const rows = new Map<string, typeof billSponsorship.$inferInsert>();
     for (const s of d.sponsors ?? []) {
       see(s.bioguideId, s.fullName, s.state);
@@ -616,6 +696,13 @@ export async function runCongressImport(
           policyArea: d.policyArea?.name ?? null,
           latestActionOn: d.latestAction?.actionDate ?? null,
           latestActionText: d.latestAction?.text?.slice(0, 2000) ?? null,
+          stage: billStage(type, d.latestAction?.text, { becameLaw: (d.laws?.length ?? 0) > 0 }),
+          summary: crs?.text ?? null,
+          summaryVersion: crs?.version ?? null,
+          summaryDate: crs?.date ?? null,
+          textUrl: printed?.url ?? null,
+          textVersion: printed?.version ?? null,
+          textDate: printed?.date ?? null,
           sourceId,
           sourceUpdatedAt: d.updateDate,
         },
@@ -626,7 +713,11 @@ export async function runCongressImport(
       // Bookkeeping only: keep updated_at as the time the bill's data last changed.
       await tx
         .update(bill)
-        .set({ sourceCheckedAt: checkedAt, updatedAt: sql`${bill.updatedAt}` })
+        .set({
+          sourceCheckedAt: checkedAt,
+          extrasCheckedAt: checkedAt,
+          updatedAt: sql`${bill.updatedAt}`,
+        })
         .where(eq(bill.id, r.id));
       return { ...r, sponsorships };
     });

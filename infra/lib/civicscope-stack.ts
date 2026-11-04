@@ -500,10 +500,6 @@ export class CivicScopeStack extends Stack {
     // State legislative votes. About 300 spaced-out requests, so it runs for under an hour.
     schedule('OpenStatesDaily', { hour: '12', minute: '0' }, ['ingest:openstates']);
     schedule('IngestCheckHourly', { minute: '30' }, ['check:ingest', '--hours', '1']);
-    // Live election-night results. Exits at once on days with no live results file
-    // (packages/cms/src/results/feeds.ts), so the cost outside election weeks is a
-    // few seconds of a small task.
-    schedule('ResultsEvery5Min', { minute: '0/5' }, ['ingest:results']);
 
     // ---------------------------------------------------------------- alarms
     // 1. Any alert the code raises (packages/cms/src/alerts.ts) in a worker's logs.

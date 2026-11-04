@@ -1,3 +1,4 @@
+import { AutoName } from '@/components/admin/auto-name';
 import { ActionForm, CheckboxField, SelectField, TextField } from '@/components/admin/form';
 import type { FormState } from '@/lib/admin-action';
 import { RACE_STATUS_LABELS, options } from '@/lib/labels';
@@ -20,6 +21,8 @@ export function RaceForm({
   partyRule,
   race,
   submitLabel,
+  resetOnSave,
+  savedMessage,
 }: {
   action: (state: FormState, formData: FormData) => Promise<FormState>;
   offices: { id: number; title: string; jurisdictionName: string }[];
@@ -28,9 +31,17 @@ export function RaceForm({
   partyRule: 'required' | 'forbidden';
   race?: RaceValues;
   submitLabel: string;
+  resetOnSave?: boolean;
+  savedMessage?: string;
 }) {
   return (
-    <ActionForm action={action} submitLabel={submitLabel}>
+    <ActionForm
+      action={action}
+      submitLabel={submitLabel}
+      resetOnSave={resetOnSave}
+      savedMessage={savedMessage}
+    >
+      {!race && <AutoName kind="race" />}
       <SelectField
         name="officeId"
         label="Office"
@@ -66,7 +77,11 @@ export function RaceForm({
         name="name"
         label="Race name"
         defaultValue={race?.name}
-        hint='As shown publicly, e.g. "Governor" or "House of Delegates, District 7".'
+        hint={
+          race
+            ? 'As shown publicly, e.g. "Governor" or "House of Delegates, District 7".'
+            : 'Filled in from the office and district. Change it if you like.'
+        }
         required
       />
       <TextField name="seats" label="Seats to fill" type="number" defaultValue={race?.seats ?? 1} />

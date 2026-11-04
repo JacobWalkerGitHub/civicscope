@@ -359,6 +359,7 @@ export async function listRaces(db: Db, electionId: number) {
       officeTitle: office.title,
       partyName: party.name,
       districtLabel: district.label,
+      candidateCount: sql<number>`(select count(*) from ${candidacy} where ${candidacy.raceId} = ${race.id} and ${candidacy.deletedAt} is null)`,
     })
     .from(race)
     .innerJoin(office, eq(race.officeId, office.id))

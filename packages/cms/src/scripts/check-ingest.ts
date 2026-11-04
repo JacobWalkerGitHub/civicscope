@@ -25,7 +25,7 @@ await runCli(async () => {
       since: new Date(Date.now() - hours * 3_600_000),
       stuckAfterHours,
     });
-    // A source that runs every few minutes (live results) can fail many times in an
+    // A source that runs often can fail many times in an
     // hour: one alert per source and kind, naming the latest run, is enough.
     const latest = new Map<string, (typeof problems)[number] & { count: number }>();
     for (const p of problems) {

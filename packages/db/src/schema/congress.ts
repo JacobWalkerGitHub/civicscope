@@ -9,10 +9,11 @@ import {
   mysqlEnum,
   mysqlTable,
   smallint,
+  text,
   uniqueIndex,
   varchar,
 } from 'drizzle-orm/mysql-core';
-import { BILL_TYPES, CONGRESS_CHAMBERS, SPONSORSHIP_ROLES } from '@civicscope/core';
+import { BILL_STAGES, BILL_TYPES, CONGRESS_CHAMBERS, SPONSORSHIP_ROLES } from '@civicscope/core';
 import { publishable, timestamps } from './columns';
 import { source } from './sources';
 
@@ -41,6 +42,8 @@ export const congressMembership = mysqlTable(
     /** House only; 0 for an at-large seat. */
     district: smallint('district'),
     partyName: varchar('party_name', { length: 100 }),
+    /** As Congress.gov lists it, "Last, First". */
+    memberName: varchar('member_name', { length: 200 }),
     startYear: smallint('start_year').notNull(),
     endYear: smallint('end_year'),
     sourceId: int('source_id')
@@ -68,10 +71,26 @@ export const bill = mysqlTable(
     policyArea: varchar('policy_area', { length: 200 }),
     latestActionOn: date('latest_action_on', { mode: 'string' }),
     latestActionText: varchar('latest_action_text', { length: 2000 }),
+    /** Worked out from the latest action (see billStage); a label, not a record. */
+    stage: mysqlEnum('stage', BILL_STAGES),
+    /** The latest Congressional Research Service summary, as plain text. */
+    summary: text('summary'),
+    /** Which version of the bill the summary describes, e.g. "Introduced in House". */
+    summaryVersion: varchar('summary_version', { length: 200 }),
+    summaryDate: date('summary_date', { mode: 'string' }),
+    /** The latest printed text: Congress.gov's formatted text, or its PDF. */
+    textUrl: varchar('text_url', { length: 1000 }),
+    textVersion: varchar('text_version', { length: 200 }),
+    textDate: date('text_date', { mode: 'string' }),
     sourceId: int('source_id')
       .notNull()
       .references(() => source.id),
     sourceUpdatedAt,
+    /**
+     * When summaries and text were last read. Null for bills imported before they were,
+     * so the next run reads them. Bookkeeping: not audited.
+     */
+    extrasCheckedAt: datetime('extras_checked_at', { mode: 'date', fsp: 3 }),
     /**
      * When the importer last fetched this bill's detail. The bill list gives only a
      * date, not the detail's timestamp, so this is how a re-run knows the stored record
@@ -81,7 +100,11 @@ export const bill = mysqlTable(
     ...publishable,
     ...timestamps,
   },
-  (t) => [uniqueIndex('bill_uq').on(t.congress, t.billType, t.number)],
+  (t) => [
+    uniqueIndex('bill_uq').on(t.congress, t.billType, t.number),
+    index('bill_stage_idx').on(t.stage, t.latestActionOn),
+    index('bill_latest_action_idx').on(t.latestActionOn),
+  ],
 );
 
 /** A member's sponsorship or cosponsorship of a bill, as Congress.gov lists it. */

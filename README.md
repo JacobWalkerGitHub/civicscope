@@ -57,5 +57,13 @@ infra             AWS CDK app and deploy runbook (see infra/README.md)
 
 See `docs/adr/0001-foundation-choices.md` for why things are the way they are.
 
+Public sections: Elections, Politicians (`/politicians` lists Members of Congress in office,
+`/politicians/<bioguide>` their bills and votes, `/politicians/candidates` every candidate in
+every election with won/lost filters), Bills (`/bills`, with a page per bill at
+`/bills/<congress>/<type>/<number>`), Issues and My ballot. Bill summaries are the Congressional
+Research Service's; a bill's status label is worked out from its latest action (see
+`billStage` in `packages/core/src/congress.ts`). Live election-night results were removed; their
+database tables are kept, unused, until a later migration drops them.
+
 Public pages include `/search` (candidates, races, issues and entry text), `/issues`, and a
 side-by-side comparison for each race at `/races/<id>/compare` (see ADR 0009).

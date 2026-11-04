@@ -53,7 +53,8 @@ test('drafts can be previewed by admins but are not public', async ({ page }) =>
   await expect(page.getByRole('heading', { name: '2027 E2E Public Election' })).toBeVisible();
   electionUrl = page.url().split('?')[0]!;
 
-  await page.getByText('Add a race').click();
+  // Opens on its own while the election has no races.
+  await expect(page.locator('details', { hasText: 'Add a race' })).toHaveAttribute('open', '');
   await page.getByLabel('Office').selectOption({ label: 'E2E Public Treasurer (Kentucky)' });
   await page.getByLabel('Race name').fill('E2E Public Treasurer');
   await page.getByRole('button', { name: 'Add race' }).click();
@@ -206,21 +207,28 @@ test('an uploaded photo shows on the profile with its credit', async ({ page }) 
 
 test('the candidate directory searches and filters', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('navigation').getByRole('link', { name: 'Candidates' }).click();
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Candidates');
+  await page
+    .getByRole('navigation', { name: 'Main' })
+    .getByRole('link', { name: 'Politicians' })
+    .click();
+  await page
+    .getByRole('navigation', { name: 'Politicians' })
+    .getByRole('link', { name: 'Candidates' })
+    .click();
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Politicians');
   await expect(page.getByRole('link', { name: NAME })).toBeVisible();
   await expectNoSeriousA11yIssues(page);
 
   await page.getByLabel('Name').fill('dana e2e');
   await page.getByLabel('State').selectOption({ label: 'Kentucky' });
   await page.getByLabel('Level').selectOption({ label: 'State' });
-  await page.getByRole('button', { name: 'Search' }).click();
+  await page.getByRole('button', { name: 'Apply' }).click();
   await expect(page).toHaveURL(/q=dana/);
   await expect(page.getByRole('status')).toContainText('1 candidacy');
   await expect(page.getByRole('link', { name: NAME })).toBeVisible();
 
   await page.getByLabel('Level').selectOption({ label: 'Federal' });
-  await page.getByRole('button', { name: 'Search' }).click();
+  await page.getByRole('button', { name: 'Apply' }).click();
   await expect(page.getByRole('status')).toHaveText('No candidates match.');
 
   // Drafts never show up, even by exact name.
@@ -229,11 +237,10 @@ test('the candidate directory searches and filters', async ({ page }) => {
 });
 
 test('search, comparison and issue pages show public records with sources', async ({ page }) => {
+  // The search box in the header leads to the search page.
   await page.goto('/');
-  await page
-    .getByRole('navigation', { name: 'Main' })
-    .getByRole('link', { name: 'Search' })
-    .click();
+  await page.getByLabel('Search CivicScope').fill('dana e2e');
+  await page.getByLabel('Search CivicScope').press('Enter');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Search');
   await page.getByLabel('Name, office, state, district or issue').fill('dana e2e');
   await page.getByRole('button', { name: 'Search' }).click();

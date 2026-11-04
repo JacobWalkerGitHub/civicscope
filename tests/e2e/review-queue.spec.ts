@@ -18,7 +18,8 @@ async function press(page: Page, name: string) {
 
 async function openDetails(page: Page, summary: string): Promise<Locator> {
   const details = page.locator('details', { has: page.getByText(summary, { exact: true }) });
-  await details.getByText(summary, { exact: true }).click();
+  // Some open on their own (an empty list shows its "add" form); clicking would close them.
+  await details.evaluate((d) => d.setAttribute('open', ''));
   return details;
 }
 

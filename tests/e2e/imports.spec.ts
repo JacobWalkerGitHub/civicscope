@@ -61,7 +61,8 @@ test('the owner sets up a race to import into', async ({ page }) => {
   await page.getByRole('button', { name: 'Create election' }).click();
   await expect(page.getByRole('heading', { name: '2027 E2E Import Election' })).toBeVisible();
 
-  await page.getByText('Add a race').click();
+  // Opens on its own while the election has no races.
+  await expect(page.locator('details', { hasText: 'Add a race' })).toHaveAttribute('open', '');
   await page.getByLabel('Office').selectOption({ label: 'E2E Import Commissioner (Kentucky)' });
   await page.getByLabel('Race name').fill('E2E Import Race');
   await page.getByRole('button', { name: 'Add race' }).click();

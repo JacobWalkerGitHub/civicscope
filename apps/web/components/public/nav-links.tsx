@@ -4,26 +4,22 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const LINKS = [
-  { href: '/results', label: 'Results' },
-  { href: '/ballot', label: 'My ballot' },
-  { href: '/', label: 'Upcoming races' },
-  { href: '/candidates', label: 'Candidates' },
-  { href: '/issues', label: 'Issues' },
-  { href: '/elections', label: 'Calendar' },
-  { href: '/coverage', label: 'Coverage' },
-  { href: '/methodology', label: 'How we work' },
-  { href: '/search', label: 'Search' },
+  { href: '/elections', label: 'Elections', also: ['/races'] },
+  { href: '/politicians', label: 'Politicians', also: ['/candidates'] },
+  { href: '/bills', label: 'Bills', also: [] },
+  { href: '/issues', label: 'Issues', also: [] },
+  { href: '/ballot', label: 'My ballot', also: [] },
 ] as const;
 
 /** The main navigation, marking the section the visitor is in. */
 export function NavLinks() {
   const path = usePathname() ?? '/';
-  const current = (href: string) =>
-    href === '/' ? path === '/' || path.startsWith('/races') : path.startsWith(href);
+  const current = (l: (typeof LINKS)[number]) =>
+    [l.href, ...l.also].some((h) => path === h || path.startsWith(`${h}/`));
   return (
     <nav aria-label="Main" className="site-nav">
       {LINKS.map((l) => (
-        <Link key={l.href} href={l.href} aria-current={current(l.href) ? 'page' : undefined}>
+        <Link key={l.href} href={l.href} aria-current={current(l) ? 'page' : undefined}>
           {l.label}
         </Link>
       ))}
