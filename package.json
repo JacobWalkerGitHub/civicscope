@@ -23,6 +23,7 @@
     "ingest:congress": "tsx packages/cms/src/scripts/ingest-congress.ts",
     "check:congress-votes": "tsx packages/cms/src/scripts/spot-check-congress.ts",
     "check:ingest": "tsx packages/cms/src/scripts/check-ingest.ts",
+    "alerts:send": "tsx packages/cms/src/scripts/send-follow-alerts.ts",
     "ingest:openstates": "tsx packages/cms/src/scripts/ingest-openstates.ts",
     "ingest:state-officials": "tsx packages/cms/src/scripts/ingest-state-officials.ts",
     "dev": "pnpm --filter @civicscope/web dev",

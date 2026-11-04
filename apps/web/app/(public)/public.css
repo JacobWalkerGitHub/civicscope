@@ -2665,6 +2665,72 @@
   max-width: 880px;
 }
 
+/* Follow: "Get email updates" opens a one-field form under the page's buttons. */
+.public .follow > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.public .follow > summary::-webkit-details-marker {
+  display: none;
+}
+
+.public .follow[open] {
+  flex-basis: 100%;
+}
+
+.public .follow[open] > summary {
+  background: var(--surface-2);
+}
+
+.public .follow-panel {
+  max-width: 460px;
+  margin-top: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.public .follow-panel p {
+  margin: 0 0 10px;
+}
+
+.public .follow-panel label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.public .follow-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.public .follow-row input {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.public .follow-panel .field-error {
+  margin: -4px 0 10px;
+}
+
+.public .alerts-page form {
+  margin: 16px 0;
+}
+
+.public .alerts-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 /* In-page links between long sections, such as the Senate and House lists. */
 .public .jump-links {
   display: flex;

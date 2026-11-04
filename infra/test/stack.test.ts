@@ -123,4 +123,46 @@ describe('paused deploy', () => {
       if (rule.Properties.ScheduleExpression) expect(rule.Properties.State).toBe('DISABLED');
     }
   });
+
+  it('sends follow alerts only when a sender address is set, and only from it', () => {
+    const withAlerts = Template.fromStack(
+      new CivicScopeStack(new App(), 'Alerts', {
+        imageTag: 'test',
+        multiAz: false,
+        fecCycle: 2028,
+        congress: 119,
+        alertsFromEmail: 'alerts@example.org',
+      }),
+    );
+    withAlerts.hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: {
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: 'ses:SendEmail',
+            Condition: { StringEquals: { 'ses:FromAddress': 'alerts@example.org' } },
+          }),
+        ]),
+      },
+    });
+    withAlerts.hasResourceProperties('AWS::Events::Rule', {
+      ScheduleExpression: 'cron(0 15 * * ? *)',
+    });
+    withAlerts.hasResourceProperties('AWS::ECS::TaskDefinition', {
+      ContainerDefinitions: [
+        Match.objectLike({
+          Name: 'web',
+          Environment: Match.arrayWith([
+            { Name: 'ALERTS_FROM_EMAIL', Value: 'alerts@example.org' },
+          ]),
+        }),
+      ],
+    });
+    // The default stack has no sender: no schedule, and nothing may send email.
+    template.resourcePropertiesCountIs(
+      'AWS::Events::Rule',
+      { ScheduleExpression: 'cron(0 15 * * ? *)' },
+      0,
+    );
+    expect(JSON.stringify(template.toJSON())).not.toContain('ses:SendEmail');
+  });
 });

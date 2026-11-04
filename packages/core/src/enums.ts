@@ -293,6 +293,10 @@ export const RESULT_GROUPS = [
 ] as const;
 export type ResultGroup = (typeof RESULT_GROUPS)[number];
 
+/** What a reader can follow for email alerts. */
+export const FOLLOW_KINDS = ['member', 'bill'] as const;
+export type FollowKind = (typeof FOLLOW_KINDS)[number];
+
 /**
  * Official records an editor can set next to a campaign promise: a bill in Congress the
  * person sponsored or cosponsored, a congressional roll call they voted in, or a state

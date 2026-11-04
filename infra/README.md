@@ -8,7 +8,7 @@ The AWS CDK app in this folder creates everything CivicScope needs in `us-east-1
 | Database         | RDS MySQL 8.4, `db.t4g.small`, encrypted, TLS required, Multi-AZ (`multiAz` context), 14 days of point-in-time backups, plus a monthly AWS Backup copy kept for a year. Deletion protection is on    |
 | Site             | Next.js on ECS Fargate (2 to 6 tasks), behind a **private** load balancer that only CloudFront can reach (VPC origin)                                                                                |
 | CDN and firewall | CloudFront with AWS WAF: Amazon IP reputation, common rules, known bad inputs, SQL injection, and per-IP rate limits (sign-in 100, search 600, everything 3,000 per 5 minutes)                       |
-| Jobs             | The worker image runs on a schedule: FEC daily, Congress daily, legislators weekly, and an hourly check for failed or stuck ingests                                                                  |
+| Jobs             | The worker image runs on a schedule: FEC daily, Congress daily, legislators weekly, an hourly check for failed or stuck ingests, and daily follow alerts (once turned on)                            |
 | Alarms           | One SNS topic (emailed to `alertEmail`): an ingest alert in the logs, a worker task that exits with an error, site 5xx errors, an unhealthy web task, high web or database CPU, low database storage |
 | Secrets          | Secrets Manager: the database owner, the least-privilege app account, and an app secret for keys                                                                                                     |
 
@@ -99,6 +99,37 @@ One-time setup:
    reviewer if you want to approve each deploy before it runs.
 
 Deploying from a Mac with `infra/deploy.sh` keeps working as before.
+
+## Email alerts for followers
+
+Readers can follow a Member of Congress or a bill and get an email when something new is
+recorded. Emails go through Amazon SES. Until the steps below are done, the feature is off
+and the **Get email updates** buttons are hidden, so merging the code changes nothing.
+
+1. **Verify the sending domain in SES.** In the AWS console (us-east-1), open **Amazon SES →
+   Identities → Create identity → Domain**, enter the site's domain (e.g. `civicscope.org`)
+   and keep **Easy DKIM** on. Add the DNS records it shows at your domain registrar (or
+   let it add them, if the domain is in Route 53). Wait for the identity to show
+   **Verified** (minutes to a few hours). Optional but recommended: set a **custom MAIL FROM
+   domain** (e.g. `mail.civicscope.org`) on the same page, and add a DMARC record
+   (`_dmarc` TXT, `v=DMARC1; p=none;`) so mail providers trust the emails.
+2. **Leave the SES sandbox.** New accounts can only email addresses they have verified.
+   Open **SES → Account dashboard → Request production access**: mail type
+   _Transactional_, website the site's address, and describe the use: "Readers opt in
+   with double opt-in to follow a politician or bill; at most one email a day; every
+   email has one-click unsubscribe; bounces and complaints are monitored." AWS usually
+   answers within a day. Until then, you can test with an address you verify under
+   **Identities**.
+3. **Turn it on.** On GitHub, under **Settings → Secrets and variables → Actions →
+   Variables**, add `CIVICSCOPE_ALERTS_FROM_EMAIL` with the sending address (e.g.
+   `alerts@civicscope.org`; any address at the verified domain, no mailbox needed). For
+   deploys from a Mac, add `"civicscope:alertsFromEmail": "alerts@civicscope.org"` to
+   `~/.cdk.json`. Then redeploy (**Actions → Deploy → Run workflow**).
+
+The deploy gives the web tasks and the `FollowAlertsDaily` job (15:00 UTC, after the
+imports) permission to send from that one address only, and sets `SITE_URL` for the links.
+Run it by hand with `./run-task.sh admin alerts:send`. The emails' links are signed with
+`AUTH_ENCRYPTION_KEY`, so changing that key retires the links in emails already sent.
 
 ## Backup restore drill
 

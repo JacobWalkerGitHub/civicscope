@@ -14,4 +14,6 @@ export * from './results';
 export * from './state-votes';
 export * from './fec-totals';
 export * from './state-officials';
+export * from './follows';
+
 export * from './promises';
