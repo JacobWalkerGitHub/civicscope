@@ -4,25 +4,43 @@
  */
 
 .public {
-  --radius: 12px;
-  --shadow: 0 1px 2px rgb(16 24 40 / 6%), 0 1px 3px rgb(16 24 40 / 8%);
-  --accent-soft: #e3f2f1;
-  --ink-soft: #3a4357;
-  --hero-from: #0f6e6e;
-  --hero-to: #134e6f;
+  /* Election-night palette: navy and a flag red, on warm newsprint. Red is only ever an
+     accent (stripes, countdowns), never a party signal: candidates carry no party color. */
+  --navy: #0b2545;
+  --navy-2: #13315c;
+  --red: #b3202c;
+  --accent: #1d4e89;
+  --page: #f5f3ee;
+  --surface: #ffffff;
+  --line: #ddd8cc;
+  --radius: 6px;
+  --shadow: 0 1px 0 rgb(11 37 69 / 8%), 0 2px 6px rgb(11 37 69 / 6%);
+  --accent-soft: #e7edf5;
+  --ink-soft: #33405a;
+  --hero-from: #0b2545;
+  --hero-to: #13315c;
+  --display: Georgia, 'Times New Roman', 'Source Serif Pro', serif;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   font-size: 1.0625rem;
+  background: var(--page);
 }
 
 @media (prefers-color-scheme: dark) {
   .public {
-    --accent-soft: #163435;
+    --navy: #0a1a30;
+    --navy-2: #102542;
+    --red: #e05a63;
+    --accent: #8fb4e8;
+    --page: #10151d;
+    --surface: #171e29;
+    --line: #2c3646;
+    --accent-soft: #1a2a42;
     --ink-soft: #c9cfda;
     --shadow: 0 1px 2px rgb(0 0 0 / 40%);
-    --hero-from: #0d4f50;
-    --hero-to: #12324a;
+    --hero-from: #0a1a30;
+    --hero-to: #143058;
   }
 }
 
@@ -614,4 +632,697 @@
 
 .public table td:first-child {
   white-space: nowrap;
+}
+
+/* ================================================================ election theme */
+
+.public h1,
+.public h2,
+.public .election-card-head h3,
+.public .hero-stats dd,
+.public .brand span,
+.public .footer-brand {
+  font-family: var(--display);
+  letter-spacing: -0.01em;
+}
+
+.public h2 {
+  font-size: 1.5rem;
+}
+
+/* Header: a thin flag stripe over a navy bar. */
+.public .site-header {
+  background: var(--navy);
+  border-bottom: 0;
+  border-top: 4px solid var(--red);
+  box-shadow: inset 0 3px 0 #fff;
+  backdrop-filter: none;
+}
+
+.public .brand,
+.public .brand:hover {
+  color: #fff;
+}
+
+.public .brand span {
+  font-weight: 700;
+  font-size: 1.3rem;
+}
+
+.public .brand-mark rect {
+  fill: #fff;
+}
+
+.public .brand-mark path {
+  stroke: var(--red);
+}
+
+.public .site-nav a {
+  color: rgb(255 255 255 / 82%);
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.public .site-nav a:hover {
+  background: rgb(255 255 255 / 10%);
+  color: #fff;
+}
+
+.public .site-nav a[aria-current='page'] {
+  background: transparent;
+  color: #fff;
+  box-shadow: inset 0 -3px 0 var(--red);
+  border-radius: 0;
+}
+
+/* Hero: navy with a faint field of stars and a red rule. */
+.public .hero {
+  border-radius: var(--radius);
+  border-bottom: 6px solid var(--red);
+  background:
+    radial-gradient(circle, rgb(255 255 255 / 13%) 1.2px, transparent 1.6px) 0 0 / 22px 22px,
+    linear-gradient(120deg, var(--hero-from) 55%, var(--hero-to));
+}
+
+.public .hero .eyebrow {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 2px;
+  background: var(--red);
+  color: #fff;
+  opacity: 1;
+  letter-spacing: 0.12em;
+}
+
+.public .hero h1 {
+  font-size: clamp(2rem, 1.3rem + 2.6vw, 3.1rem);
+  max-width: 22ch;
+}
+
+.public .hero-search {
+  border-radius: 4px;
+}
+
+.public .hero-search button {
+  border-radius: 3px;
+  background: var(--red);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.9rem;
+}
+
+.public .hero-stats {
+  gap: 0;
+  border-top: 1px solid rgb(255 255 255 / 20%);
+  padding-top: 20px;
+}
+
+.public .hero-stats div {
+  padding: 0 28px;
+  border-left: 1px solid rgb(255 255 255 / 20%);
+}
+
+.public .hero-stats div:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.public .hero-stats dt {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.72rem;
+}
+
+.public .hero-stats dd {
+  font-size: 2.2rem;
+}
+
+@media (max-width: 560px) {
+  .public .hero-stats div {
+    padding: 0 16px;
+  }
+  .public .hero-stats dd {
+    font-size: 1.7rem;
+  }
+}
+
+/* Section headings read like a newspaper section rule. */
+.public .section-heading {
+  padding-bottom: 8px;
+  border-bottom: 3px solid var(--navy);
+}
+
+.public .section-heading h2 {
+  text-transform: uppercase;
+  font-size: 1.15rem;
+  letter-spacing: 0.06em;
+  font-family: inherit;
+  font-weight: 800;
+}
+
+/* Election cards look like ballots: a navy header band over a white sheet. */
+.public .election-card {
+  padding: 0;
+  overflow: hidden;
+  border-top: 0;
+}
+
+.public .election-card-head {
+  margin: 0;
+  padding: 14px 18px;
+  background: var(--navy);
+  color: #fff;
+}
+
+.public .election-card-head h3 a,
+.public .election-card-head h3 a:hover {
+  color: #fff;
+}
+
+.public .election-card-head .muted {
+  color: rgb(255 255 255 / 78%);
+}
+
+.public .election-card .pill {
+  background: var(--red);
+  border-color: var(--red);
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.7rem;
+}
+
+.public .date-tile {
+  background: #fff;
+  color: var(--navy);
+  border-radius: 4px;
+  overflow: hidden;
+  padding: 0 0 4px;
+}
+
+.public .date-tile-month {
+  display: block;
+  width: 100%;
+  margin-bottom: 2px;
+  padding: 2px 0;
+  background: var(--red);
+  color: #fff;
+  text-align: center;
+}
+
+.public .date-tile-day {
+  font-family: var(--display);
+}
+
+.public .office-rows,
+.public .race-rows,
+.public .see-all {
+  margin-left: 18px;
+  margin-right: 18px;
+}
+
+.public .office-rows li:first-child,
+.public .election-card-head + .race-rows li:first-child {
+  border-top: 0;
+}
+
+.public .see-all {
+  margin-bottom: 14px;
+}
+
+/* Ballot-style rows: a checkbox square before each race. */
+.public .race-rows li {
+  position: relative;
+  padding-left: 26px;
+}
+
+.public .race-rows li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 14px;
+  width: 13px;
+  height: 13px;
+  border: 2px solid var(--navy);
+  border-radius: 2px;
+}
+
+.public .count {
+  font-weight: 600;
+}
+
+.public .explainer {
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 6px solid var(--navy);
+}
+
+.public .candidate-list li,
+.public .candidacies li {
+  border-top: 3px solid var(--navy);
+}
+
+.public .thumb-empty,
+.public .profile-avatar {
+  background: var(--navy);
+  color: #fff;
+  font-family: var(--display);
+}
+
+.public dl.facts {
+  border-top: 3px solid var(--navy);
+}
+
+.public .site-footer {
+  background: var(--navy);
+  color: rgb(255 255 255 / 75%);
+  border-top: 4px solid var(--red);
+}
+
+.public .site-footer a,
+.public .footer-brand {
+  color: #fff;
+}
+
+.public .footer-brand .brand-mark rect {
+  fill: #fff;
+}
+
+.public .footer-brand .brand-mark path {
+  stroke: var(--red);
+}
+
+/* ------------------------------------------------------------------ live results */
+/* Map and bar shades show how much is counted, never who leads: one neutral blue ramp. */
+.public {
+  --map-none: #e4e1d8;
+  --map-r0: #d3dbe6;
+  --map-r1: #8ea7c6;
+  --map-r2: #3f6496;
+  --map-r3: #0b2545;
+}
+
+@media (prefers-color-scheme: dark) {
+  .public {
+    --map-none: #232b38;
+    --map-r0: #2f3d52;
+    --map-r1: #3f5f8a;
+    --map-r2: #6d93c7;
+    --map-r3: #b9cfee;
+  }
+}
+
+.public .live-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin: 0 0 20px;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  background: var(--red);
+  color: #fff;
+  font-weight: 700;
+}
+
+.public .live-banner a {
+  color: #fff;
+}
+
+.public .live-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: currentColor;
+  vertical-align: 0.05em;
+  animation: live-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes live-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .public .live-dot {
+    animation: none;
+  }
+}
+
+.public .auto-refresh {
+  margin: 12px 0 0;
+  font-size: 0.85rem;
+  opacity: 0.85;
+}
+
+.public .results-hero .hero-lede {
+  max-width: 62ch;
+}
+
+.public .us-map,
+.public .county-map {
+  margin: 16px 0 28px;
+}
+
+.public .us-map svg,
+.public .county-map svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.public .county-map svg {
+  max-width: 420px;
+  margin: 0 auto;
+}
+
+.public .map-state {
+  stroke: var(--surface);
+  stroke-width: 0.75;
+  stroke-linejoin: round;
+}
+
+.public .map-none {
+  fill: var(--map-none);
+}
+.public .map-r0 {
+  fill: var(--map-r0);
+  background: var(--map-r0);
+}
+.public .map-r1 {
+  fill: var(--map-r1);
+  background: var(--map-r1);
+}
+.public .map-r2 {
+  fill: var(--map-r2);
+  background: var(--map-r2);
+}
+.public .map-r3 {
+  fill: var(--map-r3);
+  background: var(--map-r3);
+}
+.public .swatch.map-none {
+  background: var(--map-none);
+}
+
+.public .map-link .map-state {
+  stroke: var(--red);
+  stroke-width: 1.5;
+  cursor: pointer;
+  transition: opacity 120ms;
+}
+
+.public .map-link:hover .map-state,
+.public .map-link:focus-visible .map-state {
+  opacity: 0.8;
+  stroke-width: 3;
+}
+
+.public .map-link:focus-visible {
+  outline: none;
+}
+
+.public .map-label {
+  font:
+    700 13px/1 system-ui,
+    sans-serif;
+  letter-spacing: 0.04em;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  fill: #fff;
+  paint-order: stroke;
+  stroke: var(--navy);
+  stroke-width: 2.5px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.public .map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 18px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.public .swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: 6px;
+  border-radius: 2px;
+  vertical-align: -2px;
+  border: 1px solid var(--line);
+}
+
+.public .state-results {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  gap: 24px;
+}
+
+.public .state-result-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin-bottom: 10px;
+  border-bottom: 3px solid var(--navy);
+}
+
+.public .state-result-head h2 {
+  margin: 0 0 6px;
+  font-family: var(--display);
+}
+
+.public .results-note {
+  margin-top: 28px;
+  font-size: 0.9rem;
+}
+
+.public .results-source {
+  margin: 16px 0;
+  font-size: 0.92rem;
+  color: var(--ink-soft);
+}
+
+.public .breadcrumb {
+  margin-bottom: 12px;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+
+.public .group-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 24px;
+}
+
+.public .group-nav a {
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.public .result-group {
+  margin-bottom: 28px;
+  scroll-margin-top: 16px;
+}
+
+.public .result-group summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.public .result-group summary::-webkit-details-marker {
+  display: none;
+}
+
+.public .result-group summary h2::before {
+  content: '▸ ';
+  color: var(--red);
+}
+
+.public .result-group details[open] summary h2::before {
+  content: '▾ ';
+}
+
+.public .contest-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.public .contest {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.public .contest-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--navy);
+  color: #fff;
+}
+
+.public .contest-name {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 1.05rem;
+  line-height: 1.25;
+}
+
+h2.contest-name {
+  font-size: 1.4rem;
+}
+
+.public .contest-head .pill {
+  background: rgb(255 255 255 / 15%);
+  color: #fff;
+  white-space: nowrap;
+}
+
+.public .contest-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.public .contest-table thead th {
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  text-align: left;
+}
+
+.public .contest-table tbody th,
+.public .contest-table td {
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  font-weight: 400;
+  vertical-align: top;
+}
+
+.public .contest-table.counting tbody tr:first-child .cand-name {
+  font-weight: 700;
+}
+
+.public .contest-table .num,
+.public .area-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.public .cand-party {
+  margin-left: 8px;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  color: var(--ink-soft);
+}
+
+.public .bar,
+.public .reporting-bar {
+  display: block;
+  height: 6px;
+  margin-top: 6px;
+  border-radius: 3px;
+  background: var(--map-r0);
+  overflow: hidden;
+}
+
+.public .bar > span,
+.public .reporting-bar > span {
+  display: block;
+  height: 100%;
+  background: var(--map-r2);
+}
+
+.public .contest-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  justify-content: space-between;
+  padding: 10px 14px;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+
+.public .reporting {
+  flex: 1 1 100%;
+}
+
+.public .reporting-bar {
+  margin: 0 0 6px;
+}
+
+.public .reporting-bar > span {
+  background: var(--red);
+}
+
+.public .contest-detail {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+  gap: 24px;
+  align-items: start;
+  margin: 16px 0 28px;
+}
+
+.public .contest-detail .county-map {
+  margin: 0;
+}
+
+.public .table-scroll {
+  overflow-x: auto;
+  margin-top: 12px;
+}
+
+.public .area-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+  font-size: 0.9rem;
+}
+
+.public .area-table th,
+.public .area-table td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+
+.public .area-table thead th {
+  border-bottom: 2px solid var(--navy);
+  font-size: 0.8rem;
+}
+
+.public .area-table td .muted {
+  font-size: 0.8em;
 }

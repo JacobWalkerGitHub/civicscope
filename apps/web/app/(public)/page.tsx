@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { listUpcomingPublicRaces } from '@civicscope/cms';
+import { FEED_ACTIVE_DAYS, listResultDates, listUpcomingPublicRaces } from '@civicscope/cms';
 import { getDb } from '@/lib/db';
 import { formatDate } from '@/lib/labels';
 
@@ -51,7 +51,13 @@ function summarizeOffices(list: { officeTitle: string; candidateCount: number | 
 }
 
 export default async function HomePage() {
-  const races = await listUpcomingPublicRaces(getDb());
+  const db = getDb();
+  const [races, [resultsDate]] = await Promise.all([
+    listUpcomingPublicRaces(db),
+    // Never let results take the home page down (e.g. mid-deploy, before the migration).
+    listResultDates(db).catch(() => [] as string[]),
+  ]);
+  const liveResults = resultsDate && -daysUntil(resultsDate) < FEED_ACTIVE_DAYS;
   const byElection = new Map<number, typeof races>();
   for (const r of races) byElection.set(r.electionId, [...(byElection.get(r.electionId) ?? []), r]);
   const elections = [...byElection.values()];
@@ -60,6 +66,14 @@ export default async function HomePage() {
 
   return (
     <>
+      {liveResults && (
+        <p className="live-banner">
+          <span>
+            <span className="live-dot" aria-hidden="true" /> Live results: {formatDate(resultsDate)}
+          </span>
+          <Link href="/results">See live results by state →</Link>
+        </p>
+      )}
       <section className="hero" aria-labelledby="home-title">
         <p className="eyebrow">Nonpartisan · Source-backed</p>
         <h1 id="home-title">Know who’s on your ballot, and how we know it.</h1>
