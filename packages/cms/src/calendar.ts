@@ -10,8 +10,17 @@ import { CmsError, NotFoundError } from './errors';
 import { parseInput } from './parse';
 import type { ViewOptions } from './public';
 
-const { election, electionCycle, electionDeadline, jurisdiction, officialResource, office, race } =
-  schema;
+const {
+  candidacy,
+  election,
+  electionCycle,
+  electionDeadline,
+  jurisdiction,
+  officialResource,
+  office,
+  person,
+  race,
+} = schema;
 
 /*
  * The election calendar: key dates for each election (filing, registration, early
@@ -355,6 +364,40 @@ export async function getPublicElection(db: Db, id: number, opts: ViewOptions = 
       .innerJoin(office, eq(office.id, race.officeId))
       .where(and(eq(race.electionId, id), visibleRace(opts)))
   ).sort((a, b) => byName.compare(a.name, b.name));
+  // Who is running in each race, and the recorded outcome (won / advanced), if any.
+  const shown = (t: typeof candidacy | typeof person) =>
+    opts.preview ? isNull(t.deletedAt) : and(eq(t.publishState, 'published'), isNull(t.deletedAt));
+  const runners = races.length
+    ? await db
+        .select({
+          raceId: candidacy.raceId,
+          name: candidacy.ballotName,
+          status: candidacy.status,
+          sortName: person.sortName,
+        })
+        .from(candidacy)
+        .innerJoin(person, eq(person.id, candidacy.personId))
+        .where(
+          and(
+            inArray(
+              candidacy.raceId,
+              races.map((r) => r.id),
+            ),
+            shown(candidacy),
+            shown(person),
+          ),
+        )
+        .orderBy(asc(person.sortName))
+    : [];
+  const racesWithOutcome = races.map((r) => {
+    const mine = runners.filter((c) => c.raceId === r.id);
+    return {
+      ...r,
+      candidates: mine.length,
+      won: mine.filter((c) => c.status === 'won').map((c) => c.name),
+      advanced: mine.filter((c) => c.status === 'advanced').map((c) => c.name),
+    };
+  });
   const resources = await listResources(db, e.jurisdictionId);
   // Other public elections in the same state and year (e.g. the primary for a general).
   const year = e.date.slice(0, 4);
@@ -373,7 +416,7 @@ export async function getPublicElection(db: Db, id: number, opts: ViewOptions = 
   return {
     election: e,
     deadlines,
-    races,
+    races: racesWithOutcome,
     resources,
     related: related.filter((r) => r.id !== id),
   };

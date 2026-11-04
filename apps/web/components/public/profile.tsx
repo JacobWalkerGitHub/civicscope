@@ -12,6 +12,7 @@ import {
   VERIFICATION_LABELS,
 } from '@/lib/labels';
 import { rollCallUrl, voteDate, voteMeasure } from '../congress-format';
+import { Chip, StatusBadge, statusTone, WhenChip } from './badges';
 import { initials, NotPublic, ReportLink, Sources } from './sources';
 
 type Profile = NonNullable<Awaited<ReturnType<typeof getPublicPerson>>>;
@@ -75,9 +76,24 @@ export function CandidateProfile({
     positionsByIssue.set(key, [...(positionsByIssue.get(key) ?? []), c]);
   }
 
+  // The newest candidacy (the list is newest election first) leads the header.
+  const current = candidacies[0];
+  const sections: [string, string][] = [
+    ['running-heading', 'Candidacies'],
+    ...CLAIM_KINDS.filter((k) => byKind.get(k)?.length).map(
+      (k) => [`${k}-heading`, CLAIM_KIND_PLURALS[k]] as [string, string],
+    ),
+    ...(profile.money.length ? [['money-heading', 'Campaign money'] as [string, string]] : []),
+    ...(profile.congress?.votes.length || profile.congress?.memberships.length
+      ? [['congress-heading', 'Record in Congress'] as [string, string]]
+      : []),
+    ...(profile.stateVotes.total
+      ? [['state-votes-heading', 'State votes'] as [string, string]]
+      : []),
+  ];
   return (
     <>
-      <header className="profile-header">
+      <header className="profile-header profile-hero">
         {person.photoId && (
           <figure className="profile-photo">
             <img src={`/photos/${person.photoId}`} alt={`Photo of ${person.fullName}`} />
@@ -101,12 +117,32 @@ export function CandidateProfile({
         <h1>
           {person.fullName} <NotPublic state={person.publishState} />
         </h1>
+        {current && (
+          <p className="badge-row">
+            <StatusBadge status={current.status} date={current.statusDate} />
+            <Chip>
+              <Link href={raceHref(current.raceId)}>{current.raceName}</Link>
+            </Chip>
+            {current.isIncumbent && <Chip>Incumbent</Chip>}
+            <Chip>{current.partyName ?? 'No party listed'}</Chip>
+            <WhenChip date={current.electionDate} />
+          </p>
+        )}
         {person.preferredName && <p>Goes by {person.preferredName}</p>}
         {person.birthYear && <p>Born {person.birthYear}</p>}
         <Sources
           cites={profile.citations.get(`person:${person.id}`)}
           label="Sources for these details"
         />
+        {sections.length > 2 && (
+          <nav className="on-this-page" aria-label="On this page">
+            {sections.map(([id, label]) => (
+              <a key={id} href={`#${id}`}>
+                {label}
+              </a>
+            ))}
+          </nav>
+        )}
       </header>
 
       <section aria-labelledby="running-heading">
@@ -116,11 +152,16 @@ export function CandidateProfile({
         ) : (
           <ul className="candidacies">
             {candidacies.map((c) => (
-              <li key={c.id}>
+              <li key={c.id} className={`card-${statusTone(c.status)}`}>
                 <h3>
                   <Link href={raceHref(c.raceId)}>{c.raceName}</Link>{' '}
                   <NotPublic state={c.publishState} />
                 </h3>
+                <p className="badge-row">
+                  <StatusBadge status={c.status} date={c.statusDate} />
+                  {c.isIncumbent && <Chip>Incumbent</Chip>}
+                  <WhenChip date={c.electionDate} />
+                </p>
                 <p className="muted">
                   {c.electionName} · {ELECTION_TYPE_LABELS[c.electionType]} ·{' '}
                   {formatDate(c.electionDate)}
@@ -413,7 +454,8 @@ function CampaignMoney({ totals }: { totals: Profile['money'] }) {
       <h2 id="money-heading">Campaign money</h2>
       <p className="muted">
         Totals the Federal Election Commission compiles from the reports the candidate’s own
-        campaign committees file. Money spent by outside groups is not included.
+        campaign committees file, and, separately, what outside groups reported spending to support
+        or oppose the candidate.
       </p>
       {totals.map((t) => (
         <div key={t.candidateId} className="money-block">
@@ -438,6 +480,7 @@ function CampaignMoney({ totals }: { totals: Profile['money'] }) {
               <dd>{t.debts == null ? '—' : dollars.format(t.debts)}</dd>
             </div>
           </dl>
+          {(t.outside.support > 0 || t.outside.oppose > 0) && <OutsideSpending t={t} />}
           <p className="muted">
             {t.coverageEnd ? `Through ${formatDate(t.coverageEnd)}. ` : ''}
             <a
@@ -452,5 +495,36 @@ function CampaignMoney({ totals }: { totals: Profile['money'] }) {
         </div>
       ))}
     </section>
+  );
+}
+
+/** Independent expenditures: groups outside the campaign, for and against. */
+function OutsideSpending({ t }: { t: Profile['money'][number] }) {
+  const side = (label: string, total: number, list: typeof t.outside.topSupport) => (
+    <div>
+      <h4>
+        {label}: {dollars.format(total)}
+      </h4>
+      {list.length > 0 ? (
+        <ol className="outside-list">
+          {list.map((x) => (
+            <li key={x.committeeId}>
+              {x.committeeName} <span className="muted">{dollars.format(x.total)}</span>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p className="muted">None reported.</p>
+      )}
+    </div>
+  );
+  return (
+    <div className="outside-spending">
+      <h4 className="outside-heading">Outside groups</h4>
+      <div className="outside-sides">
+        {side('Spent supporting', t.outside.support, t.outside.topSupport)}
+        {side('Spent opposing', t.outside.oppose, t.outside.topOppose)}
+      </div>
+    </div>
   );
 }

@@ -223,6 +223,7 @@ export async function getPublicRace(db: Db, id: number, opts: ViewOptions = {}) 
       statusDate: candidacy.statusDate,
       publishState: candidacy.publishState,
       partyName: party.name,
+      personId: person.id,
       personSlug: person.slug,
       personPublishState: person.publishState,
       photoId: person.photoId,
@@ -236,7 +237,17 @@ export async function getPublicRace(db: Db, id: number, opts: ViewOptions = {}) 
   const citations = await citationsFor(db, [
     { type: 'candidacy', ids: candidates.map((c) => c.candidacyId) },
   ]);
-  return { race: r, candidates, citations };
+  // Campaign money, for candidates the FEC reports on: their latest period.
+  const money = new Map(
+    (
+      await Promise.all(
+        candidates.map(
+          async (c) => [c.candidacyId, (await getFecTotals(db, c.personId))[0]] as const,
+        ),
+      )
+    ).filter((x): x is [number, NonNullable<(typeof x)[1]>] => x[1] != null),
+  );
+  return { race: r, candidates, citations, money };
 }
 
 /** Upcoming public races, soonest election first, with how many public candidates each has. */

@@ -28,12 +28,46 @@ const TOTALS: Record<string, Record<string, unknown>> = {
   },
 };
 
+const OUTSIDE = [
+  {
+    candidate_id: 'H6KY06999',
+    cycle: 2026,
+    committee_id: 'C00000001',
+    committee_name: 'EXAMPLE ACTION FUND',
+    support_oppose_indicator: 'O',
+    total: 50000,
+    count: 3,
+  },
+  {
+    candidate_id: 'H6KY06999',
+    cycle: 2026,
+    committee_id: 'C00000002',
+    committee_name: 'FRIENDS OF EXAMPLES PAC',
+    support_oppose_indicator: 'S',
+    total: 12000.5,
+    count: 1,
+  },
+  {
+    candidate_id: 'H6KY06999',
+    cycle: 2026,
+    committee_id: 'C00000003',
+    committee_name: 'SMALL GROUP',
+    support_oppose_indicator: 'S',
+    total: 800,
+    count: 2,
+  },
+];
+
 const requested: URL[] = [];
 const fakeFetch = (async (input: URL | string) => {
   const url = new URL(String(input));
   requested.push(url);
   const ids = url.searchParams.getAll('candidate_id');
   const cycle = Number(url.searchParams.get('cycle'));
+  if (url.pathname === '/v1/schedules/schedule_e/by_candidate/') {
+    const results = OUTSIDE.filter((r) => ids.includes(r.candidate_id) && r.cycle === cycle);
+    return new Response(JSON.stringify({ results, pagination: { pages: 1 } }), { status: 200 });
+  }
   const results = ids.map((id) => TOTALS[id]).filter((r) => r && r.cycle === cycle);
   return new Response(JSON.stringify({ results, pagination: { pages: 1 } }), { status: 200 });
 }) as typeof fetch;
@@ -91,7 +125,13 @@ describe('runFecTotalsImport', () => {
       fetch: fakeFetch,
       sleep: async () => {},
     });
-    expect(summary).toEqual({ candidateIds: 2, requests: 1, stored: 1, missing: 1 });
+    expect(summary).toEqual({
+      candidateIds: 2,
+      requests: 2,
+      stored: 1,
+      missing: 1,
+      outsideRows: 3,
+    });
     expect(requested[0]!.searchParams.getAll('candidate_id')).toEqual(['H6KY06999', 'S6VA00999']);
     expect(requested[0]!.searchParams.get('election_full')).toBe('false');
     const [snap] = await db.select().from(schema.ingestSnapshot);
@@ -107,6 +147,17 @@ describe('runFecTotalsImport', () => {
         debts: 0,
         coverageStart: '2025-01-01',
         coverageEnd: '2026-10-14',
+        outside: {
+          support: 12800.5,
+          oppose: 50000,
+          topSupport: [
+            { committeeId: 'C00000002', committeeName: 'FRIENDS OF EXAMPLES PAC', total: 12000.5 },
+            { committeeId: 'C00000003', committeeName: 'SMALL GROUP', total: 800 },
+          ],
+          topOppose: [
+            { committeeId: 'C00000001', committeeName: 'EXAMPLE ACTION FUND', total: 50000 },
+          ],
+        },
       },
     ]);
 
@@ -115,6 +166,8 @@ describe('runFecTotalsImport', () => {
     await runFecTotalsImport(db, 2026, { apiKey: 'k', fetch: fakeFetch, sleep: async () => {} });
     const rows = await db.select().from(schema.fecCandidateTotals);
     expect(rows).toHaveLength(1);
+    // Outside spending is replaced, not added to.
+    expect(await db.select().from(schema.fecOutsideSpending)).toHaveLength(3);
     expect((await getFecTotals(db, harper))[0]!.receipts).toBe(1300000);
   });
 });

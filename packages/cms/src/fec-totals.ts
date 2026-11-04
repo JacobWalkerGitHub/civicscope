@@ -4,12 +4,21 @@ import type { Tx } from './changes';
 import { FEC_API_BASE } from './fec-import';
 import { fetchText, withoutKey, type FetchOptions } from './ingest-common';
 
-const { candidacy, fecCandidateTotals, ingestRun, ingestSnapshot, personIdentifier } = schema;
+const {
+  candidacy,
+  fecCandidateTotals,
+  fecOutsideSpending,
+  ingestRun,
+  ingestSnapshot,
+  personIdentifier,
+} = schema;
 
 /*
  * Campaign money from the FEC: for every FEC candidate ID on a person who runs in a
  * CivicScope race, the FEC's totals for one two-year period (raised, spent, cash on hand,
- * debts), read 50 IDs to a request from /v1/candidates/totals/.
+ * debts), read 50 IDs to a request from /v1/candidates/totals/; and the independent
+ * expenditures outside groups reported for or against them, per group, from
+ * /v1/schedules/schedule_e/by_candidate/.
  */
 
 export interface FecTotalsSummary {
@@ -18,6 +27,8 @@ export interface FecTotalsSummary {
   stored: number;
   /** IDs the FEC has no totals for in this period (often: nothing filed yet). */
   missing: number;
+  /** Rows of outside spending (one group, for or against one candidate). */
+  outsideRows?: number;
 }
 
 export interface FecTotalsOptions extends FetchOptions {
@@ -38,7 +49,19 @@ interface FecTotalRow {
   load_date?: string | null;
 }
 
+interface FecOutsideRow {
+  candidate_id: string;
+  cycle: number;
+  committee_id: string;
+  committee_name?: string | null;
+  support_oppose_indicator: string;
+  total: number;
+  count?: number | null;
+}
+
 const BATCH = 50;
+/** Pages of outside spending read per batch of candidates; the biggest spenders come first. */
+const OUTSIDE_PAGES = 20;
 const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 const day = (v: unknown) =>
   typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v) ? v.slice(0, 10) : null;
@@ -55,7 +78,27 @@ export async function runFecTotalsImport(
     startedBy: opts.startedBy ?? null,
   });
   const runId = run.insertId;
-  const summary: FecTotalsSummary = { candidateIds: 0, requests: 0, stored: 0, missing: 0 };
+  const summary: FecTotalsSummary = {
+    candidateIds: 0,
+    requests: 0,
+    stored: 0,
+    missing: 0,
+    outsideRows: 0,
+  };
+  const read = async (url: URL) => {
+    url.searchParams.set('api_key', opts.apiKey);
+    const body = await fetchText(url, opts);
+    summary.requests++;
+    let json: { results?: unknown; pagination?: { pages?: number } };
+    try {
+      json = JSON.parse(body);
+      if (!Array.isArray(json.results)) throw new Error();
+    } catch {
+      throw new Error(`The FEC response from ${url.pathname} is not in the expected format.`);
+    }
+    await db.insert(ingestSnapshot).values({ runId, url: withoutKey(url), body });
+    return { results: json.results as unknown[], pages: Number(json.pagination?.pages ?? 1) };
+  };
   try {
     const ids = [
       ...new Set(
@@ -79,18 +122,7 @@ export async function runFecTotalsImport(
       url.searchParams.set('cycle', String(cycle));
       url.searchParams.set('election_full', 'false');
       url.searchParams.set('per_page', '100');
-      url.searchParams.set('api_key', opts.apiKey);
-      const body = await fetchText(url, opts);
-      summary.requests++;
-      let rows: FecTotalRow[];
-      try {
-        const json = JSON.parse(body) as { results?: unknown };
-        if (!Array.isArray(json.results)) throw new Error();
-        rows = json.results as FecTotalRow[];
-      } catch {
-        throw new Error('The FEC totals response is not in the expected format.');
-      }
-      await db.insert(ingestSnapshot).values({ runId, url: withoutKey(url), body });
+      const rows = (await read(url)).results as FecTotalRow[];
       for (const r of rows) {
         if (typeof r.candidate_id !== 'string' || Number(r.cycle) !== cycle) continue;
         const values = {
@@ -115,6 +147,61 @@ export async function runFecTotalsImport(
       }
     }
     summary.missing = ids.filter((id) => !found.has(id)).length;
+
+    for (let i = 0; i < ids.length; i += BATCH) {
+      const batch = ids.slice(i, i + BATCH);
+      const rows: FecOutsideRow[] = [];
+      for (let page = 1; page <= OUTSIDE_PAGES; page++) {
+        const url = new URL('/v1/schedules/schedule_e/by_candidate/', opts.baseUrl ?? FEC_API_BASE);
+        for (const id of batch) url.searchParams.append('candidate_id', id);
+        url.searchParams.set('cycle', String(cycle));
+        url.searchParams.set('election_full', 'false');
+        url.searchParams.set('sort', '-total');
+        url.searchParams.set('per_page', '100');
+        url.searchParams.set('page', String(page));
+        const res = await read(url);
+        rows.push(...(res.results as FecOutsideRow[]));
+        if (page >= res.pages || res.results.length === 0) break;
+      }
+      const keep = rows.filter(
+        (r) =>
+          typeof r.candidate_id === 'string' &&
+          batch.includes(r.candidate_id) &&
+          Number(r.cycle) === cycle &&
+          typeof r.committee_id === 'string' &&
+          (r.support_oppose_indicator === 'S' || r.support_oppose_indicator === 'O') &&
+          num(r.total) !== null,
+      );
+      await db.transaction(async (tx) => {
+        await tx
+          .delete(fecOutsideSpending)
+          .where(
+            and(
+              inArray(fecOutsideSpending.candidateId, batch),
+              eq(fecOutsideSpending.cycle, cycle),
+            ),
+          );
+        const seen = new Set<string>();
+        const values = keep
+          .filter((r) => {
+            const k = `${r.candidate_id}|${r.committee_id}|${r.support_oppose_indicator}`;
+            return !seen.has(k) && seen.add(k);
+          })
+          .map((r) => ({
+            candidateId: r.candidate_id,
+            cycle,
+            committeeId: r.committee_id.slice(0, 9),
+            committeeName: (r.committee_name || r.committee_id).slice(0, 200),
+            supportOppose: r.support_oppose_indicator,
+            total: num(r.total)!,
+            count: Number(r.count) || 0,
+          }));
+        for (let j = 0; j < values.length; j += 500) {
+          await tx.insert(fecOutsideSpending).values(values.slice(j, j + 500));
+        }
+        summary.outsideRows! += values.length;
+      });
+    }
     await db
       .update(ingestRun)
       .set({ state: 'succeeded', finishedAt: new Date(), summary })
@@ -130,6 +217,12 @@ export async function runFecTotalsImport(
   }
 }
 
+export interface OutsideSpender {
+  committeeId: string;
+  committeeName: string;
+  total: number;
+}
+
 export interface FecTotalsView {
   candidateId: string;
   cycle: number;
@@ -139,6 +232,14 @@ export interface FecTotalsView {
   debts: number | null;
   coverageStart: string | null;
   coverageEnd: string | null;
+  /** Independent expenditures for this candidate and period. */
+  outside: {
+    support: number;
+    oppose: number;
+    /** The five biggest spenders on each side. */
+    topSupport: OutsideSpender[];
+    topOppose: OutsideSpender[];
+  };
 }
 
 /** The latest two-year totals for each of a person's FEC candidate IDs. */
@@ -170,5 +271,32 @@ export async function getFecTotals(db: Db | Tx, personId: number): Promise<FecTo
     .where(inArray(fecCandidateTotals.candidateId, ids))
     .orderBy(desc(fecCandidateTotals.cycle), fecCandidateTotals.candidateId);
   const seen = new Set<string>();
-  return rows.filter((r) => !seen.has(r.candidateId) && seen.add(r.candidateId));
+  const latest = rows.filter((r) => !seen.has(r.candidateId) && seen.add(r.candidateId));
+  const spending = latest.length
+    ? await db
+        .select()
+        .from(fecOutsideSpending)
+        .where(inArray(fecOutsideSpending.candidateId, ids))
+        .orderBy(desc(fecOutsideSpending.total))
+    : [];
+  return latest.map((r) => {
+    const mine = spending.filter((x) => x.candidateId === r.candidateId && x.cycle === r.cycle);
+    const side = (so: 'S' | 'O') => mine.filter((x) => x.supportOppose === so);
+    const sum = (list: typeof mine) => list.reduce((n, x) => n + x.total, 0);
+    const top = (list: typeof mine) =>
+      list.slice(0, 5).map(({ committeeId, committeeName, total }) => ({
+        committeeId,
+        committeeName,
+        total,
+      }));
+    return {
+      ...r,
+      outside: {
+        support: sum(side('S')),
+        oppose: sum(side('O')),
+        topSupport: top(side('S')),
+        topOppose: top(side('O')),
+      },
+    };
+  });
 }
