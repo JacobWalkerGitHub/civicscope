@@ -2,6 +2,7 @@ import type {
   CongressRunSummary,
   CrosswalkSummary,
   FecRunSummary,
+  FecTotalsSummary,
   FeedReadSummary,
   OpenStatesSummary,
 } from '@civicscope/cms';
@@ -24,6 +25,8 @@ export function runTitle(source: IngestSource, params: unknown): string {
     }
     case 'state_results':
       return `Live results (${((params as { states?: string[] })?.states ?? []).join(', ')})`;
+    case 'fec_totals':
+      return `FEC money totals, ${(params as { cycle?: number })?.cycle}`;
     case 'openstates':
       return `Open States (${((params as { states?: string[] })?.states ?? []).join(', ')})`;
   }
@@ -62,6 +65,10 @@ export function runResult(source: IngestSource, summary: unknown): string {
       return (summary as FeedReadSummary[])
         .map((f) => `${f.state} ${f.outcome}${f.error ? `: ${f.error}` : ''}`)
         .join('; ');
+    case 'fec_totals': {
+      const s = summary as FecTotalsSummary;
+      return `${s.stored} totals stored, ${s.missing} with nothing filed`;
+    }
     case 'openstates': {
       const s = summary as OpenStatesSummary;
       const votes = s.states.reduce((n, x) => n + x.votes, 0);
@@ -72,7 +79,7 @@ export function runResult(source: IngestSource, summary: unknown): string {
 
 export function needsPerson(source: IngestSource, summary: unknown): number | null {
   if (!summary) return null;
-  if (source === 'state_results') return null;
+  if (source === 'state_results' || source === 'fec_totals') return null;
   if (source === 'congress_gov') {
     const s = summary as CongressRunSummary;
     return s.attention.length + s.unmatched.length;

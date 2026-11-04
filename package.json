@@ -18,6 +18,7 @@
     "db:seed": "pnpm --filter @civicscope/db seed",
     "db:verify-restore": "pnpm --filter @civicscope/db verify-restore",
     "ingest:fec": "tsx packages/cms/src/scripts/ingest-fec.ts",
+    "ingest:fec-totals": "tsx packages/cms/src/scripts/ingest-fec-totals.ts",
     "ingest:legislators": "tsx packages/cms/src/scripts/ingest-legislators.ts",
     "ingest:congress": "tsx packages/cms/src/scripts/ingest-congress.ts",
     "check:congress-votes": "tsx packages/cms/src/scripts/spot-check-congress.ts",

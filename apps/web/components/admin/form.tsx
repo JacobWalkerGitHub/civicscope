@@ -85,6 +85,11 @@ export function ActionButton({
           {state.error}
         </span>
       )}
+      {!state.error && state.message && (
+        <span role="status" className="hint inline">
+          {state.message}
+        </span>
+      )}
     </form>
   );
 }

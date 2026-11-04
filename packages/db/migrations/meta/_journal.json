@@ -141,6 +141,13 @@
       "when": 1793756289575,
       "tag": "0019_state_votes",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "5",
+      "when": 1793758265425,
+      "tag": "0020_fec_totals",
+      "breakpoints": true
     }
   ]
 }

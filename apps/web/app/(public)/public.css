@@ -1327,6 +1327,32 @@ h2.contest-name {
   font-size: 0.8em;
 }
 
+.public .money-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.public .money-facts > div {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+}
+
+.public .money-facts dt {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+.public .money-facts dd {
+  margin: 2px 0 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
 .public .state-votes td {
   vertical-align: top;
 }

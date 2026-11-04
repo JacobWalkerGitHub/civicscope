@@ -22,6 +22,7 @@ import {
   archiveAction,
   createRaceAction,
   publishAction,
+  publishWithCandidatesAction,
   updateElectionAction,
 } from '../../cms-actions';
 import { RaceForm } from '../../races/race-form';
@@ -68,6 +69,14 @@ export default async function ElectionPage({ params }: { params: Promise<{ id: s
             action={publishAction.bind(null, 'election', id, !published)}
             label={published ? 'Unpublish' : 'Publish'}
             variant={published ? 'secondary' : 'primary'}
+          />
+        )}
+        {can(user.role, 'content:publish') && !archived && (
+          <ActionButton
+            action={publishWithCandidatesAction.bind(null, 'election', id)}
+            label="Publish with candidates"
+            variant="secondary"
+            confirm="Publish this election and its races and candidates? Each candidate is checked like a single publish; drafts only."
           />
         )}
         {can(user.role, 'content:archive') && (
