@@ -3,16 +3,29 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
 import type { ResultGroup } from '@civicscope/core';
-import { getStateResults, listResultDates, type ResultContestView } from '@civicscope/cms';
+import {
+  getContestResults,
+  getStateResults,
+  listResultDates,
+  listResultUpdates,
+  type ResultContestView,
+} from '@civicscope/cms';
 import { AutoRefresh } from '@/components/results/auto-refresh';
 import { ContestCard } from '@/components/results/contest';
+import { CountyExplorer } from '@/components/results/county-explorer';
+import { COUNTY_MAPS } from '@/components/results/geo';
+import { KeyRace } from '@/components/results/key-race';
+import { UpdatesFeed } from '@/components/results/updates-feed';
 import { reportingText, timeEt } from '@/components/results/format';
 import { getDb } from '@/lib/db';
 import { formatDate } from '@/lib/labels';
 
 export const dynamic = 'force-dynamic';
 
-type Params = { params: Promise<{ state: string }> };
+type Params = {
+  params: Promise<{ state: string }>;
+  searchParams: Promise<{ race?: string }>;
+};
 
 const GROUPS: { group: ResultGroup; title: string; open: boolean }[] = [
   { group: 'federal', title: 'Congress', open: true },
@@ -30,7 +43,7 @@ const load = cache(async (state: string) => {
   return date ? getStateResults(db, state, date) : null;
 });
 
-export async function generateMetadata({ params }: Params): Promise<Metadata> {
+export async function generateMetadata({ params }: Pick<Params, 'params'>): Promise<Metadata> {
   const page = await load((await params).state);
   if (!page) return { title: 'Not found · CivicScope' };
   return {
@@ -39,10 +52,26 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   };
 }
 
-export default async function StateResultsPage({ params }: Params) {
+export default async function StateResultsPage({ params, searchParams }: Params) {
   const page = await load((await params).state);
   if (!page) notFound();
   const { summary: s, contests } = page;
+  // Key races: the contests on every ballot in the state (Senate, Governor, ...).
+  const statewide = Math.max(0, ...contests.map((c) => c.precinctsTotal ?? 0));
+  const keyRaces = contests.filter(
+    (c) =>
+      (c.group === 'federal' || c.group === 'statewide') &&
+      (c.precinctsTotal ?? 0) >= statewide * 0.9 &&
+      c.candidates.length > 1,
+  );
+  const wanted = Number((await searchParams).race);
+  const key = keyRaces.find((c) => c.id === wanted) ?? keyRaces[0];
+  const db = getDb();
+  const [detail, updates] = await Promise.all([
+    key ? getContestResults(db, key.id) : null,
+    listResultUpdates(db, s.electionDate, s.state),
+  ]);
+  const map = COUNTY_MAPS[s.state];
   const byGroup = new Map<ResultGroup, ResultContestView[]>();
   for (const c of contests) byGroup.set(c.group, [...(byGroup.get(c.group) ?? []), c]);
   const groups = GROUPS.filter((g) => byGroup.has(g.group));
@@ -87,6 +116,41 @@ export default async function StateResultsPage({ params }: Params) {
           </p>
         )}
       </div>
+
+      {key && (
+        <section className="key-section" aria-labelledby="key-title">
+          {keyRaces.length > 1 && (
+            <nav aria-label="Key races" className="race-tabs">
+              {keyRaces.map((c) => (
+                <Link
+                  key={c.id}
+                  href={`${base}?race=${c.id}`}
+                  scroll={false}
+                  aria-current={c.id === key.id ? 'true' : undefined}
+                >
+                  {c.name}
+                </Link>
+              ))}
+            </nav>
+          )}
+          <h2 id="key-title" className="key-title">
+            {key.name}
+          </h2>
+          <div className="key-layout">
+            <KeyRace contest={key} />
+            {map && detail && detail.areas.length > 0 && (
+              <CountyExplorer
+                viewBox={map.viewBox}
+                shapes={map.areas}
+                areas={detail.areas}
+                candidates={detail.candidates}
+              />
+            )}
+          </div>
+        </section>
+      )}
+
+      <UpdatesFeed updates={updates} hrefFor={(u) => `${base}/${u.contestId}`} />
 
       <nav aria-label="Contest types" className="group-nav">
         {groups.map((g) => (

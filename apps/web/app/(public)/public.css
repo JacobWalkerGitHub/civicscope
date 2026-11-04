@@ -1326,3 +1326,341 @@ h2.contest-name {
 .public .area-table td .muted {
   font-size: 0.8em;
 }
+
+/* Who leads: party colors on results maps, deeper for wider leads (the owner's call). */
+.public {
+  --rep-1: #f2b8bb;
+  --rep-2: #df6870;
+  --rep-3: #b3202c;
+  --dem-1: #bccff0;
+  --dem-2: #5f8fd6;
+  --dem-3: #1f4e9c;
+  --oth-1: #ead9a0;
+  --oth-2: #cfae4f;
+  --oth-3: #96761c;
+  --tie: #b7a5cc;
+  --no-votes: #d6dbe3;
+}
+
+.public .lead-rep-1 {
+  fill: var(--rep-1);
+  background: var(--rep-1);
+}
+.public .lead-rep-2 {
+  fill: var(--rep-2);
+  background: var(--rep-2);
+}
+.public .lead-rep-3 {
+  fill: var(--rep-3);
+  background: var(--rep-3);
+}
+.public .lead-dem-1 {
+  fill: var(--dem-1);
+  background: var(--dem-1);
+}
+.public .lead-dem-2 {
+  fill: var(--dem-2);
+  background: var(--dem-2);
+}
+.public .lead-dem-3 {
+  fill: var(--dem-3);
+  background: var(--dem-3);
+}
+.public .lead-oth-1 {
+  fill: var(--oth-1);
+  background: var(--oth-1);
+}
+.public .lead-oth-2 {
+  fill: var(--oth-2);
+  background: var(--oth-2);
+}
+.public .lead-oth-3 {
+  fill: var(--oth-3);
+  background: var(--oth-3);
+}
+.public .lead-tie {
+  fill: var(--tie);
+  background: var(--tie);
+}
+.public .lead-none {
+  fill: var(--no-votes);
+  background: var(--no-votes);
+}
+.public .lead-out {
+  fill: var(--map-none);
+}
+
+.public .map-link .map-state {
+  stroke: var(--navy);
+}
+
+.public .map-county {
+  stroke: var(--surface);
+  stroke-width: 0.6;
+  stroke-linejoin: round;
+  cursor: pointer;
+  outline: none;
+}
+
+.public .map-county.lead-out {
+  cursor: default;
+}
+
+.public .map-county:hover,
+.public .map-county:focus-visible {
+  stroke: var(--navy);
+  stroke-width: 1.6;
+}
+
+.public .map-county.is-selected {
+  stroke: #111;
+  stroke-width: 2.2;
+}
+
+.public .map-note {
+  margin: 4px 0 0;
+  text-align: center;
+  font-size: 0.8rem;
+}
+
+.public .key-section {
+  margin: 8px 0 32px;
+}
+
+.public .race-tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  border-bottom: 3px solid var(--navy);
+}
+
+.public .race-tabs a {
+  flex: none;
+  padding: 10px 14px;
+  border-radius: 4px 4px 0 0;
+  font-weight: 700;
+  font-size: 0.92rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.public .race-tabs a[aria-current='true'] {
+  background: var(--navy);
+  color: #fff;
+}
+
+.public .key-title {
+  margin: 18px 0 12px;
+  font-family: var(--display);
+  font-size: 1.7rem;
+}
+
+.public .key-layout {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  gap: 24px;
+  align-items: start;
+}
+
+.public .key-race {
+  padding: 8px 18px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.public .key-cands {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.public .key-cands li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas: 'avatar who nums' 'bar bar bar';
+  gap: 4px 14px;
+  align-items: center;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.public .key-avatar {
+  grid-area: avatar;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  color: #fff;
+  font-weight: 800;
+  background: var(--oth-3);
+}
+
+.public .side-rep .key-avatar,
+.public .side-rep .key-bar > span {
+  background: var(--rep-3);
+}
+.public .side-dem .key-avatar,
+.public .side-dem .key-bar > span {
+  background: var(--dem-3);
+}
+.public .side-oth .key-bar > span {
+  background: var(--oth-3);
+}
+
+.public .key-who {
+  grid-area: who;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.public .key-name {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.public .lead-tag {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--navy);
+  color: #fff;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  vertical-align: 2px;
+}
+
+.public .key-party {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.public .key-nums {
+  grid-area: nums;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-variant-numeric: tabular-nums;
+}
+
+.public .key-pct {
+  font-size: 1.7rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.public .key-votes {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+}
+
+.public .key-bar {
+  grid-area: bar;
+  display: block;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--map-r0);
+  overflow: hidden;
+}
+
+.public .key-bar > span {
+  display: block;
+  height: 100%;
+}
+
+.public .key-reporting {
+  margin: 14px 0 0;
+  font-size: 0.88rem;
+  color: var(--ink-soft);
+}
+
+.public .key-reporting strong {
+  color: var(--ink);
+  font-size: 1.05rem;
+}
+
+.public .county-explorer {
+  display: grid;
+  gap: 12px;
+}
+
+.public .county-explorer .county-map {
+  margin: 0;
+}
+
+.public .county-card {
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.public .county-card h3 {
+  margin: 0 0 2px;
+  font-family: var(--display);
+}
+
+.public .county-card p {
+  margin: 0;
+}
+
+.public .county-card .contest-table th,
+.public .county-card .contest-table td {
+  padding: 6px 4px;
+}
+
+.public .updates {
+  margin: 8px 0 32px;
+}
+
+.public .updates-list {
+  max-height: 360px;
+  margin: 12px 0 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.public .updates-list li {
+  display: grid;
+  grid-template-columns: 5.5rem 7rem 1fr;
+  gap: 4px 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.95rem;
+}
+
+@media (max-width: 560px) {
+  .public .updates-list li {
+    grid-template-columns: auto 1fr;
+  }
+  .public .updates-list li a {
+    grid-column: 1 / -1;
+  }
+}
+
+.public .updates-list time {
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-soft);
+}
+
+.public .update-kind {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.public .update-lead_change .update-kind {
+  color: var(--red);
+}
+
+.public .updates-list a {
+  color: inherit;
+}

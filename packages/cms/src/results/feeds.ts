@@ -1,4 +1,4 @@
-import type { FeedKind } from './parse';
+import { NC_COUNTIES, type FeedKind } from './parse';
 
 export interface ResultFeedConfig {
   state: string;
@@ -8,6 +8,8 @@ export interface ResultFeedConfig {
   url: string;
   /** The state's own results page, linked next to every number we show. */
   publicUrl: string;
+  /** For states that publish one file per county, numbered 1..n in this order. */
+  counties?: { names: string[]; url: (n: number) => string };
 }
 
 /*
@@ -24,6 +26,10 @@ export const RESULT_FEEDS: ResultFeedConfig[] = [
     kind: 'ncsbe',
     url: 'https://er.ncsbe.gov/enr/20261103/data/results_0.txt',
     publicUrl: 'https://er.ncsbe.gov/?election_dt=11/03/2026&county_id=0&office=FED&contest=0',
+    counties: {
+      names: NC_COUNTIES,
+      url: (n) => `https://er.ncsbe.gov/enr/20261103/data/results_${n}.txt`,
+    },
   },
   {
     state: 'FL',

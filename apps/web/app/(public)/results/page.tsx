@@ -1,9 +1,15 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { getStateResults, listResultDates, listResultStates } from '@civicscope/cms';
+import {
+  getStateResults,
+  listResultDates,
+  listResultStates,
+  listResultUpdates,
+} from '@civicscope/cms';
 import { AutoRefresh } from '@/components/results/auto-refresh';
 import { ContestCard } from '@/components/results/contest';
-import { timeEt } from '@/components/results/format';
+import { leaderClass, timeEt } from '@/components/results/format';
+import { UpdatesFeed } from '@/components/results/updates-feed';
 import { UsResultsMap } from '@/components/results/us-map';
 import { getDb } from '@/lib/db';
 import { formatDate } from '@/lib/labels';
@@ -20,9 +26,19 @@ export default async function ResultsPage() {
   const db = getDb();
   const [date] = await listResultDates(db);
   const states = date ? await listResultStates(db, date) : [];
-  const details = await Promise.all(
-    states.map((s) => getStateResults(db, s.state, s.electionDate)),
-  );
+  const [details, updates] = await Promise.all([
+    Promise.all(states.map((s) => getStateResults(db, s.state, s.electionDate))),
+    date ? listResultUpdates(db, date) : [],
+  ]);
+  const leads: Record<string, string> = {};
+  states.forEach((s, i) => {
+    const h = details[i]?.contests.find((c) => c.id === s.headline?.id);
+    if (h)
+      leads[s.state] = leaderClass(
+        Object.fromEntries(h.candidates.map((c) => [c.key, c.votes])),
+        h.candidates,
+      );
+  });
 
   return (
     <>
@@ -45,10 +61,15 @@ export default async function ResultsPage() {
           <div className="section-heading">
             <h2>Results by state</h2>
             <span className="muted">
-              Shaded by share of precincts reporting. Select a state for every race.
+              Colored by who leads each state’s top race. Select a state for its counties and every
+              race.
             </span>
           </div>
-          <UsResultsMap states={states} />
+          <UsResultsMap states={states} leads={leads} />
+          <UpdatesFeed
+            updates={updates}
+            hrefFor={(u) => `/results/${u.state.toLowerCase()}/${u.contestId}`}
+          />
 
           <div className="state-results">
             {states.map((s, i) => {

@@ -2,9 +2,10 @@ import { createHash } from 'node:crypto';
 import { and, eq, inArray, notInArray, sql } from 'drizzle-orm';
 import { schema, type Db } from '@civicscope/db';
 import { activeFeeds, type ResultFeedConfig } from './feeds';
-import { PARSERS, type ParsedContest } from './parse';
+import { addCountyAreas, PARSERS, type ParsedContest } from './parse';
+import { describeUpdates, type ContestSnapshot } from './updates';
 
-const { ingestRun, resultArea, resultCandidate, resultContest, resultFeed } = schema;
+const { ingestRun, resultArea, resultCandidate, resultContest, resultFeed, resultUpdate } = schema;
 
 export interface FeedReadSummary {
   state: string;
@@ -107,7 +108,28 @@ export async function readFeed(
   const feed = await ensureFeed(db, f);
   try {
     const body = await fetchBody(f.url, doFetch);
-    const hash = createHash('sha256').update(body).digest('hex');
+    // States that publish one file per county: read them all, a few at a time. A county
+    // that fails keeps its last numbers rather than failing the whole state.
+    const counties: { code: string; name: string; body: string }[] = [];
+    if (f.counties) {
+      const list = f.counties.names.map((name, i) => ({ code: String(i + 1), name }));
+      for (let i = 0; i < list.length; i += 10) {
+        const got = await Promise.all(
+          list.slice(i, i + 10).map(async (c) => {
+            try {
+              return { ...c, body: await fetchBody(f.counties!.url(Number(c.code)), doFetch) };
+            } catch {
+              return null;
+            }
+          }),
+        );
+        for (const g of got) if (g) counties.push(g);
+      }
+    }
+    const hash = createHash('sha256')
+      .update(body)
+      .update(counties.map((c) => c.body).join('\n'))
+      .digest('hex');
     if (hash === feed.bodyHash) {
       await db
         .update(resultFeed)
@@ -115,10 +137,17 @@ export async function readFeed(
         .where(eq(resultFeed.id, feed.id));
       return { ...base, outcome: 'unchanged' };
     }
-    const contests = PARSERS[f.kind](body);
+    const contests = addCountyAreas(PARSERS[f.kind](body), counties);
     if (contests.length === 0) throw new Error('The file has no contests in it.');
+    const before = await snapshot(db, feed.id);
     await storeContests(db, feed.id, contests);
     const now = new Date();
+    const updates = describeUpdates(f.state, before, await snapshot(db, feed.id));
+    if (updates.length) {
+      await db
+        .insert(resultUpdate)
+        .values(updates.map((u) => ({ ...u, feedId: feed.id, createdAt: now })));
+    }
     await db
       .update(resultFeed)
       .set({ bodyHash: hash, fetchedAt: now, changedAt: now, error: null })
@@ -129,6 +158,35 @@ export async function readFeed(
     await db.update(resultFeed).set({ error: message }).where(eq(resultFeed.id, feed.id));
     return { ...base, outcome: 'failed', error: message };
   }
+}
+
+/** Each contest's numbers as stored, to compare a new read against. */
+async function snapshot(db: Db, feedId: number): Promise<ContestSnapshot[]> {
+  const contests = await db
+    .select({
+      id: resultContest.id,
+      name: resultContest.name,
+      group: resultContest.group,
+      precinctsTotal: resultContest.precinctsTotal,
+      precinctsReporting: resultContest.precinctsReporting,
+      totalVotes: resultContest.totalVotes,
+    })
+    .from(resultContest)
+    .where(eq(resultContest.feedId, feedId));
+  if (contests.length === 0) return [];
+  const candidates = await db
+    .select({
+      contestId: resultCandidate.contestId,
+      name: resultCandidate.name,
+      votes: resultCandidate.votes,
+    })
+    .from(resultCandidate)
+    .innerJoin(resultContest, eq(resultContest.id, resultCandidate.contestId))
+    .where(eq(resultContest.feedId, feedId));
+  return contests.map((c) => ({
+    ...c,
+    candidates: candidates.filter((x) => x.contestId === c.id),
+  }));
 }
 
 const CHUNK = 500;

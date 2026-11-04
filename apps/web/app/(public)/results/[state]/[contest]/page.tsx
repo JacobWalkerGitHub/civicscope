@@ -5,7 +5,8 @@ import { cache } from 'react';
 import { getContestResults } from '@civicscope/cms';
 import { AutoRefresh } from '@/components/results/auto-refresh';
 import { ContestCard } from '@/components/results/contest';
-import { CountyMap } from '@/components/results/county-map';
+import { CountyExplorer } from '@/components/results/county-explorer';
+import { COUNTY_MAPS } from '@/components/results/geo';
 import { fmt, pct, timeEt } from '@/components/results/format';
 import { getDb } from '@/lib/db';
 
@@ -43,7 +44,14 @@ export default async function ContestResultsPage({ params }: Params) {
       <AutoRefresh />
       <div className="contest-detail">
         <ContestCard contest={{ ...contest, candidates }} headingLevel={2} />
-        <CountyMap state={feed.state} areas={areas} />
+        {COUNTY_MAPS[feed.state] && areas.length > 0 && (
+          <CountyExplorer
+            viewBox={COUNTY_MAPS[feed.state]!.viewBox}
+            shapes={COUNTY_MAPS[feed.state]!.areas}
+            areas={areas}
+            candidates={candidates}
+          />
+        )}
       </div>
 
       {areas.length > 0 && (
