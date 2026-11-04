@@ -56,11 +56,40 @@ A step-by-step version for a Mac, naming the app for each step, is in the projec
 
 ## Every deploy
 
-Commit, open Docker Desktop, then run `infra/deploy.sh`. It builds and uploads both images
+Merge to `main` (see [Deploying from GitHub](#deploying-from-github)), or commit, open
+Docker Desktop, then run `infra/deploy.sh`. It builds and uploads both images
 tagged with the commit, deploys them, and runs `./run-task.sh migrate`. ECS replaces web tasks
 one at a time and rolls back on its own if the new ones fail their health check. Migrations
 run right after the new site starts, so a release that adds a column can show errors on the
 pages that use it for a minute or two.
+
+## Deploying from GitHub
+
+Once this is set up, merging a pull request into `main` deploys it: after CI passes on
+`main`, the Deploy workflow (`.github/workflows/deploy.yml`) runs `infra/deploy.sh` on a
+GitHub runner. That works from a phone, with no Docker or Mac needed. To redeploy by hand,
+use **Actions → Deploy → Run workflow**. Until the setup is done, the workflow skips itself.
+
+One-time setup:
+
+1. In the AWS console (us-east-1), open **CloudShell** (the `>_` icon at the top) and run:
+   ```sh
+   curl -fsSLO https://raw.githubusercontent.com/JacobWalkerGitHub/civicscope/main/infra/setup-github-deploy.sh
+   bash setup-github-deploy.sh
+   ```
+   It lets this repository's `production` environment sign in to AWS as the role
+   `civicscope-github-deploy`, which can only do what `deploy.sh` does. GitHub stores no
+   AWS keys.
+2. On GitHub, open **Settings → Secrets and variables → Actions** and add what the script
+   prints: the `AWS_DEPLOY_ROLE_ARN` variable, the `CIVICSCOPE_ALERT_EMAIL` secret, and, if
+   the site has its own domain, the `CIVICSCOPE_DOMAIN_NAME` and `CIVICSCOPE_CERTIFICATE_ARN`
+   variables. These replace `~/.cdk.json` for GitHub deploys. If the live site emails alarms
+   or uses a custom domain and the matching setting is missing, the deploy stops before
+   changing anything, so an alarm email or domain is never dropped by mistake.
+3. Optional: under **Settings → Environments → production**, add yourself as a required
+   reviewer if you want to approve each deploy before it runs.
+
+Deploying from a Mac with `infra/deploy.sh` keeps working as before.
 
 ## Backup restore drill
 

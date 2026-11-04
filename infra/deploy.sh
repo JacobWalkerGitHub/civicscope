@@ -3,7 +3,10 @@
 # runs any new database migrations.
 #   infra/deploy.sh
 # Needs Docker Desktop running and an AWS sign-in (`aws sso login`).
+# GitHub Actions runs this same script after every merge to main (.github/workflows/deploy.yml);
+# there CDK_REQUIRE_APPROVAL=never, because nobody is at a terminal to answer CDK's prompt.
 set -euo pipefail
+APPROVAL=${CDK_REQUIRE_APPROVAL:-broadening}
 cd "$(dirname "$0")/.."
 if ! git diff --quiet HEAD; then
   echo "You have uncommitted changes. Commit or stash them first, so the images match a commit." >&2
@@ -38,10 +41,10 @@ if [ "$running" = "0" ] || [ "$running" = "None" ]; then
   echo "Applying database migrations..."
   ./run-task.sh migrate
   echo "Turning the site on..."
-  pnpm exec cdk deploy -c "civicscope:imageTag=$TAG"
+  pnpm exec cdk deploy --require-approval "$APPROVAL" -c "civicscope:imageTag=$TAG"
 else
   echo "Deploying $TAG..."
-  pnpm exec cdk deploy -c "civicscope:imageTag=$TAG"
+  pnpm exec cdk deploy --require-approval "$APPROVAL" -c "civicscope:imageTag=$TAG"
   echo "Applying database migrations..."
   ./run-task.sh migrate
 fi

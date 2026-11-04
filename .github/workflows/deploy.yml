@@ -1,0 +1,93 @@
+name: Deploy
+
+# Ships main to AWS after CI passes on it, so merging a pull request (from a phone too)
+# is all a release takes. Runs the same infra/deploy.sh as a deploy from a Mac.
+#
+# One-time setup: run infra/setup-github-deploy.sh in AWS CloudShell, then add the
+# repository variable and secrets it prints (see "Deploying from GitHub" in infra/README.md).
+# Until AWS_DEPLOY_ROLE_ARN is set, this workflow skips itself.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  # "Run workflow" on the Actions tab redeploys the latest main by hand.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # lets the job sign in to AWS as the deploy role, with no stored AWS keys
+
+# One deploy at a time, in order; a newer merge waits instead of cancelling a deploy halfway.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: >-
+      vars.AWS_DEPLOY_ROLE_ARN != '' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.event == 'push'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The exact commit CI tested, not whatever main is by the time this starts.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+          role-session-name: civicscope-deploy
+      # The settings a Mac keeps in ~/.cdk.json. Without them CDK would drop the alarm email
+      # and the custom domain from the live stack, so stop if the live stack uses either and
+      # the matching setting is missing here.
+      - name: Write CDK settings
+        env:
+          ALERT_EMAIL: ${{ secrets.CIVICSCOPE_ALERT_EMAIL }}
+          DOMAIN_NAME: ${{ vars.CIVICSCOPE_DOMAIN_NAME }}
+          CERTIFICATE_ARN: ${{ vars.CIVICSCOPE_CERTIFICATE_ARN }}
+        run: |
+          out() { aws cloudformation describe-stacks --stack-name CivicScope --region us-east-1 \
+            --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text; }
+          site=$(out SiteUrl)
+          cdn=$(out CloudFrontDomain)
+          if [ -z "$DOMAIN_NAME" ] && [ "$site" != "https://$cdn" ]; then
+            echo "::error::The live site uses a custom domain. Add the CIVICSCOPE_DOMAIN_NAME and CIVICSCOPE_CERTIFICATE_ARN repository variables first."
+            exit 1
+          fi
+          emails=$(aws sns list-subscriptions-by-topic --topic-arn "$(out AlarmTopicArn)" \
+            --query "length(Subscriptions[?Protocol=='email'])" --output text)
+          if [ -z "$ALERT_EMAIL" ] && [ "$emails" != "0" ]; then
+            echo "::error::Alarms are emailed today. Add the CIVICSCOPE_ALERT_EMAIL repository secret first."
+            exit 1
+          fi
+          ALERT_EMAIL="$ALERT_EMAIL" DOMAIN_NAME="$DOMAIN_NAME" CERTIFICATE_ARN="$CERTIFICATE_ARN" \
+          node -e '
+            const c = {};
+            for (const [k, v] of [["alertEmail", process.env.ALERT_EMAIL],
+                                  ["domainName", process.env.DOMAIN_NAME],
+                                  ["certificateArn", process.env.CERTIFICATE_ARN]])
+              if (v) c[`civicscope:${k}`] = v;
+            require("fs").writeFileSync(`${process.env.HOME}/.cdk.json`, JSON.stringify({ context: c }));
+          '
+      - name: Build, upload, deploy and migrate
+        env:
+          CDK_REQUIRE_APPROVAL: never
+        run: infra/deploy.sh
+      - name: Summary
+        if: success()
+        run: |
+          url=$(aws cloudformation describe-stacks --stack-name CivicScope --region us-east-1 \
+            --query "Stacks[0].Outputs[?OutputKey=='SiteUrl'].OutputValue" --output text)
+          echo "Deployed $(git rev-parse --short HEAD) to $url" >> "$GITHUB_STEP_SUMMARY"
