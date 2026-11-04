@@ -18,6 +18,7 @@ import {
   aws_elasticloadbalancingv2 as elbv2,
   aws_events as events,
   aws_events_targets as targets,
+  aws_iam as iam,
   aws_logs as logs,
   aws_rds as rds,
   aws_secretsmanager as secretsmanager,
@@ -48,6 +49,11 @@ export interface CivicScopeStackProps extends StackProps {
   multiAz: boolean;
   fecCycle: number;
   congress: number;
+  /**
+   * Turns on follow email alerts, sent through Amazon SES from this address (its
+   * domain must be verified in SES). Without it the Follow buttons stay hidden.
+   */
+  alertsFromEmail?: string;
 }
 
 const DB_NAME = 'civicscope';
@@ -410,6 +416,26 @@ export class CivicScopeStack extends Stack {
       },
     });
 
+    // ---------------------------------------------------------------- follow alerts
+    // Readers follow a member or a bill and get emails through SES (packages/cms/src/
+    // follows.ts). The web tasks send the confirmation emails; a daily worker sends the
+    // updates. Both may send only from the one configured address.
+    const siteUrl = `https://${props.domainName ?? distribution.distributionDomainName}`;
+    const alertsEnv: Record<string, string> = props.alertsFromEmail
+      ? { SITE_URL: siteUrl, ALERTS_FROM_EMAIL: props.alertsFromEmail }
+      : {};
+    const sesSend = props.alertsFromEmail
+      ? new iam.PolicyStatement({
+          actions: ['ses:SendEmail'],
+          resources: [`arn:aws:ses:${this.region}:${this.account}:identity/*`],
+          conditions: { StringEquals: { 'ses:FromAddress': props.alertsFromEmail } },
+        })
+      : undefined;
+    for (const [name, value] of Object.entries(alertsEnv)) {
+      webTask.defaultContainer!.addEnvironment(name, value);
+    }
+    if (sesSend) webTask.addToTaskRolePolicy(sesSend);
+
     // ---------------------------------------------------------------- worker tasks
     const workerLogs = new logs.LogGroup(this, 'WorkerLogs', {
       retention: logs.RetentionDays.THREE_MONTHS,
@@ -433,7 +459,7 @@ export class CivicScopeStack extends Stack {
         image: workerImage,
         command,
         logging: ecs.LogDrivers.awsLogs({ logGroup: workerLogs, streamPrefix: id }),
-        environment: dbEnv,
+        environment: { ...dbEnv, ...alertsEnv },
         secrets: admin
           ? {
               // Migrations run as the schema owner, then refresh the app account.
@@ -467,6 +493,7 @@ export class CivicScopeStack extends Stack {
     });
 
     const schedule = (id: string, cron: events.CronOptions, command: string[]) => {
+      const taskDefinition = workerTask(`${id}Task`, command);
       const rule = new events.Rule(this, id, {
         schedule: events.Schedule.cron(cron),
         // Off until images exist and the database is migrated and seeded.
@@ -475,11 +502,12 @@ export class CivicScopeStack extends Stack {
       rule.addTarget(
         new targets.EcsTask({
           cluster,
-          taskDefinition: workerTask(`${id}Task`, command),
+          taskDefinition,
           subnetSelection: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
           securityGroups: [workerSecurityGroup],
         }),
       );
+      return taskDefinition;
     };
     // Times are UTC.
     schedule('FecDaily', { hour: '10', minute: '0' }, ['ingest:fec', String(props.fecCycle)]);
@@ -502,6 +530,13 @@ export class CivicScopeStack extends Stack {
     // Governors and state legislators in office (Open States' public files, no key).
     schedule('StateOfficialsDaily', { hour: '13', minute: '0' }, ['ingest:state-officials']);
     schedule('IngestCheckHourly', { minute: '30' }, ['check:ingest', '--hours', '1']);
+    // Follow alerts, after the day's imports (10:00 to about 14:00 UTC), so mid-morning
+    // on the East Coast.
+    if (sesSend) {
+      schedule('FollowAlertsDaily', { hour: '15', minute: '0' }, [
+        'alerts:send',
+      ]).addToTaskRolePolicy(sesSend);
+    }
 
     // ---------------------------------------------------------------- alarms
     // 1. Any alert the code raises (packages/cms/src/alerts.ts) in a worker's logs.

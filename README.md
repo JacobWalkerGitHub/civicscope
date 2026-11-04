@@ -42,6 +42,7 @@ including users), `reviewer` (edit, verify, publish), `editor` (draft only), `vi
 | `pnpm data:calendar --as you@example.com`      | Load the reviewed 2027 election calendar (drafts, dates, links)    |
 | `pnpm check:congress-votes [--chamber senate]` | Spot-check a random sample of imported House (or Senate) votes     |
 | `pnpm check:ingest`                            | Alert on ingest runs that failed or are stuck (hourly in AWS)      |
+| `pnpm alerts:send`                             | Email followers what's new on members and bills they follow        |
 | `pnpm db:verify-restore --target <url>`        | Check a restored database copy (backup restore drill)              |
 | `pnpm test:load --url <site>`                  | Load-test the public pages of a site you run                       |
 

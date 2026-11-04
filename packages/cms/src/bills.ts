@@ -255,7 +255,7 @@ export async function billOverview(db: Db) {
 }
 
 /** SQL matching a roll-call vote to the bill it was on ("H.R.", "HR" and "hr" alike). */
-const voteIsOnBill = (b: { congress: number; billType: BillType; number: number }) =>
+export const voteIsOnBill = (b: { congress: number; billType: BillType; number: number }) =>
   and(
     eq(rollCallVote.congress, b.congress),
     sql`lower(replace(replace(${rollCallVote.legislationType}, '.', ''), ' ', '')) = ${b.billType}`,

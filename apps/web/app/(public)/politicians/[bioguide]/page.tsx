@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getPublicMember } from '@civicscope/cms';
+import { alertsEnabled, getPublicMember } from '@civicscope/cms';
 import { BIOGUIDE_ID, bioguideUrl } from '@civicscope/core';
+import { FollowButton } from '@/components/public/follow';
 import { ReportLink } from '@/components/public/sources';
 import { Avatar, StageBadge } from '@/components/public/ui';
 import { rollCallUrl, voteDate } from '@/components/congress-format';
@@ -70,6 +71,7 @@ export default async function MemberPage({ params }: { params: Params }) {
             >
               Official biography
             </a>
+            {alertsEnabled() && <FollowButton kind="member" targetKey={member.bioguideId} />}
           </div>
         </div>
       </header>

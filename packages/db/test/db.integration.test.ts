@@ -58,6 +58,7 @@ describe('migrations', () => {
       'admin_recovery_code',
       'admin_session',
       'admin_user',
+      'alert_follow',
       'audit_log',
       'bill',
       'bill_sponsorship',

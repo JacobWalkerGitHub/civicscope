@@ -18,4 +18,5 @@ new CivicScopeStack(app, 'CivicScope', {
   multiAz: ctx('multiAz') !== false && ctx('multiAz') !== 'false',
   fecCycle: Number(ctx('fecCycle') ?? 2028),
   congress: Number(ctx('congress') ?? 119),
+  alertsFromEmail: ctx('alertsFromEmail') || undefined,
 });

@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getPublicBill } from '@civicscope/cms';
+import { alertsEnabled, billFollowKey, getPublicBill } from '@civicscope/cms';
 import type { BillStage, BillType } from '@civicscope/core';
+import { FollowButton } from '@/components/public/follow';
 import { ReportLink } from '@/components/public/sources';
 import { Avatar, StageBadge } from '@/components/public/ui';
 import { rollCallUrl, voteDate } from '@/components/congress-format';
@@ -93,6 +94,7 @@ export default async function BillPage({ params }: { params: Params }) {
           <a className="button button-secondary" href={b.congressGovUrl} rel="noopener">
             View on Congress.gov
           </a>
+          {alertsEnabled() && <FollowButton kind="bill" targetKey={billFollowKey(b)} />}
         </div>
         {b.textUrl && b.textVersion && (
           <p className="small muted">

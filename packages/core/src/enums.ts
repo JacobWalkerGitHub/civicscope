@@ -292,3 +292,7 @@ export const RESULT_GROUPS = [
   'local',
 ] as const;
 export type ResultGroup = (typeof RESULT_GROUPS)[number];
+
+/** What a reader can follow for email alerts. */
+export const FOLLOW_KINDS = ['member', 'bill'] as const;
+export type FollowKind = (typeof FOLLOW_KINDS)[number];

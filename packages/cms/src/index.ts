@@ -37,3 +37,7 @@ export * from './bills';
 export * from './admin-overview';
 export * from './state-officials';
 export * from './compare-record';
+
+export * from './email';
+export * from './follows';
+export * from './follow-alerts';

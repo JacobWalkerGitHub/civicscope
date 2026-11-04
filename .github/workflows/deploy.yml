@@ -66,6 +66,8 @@ jobs:
           ALERT_EMAIL: ${{ secrets.CIVICSCOPE_ALERT_EMAIL }}
           DOMAIN_NAME: ${{ vars.CIVICSCOPE_DOMAIN_NAME }}
           CERTIFICATE_ARN: ${{ vars.CIVICSCOPE_CERTIFICATE_ARN }}
+          # Turns on follow email alerts once SES is set up (see infra/README.md).
+          ALERTS_FROM_EMAIL: ${{ vars.CIVICSCOPE_ALERTS_FROM_EMAIL }}
         run: |
           out() { aws cloudformation describe-stacks --stack-name CivicScope --region us-east-1 \
             --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text; }
@@ -82,11 +84,12 @@ jobs:
             exit 1
           fi
           ALERT_EMAIL="$ALERT_EMAIL" DOMAIN_NAME="$DOMAIN_NAME" CERTIFICATE_ARN="$CERTIFICATE_ARN" \
-          node -e '
+          ALERTS_FROM_EMAIL="$ALERTS_FROM_EMAIL" node -e '
             const c = {};
             for (const [k, v] of [["alertEmail", process.env.ALERT_EMAIL],
                                   ["domainName", process.env.DOMAIN_NAME],
-                                  ["certificateArn", process.env.CERTIFICATE_ARN]])
+                                  ["certificateArn", process.env.CERTIFICATE_ARN],
+                                  ["alertsFromEmail", process.env.ALERTS_FROM_EMAIL]])
               if (v) c[`civicscope:${k}`] = v;
             require("fs").writeFileSync(`${process.env.HOME}/.cdk.json`, JSON.stringify({ context: c }));
           '
