@@ -1,5 +1,11 @@
 import { asc, desc, eq, isNull } from 'drizzle-orm';
-import { candidacyInputSchema, statusEventInputSchema, type PublishState } from '@civicscope/core';
+import {
+  candidacyInputSchema,
+  defaultSortName,
+  personInputSchema,
+  statusEventInputSchema,
+  type PublishState,
+} from '@civicscope/core';
 import { schema, type Db } from '@civicscope/db';
 import { recordChange, type Actor, type Tx, type UpdateOptions } from './changes';
 import { countLiveCitations, insertCitation } from './citations';
@@ -7,6 +13,7 @@ import { CmsError, mysqlErrorCode, NotFoundError } from './errors';
 import { lockChangedFields, lockField } from './locks';
 import { parseInput } from './parse';
 import { resolveSource } from './sources';
+import { uniqueSlug } from './slugs';
 
 const {
   candidacy,
@@ -91,6 +98,53 @@ export async function createCandidacy(db: Db, actor: Actor, input: unknown): Pro
         after: await load(tx, res.insertId),
       });
       return res.insertId;
+    });
+  } catch (error) {
+    translateError(error);
+  }
+}
+
+/**
+ * Adds someone new to a race in one step: creates the person (a draft) and their
+ * candidacy together, so a failed candidacy never leaves a stray person behind.
+ */
+export async function createPersonWithCandidacy(
+  db: Db,
+  actor: Actor,
+  input: Record<string, unknown>,
+): Promise<{ personId: number; candidacyId: number }> {
+  const p = parseInput(personInputSchema, input);
+  const c = parseInput(candidacyInputSchema, { ...input, personId: 1 });
+  try {
+    return await db.transaction(async (tx) => {
+      const slug = await uniqueSlug(tx, person, person.slug, p.fullName);
+      const [pr] = await tx
+        .insert(person)
+        .values({ ...p, sortName: p.sortName ?? defaultSortName(p.fullName), slug });
+      const personId = pr.insertId;
+      const [personRow] = await tx.select().from(person).where(eq(person.id, personId));
+      await recordChange(tx, actor, {
+        entityType: 'person',
+        entityId: personId,
+        action: 'create',
+        before: null,
+        after: personRow!,
+      });
+      const { partyId } = await checkCandidacy(tx, { ...c, personId });
+      const [res] = await tx.insert(candidacy).values({
+        ...c,
+        personId,
+        partyId,
+        ballotName: c.ballotName ?? personRow!.fullName,
+      });
+      await recordChange(tx, actor, {
+        entityType: 'candidacy',
+        entityId: res.insertId,
+        action: 'create',
+        before: null,
+        after: await load(tx, res.insertId),
+      });
+      return { personId, candidacyId: res.insertId };
     });
   } catch (error) {
     translateError(error);

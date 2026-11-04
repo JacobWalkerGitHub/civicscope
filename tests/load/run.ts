@@ -31,7 +31,10 @@ const maxErrorRate = Number(values['max-errors']);
 async function discoverPaths(): Promise<string[]> {
   const paths = [
     '/',
-    '/candidates',
+    '/politicians',
+    '/politicians/candidates',
+    '/bills',
+    '/bills?tab=progress',
     '/elections',
     '/issues',
     '/search?q=governor',

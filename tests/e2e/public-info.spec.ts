@@ -26,7 +26,7 @@ test('methodology and about pages are linked from every public page', async ({ p
   await page.goto('/');
   await page
     .getByRole('navigation', { name: 'About CivicScope' })
-    .getByRole('link', { name: 'Methodology' })
+    .getByRole('link', { name: 'How we work' })
     .click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('How we work');
   await expect(page.getByText('No source, no publication')).toBeVisible();

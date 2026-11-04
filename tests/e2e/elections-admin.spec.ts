@@ -62,7 +62,8 @@ test('the owner sets up an election and race, and publishes them in order', asyn
   const electionUrl = page.url();
 
   // Race
-  await page.getByText('Add a race').click();
+  // Opens on its own while the election has no races.
+  await expect(page.locator('details', { hasText: 'Add a race' })).toHaveAttribute('open', '');
   await page.getByLabel('Office').selectOption({ label: 'Governor (Kentucky)' });
   await page.getByLabel('Race name').fill('Governor of Kentucky');
   await page.getByRole('button', { name: 'Add race' }).click();
@@ -149,6 +150,7 @@ test('an editor can edit but cannot publish or archive', async ({ page }) => {
   await signIn(page, E2E_USERS.editor.email);
   await page.getByRole('link', { name: 'Elections' }).first().click();
   await page.getByRole('link', { name: '2027 Kentucky General Election' }).click();
+  await page.getByText('Edit election details').click();
   await expect(page.getByRole('button', { name: 'Save changes' })).toBeVisible();
   await expect(page.getByRole('button', { name: /Publish/ })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Archive' })).toHaveCount(0);

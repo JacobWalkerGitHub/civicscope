@@ -1,3 +1,4 @@
+import { AutoName } from '@/components/admin/auto-name';
 import { ActionForm, SelectField, TextField } from '@/components/admin/form';
 import type { FormState } from '@/lib/admin-action';
 import { ELECTION_TYPE_LABELS, PRIMARY_SYSTEM_LABELS, options } from '@/lib/labels';
@@ -24,19 +25,13 @@ export function ElectionForm({
 }) {
   return (
     <ActionForm action={action} submitLabel={submitLabel}>
+      {!election && <AutoName kind="election" />}
       <SelectField
         name="jurisdictionId"
         label="State"
         placeholder="Choose a state…"
         options={states.map((s) => ({ value: s.id, label: s.name }))}
         defaultValue={election?.jurisdictionId}
-        required
-      />
-      <TextField
-        name="name"
-        label="Name"
-        defaultValue={election?.name}
-        hint='e.g. "Kentucky General Election 2027"'
         required
       />
       <SelectField
@@ -57,6 +52,17 @@ export function ElectionForm({
         label="Election date"
         type="date"
         defaultValue={election?.date}
+        required
+      />
+      <TextField
+        name="name"
+        label="Name"
+        defaultValue={election?.name}
+        hint={
+          election
+            ? 'As shown publicly, e.g. "Kentucky General Election 2027".'
+            : 'Filled in from the state, type and date. Change it if you like.'
+        }
         required
       />
       <TextField

@@ -16,6 +16,9 @@ export function CandidacyForm({
   racePartyName,
   candidacy,
   submitLabel,
+  resetOnSave,
+  savedMessage,
+  newPerson,
 }: {
   action: (state: FormState, formData: FormData) => Promise<FormState>;
   /** Only when adding: who can be added to this race. */
@@ -25,16 +28,40 @@ export function CandidacyForm({
   racePartyName: string | null;
   candidacy?: CandidacyValues;
   submitLabel: string;
+  resetOnSave?: boolean;
+  savedMessage?: string;
+  /** Adding someone new: ask for their name instead of picking a person. */
+  newPerson?: boolean;
 }) {
   return (
-    <ActionForm action={action} submitLabel={submitLabel}>
+    <ActionForm
+      action={action}
+      submitLabel={submitLabel}
+      resetOnSave={resetOnSave}
+      savedMessage={savedMessage}
+    >
+      {newPerson && (
+        <>
+          <TextField
+            name="fullName"
+            label="Full name"
+            hint="As it appears on official records. Check the other tab first so the same person isn’t added twice."
+            required
+          />
+          <TextField
+            name="preferredName"
+            label="Preferred name"
+            hint='The name they go by, if different, e.g. "Andy".'
+          />
+        </>
+      )}
       {people && (
         <SelectField
           name="personId"
           label="Person"
           placeholder="Choose a person…"
           options={people.map((p) => ({ value: p.id, label: p.sortName }))}
-          hint="Not listed? Add them under Candidates first."
+          hint="Not listed? Use “Someone new” instead."
           required
         />
       )}

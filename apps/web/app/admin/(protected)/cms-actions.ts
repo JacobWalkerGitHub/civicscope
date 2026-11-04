@@ -17,6 +17,7 @@ import {
   addPersonIdentifier,
   addStatusEvent,
   createCandidacy,
+  createPersonWithCandidacy,
   createPerson,
   removeCitation,
   removePersonIdentifier,
@@ -124,6 +125,7 @@ export async function updateElectionAction(id: number, _: FormState, formData: F
   );
 }
 
+/** Adds a race, then opens it so its candidates can be added next. */
 export async function createRaceAction(electionId: number, _: FormState, formData: FormData) {
   let id = 0;
   const state = await runFormAction('content:edit', formData, async (actor, values) => {
@@ -301,10 +303,21 @@ export async function removeIdentifierAction(id: number, _: FormState) {
   return runButtonAction('content:edit', (actor) => removePersonIdentifier(getDb(), actor, id));
 }
 
+/** Adds a person to a race, then opens the candidacy to cite it and set its status. */
 export async function createCandidacyAction(raceId: number, _: FormState, formData: FormData) {
   let id = 0;
   const state = await runFormAction('content:edit', formData, async (actor, values) => {
     id = await createCandidacy(getDb(), actor, { ...values, raceId });
+  });
+  if (state.saved) redirect(`/admin/candidacies/${id}?created=1`);
+  return state;
+}
+
+/** Creates a new person and adds them to a race in one step, then opens the candidacy. */
+export async function addNewCandidateAction(raceId: number, _: FormState, formData: FormData) {
+  let id = 0;
+  const state = await runFormAction('content:edit', formData, async (actor, values) => {
+    id = (await createPersonWithCandidacy(getDb(), actor, { ...values, raceId })).candidacyId;
   });
   if (state.saved) redirect(`/admin/candidacies/${id}?created=1`);
   return state;

@@ -7,7 +7,7 @@
 .public {
   --ink: #0f172a;
   --ink-soft: #334155;
-  --muted: #64748b;
+  --muted: #526077;
   --line: #e2e8f0;
   --line-strong: #cbd5e1;
   --page: #f8fafc;
@@ -17,7 +17,7 @@
   --accent-strong: #0d9488;
   --accent-soft: #e6f4f2;
   --navy: #0f172a;
-  --red: #0d9488;
+  --red: #0f766e;
   --radius: 14px;
   --radius-sm: 10px;
   --shadow: 0 1px 2px rgb(15 23 42 / 6%), 0 4px 16px rgb(15 23 42 / 6%);
