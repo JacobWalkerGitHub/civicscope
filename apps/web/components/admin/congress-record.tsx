@@ -1,13 +1,8 @@
 import { getCongressRecord } from '@civicscope/cms';
-import { billLabel, congressGovBillUrl, isBillType } from '@civicscope/core';
+import { billLabel, congressGovBillUrl } from '@civicscope/core';
 import { getDb } from '@/lib/db';
 import { formatDate } from '@/lib/labels';
-
-/** Votes are dated where Congress sits. */
-const voteDate = new Intl.DateTimeFormat('en-US', {
-  dateStyle: 'medium',
-  timeZone: 'America/New_York',
-});
+import { voteDate, voteMeasure } from '../congress-format';
 
 /**
  * A person's record in Congress, found through their Bioguide ID: seats held, bills
@@ -24,7 +19,7 @@ export async function CongressRecord({ personId }: { personId: number }) {
       <h2 id="congress-heading">Record in Congress</h2>
       <p className="muted">
         Imported from Congress.gov and senate.gov for Bioguide ID {record.bioguideIds.join(', ')}.
-        These are drafts and are not on the public site yet.
+        They are shown on the public profile once the person is published.
       </p>
       {nothing && <p className="muted">Nothing imported for this ID yet.</p>}
       {memberships.length > 0 && (
@@ -83,14 +78,7 @@ export async function CongressRecord({ personId }: { personId: number }) {
             </thead>
             <tbody>
               {votes.map((v) => {
-                // "HR" from the Clerk, "H.R." from the Senate; nominations ("PN") and
-                // amendments are shown as the chamber names them.
-                const type = v.legislationType?.toLowerCase().replace(/[^a-z]/g, '') ?? '';
-                const measure = !v.legislationNumber
-                  ? null
-                  : isBillType(type) && /^\d+$/.test(v.legislationNumber)
-                    ? billLabel(type, Number(v.legislationNumber))
-                    : `${v.legislationType} ${v.legislationNumber}`;
+                const measure = voteMeasure(v);
                 return (
                   <tr key={v.id}>
                     <td>{voteDate.format(v.votedAt)}</td>
