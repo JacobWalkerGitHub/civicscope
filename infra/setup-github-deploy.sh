@@ -7,9 +7,12 @@
 #   - GitHub's sign-in provider in this AWS account (OIDC), so no AWS keys are stored in GitHub
 #   - the role civicscope-github-deploy, which only this repository's "production"
 #     environment can use, and which can only do what infra/deploy.sh does
-# Safe to run again.
+# Safe to run again. If the Deploy workflow's "Show the identity AWS will see" step prints a
+# different sub than the default below, run it again with that value:
+#   SUB='repo:...' bash setup-github-deploy.sh
 set -euo pipefail
 REPO=${REPO:-JacobWalkerGitHub/civicscope}
+SUB=${SUB:-repo:$REPO:environment:production}
 ROLE=civicscope-github-deploy
 REGION=us-east-1
 ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
@@ -20,6 +23,10 @@ if ! aws iam get-open-id-connect-provider --open-id-connect-provider-arn "$PROVI
   aws iam create-open-id-connect-provider \
     --url https://token.actions.githubusercontent.com \
     --client-id-list sts.amazonaws.com >/dev/null
+else
+  # A provider made earlier by something else may not accept AWS sign-ins yet.
+  aws iam add-client-id-to-open-id-connect-provider \
+    --open-id-connect-provider-arn "$PROVIDER_ARN" --client-id sts.amazonaws.com 2>/dev/null || true
 fi
 
 trust=$(cat <<JSON
@@ -30,10 +37,8 @@ trust=$(cat <<JSON
     "Principal": { "Federated": "$PROVIDER_ARN" },
     "Action": "sts:AssumeRoleWithWebIdentity",
     "Condition": {
-      "StringEquals": {
-        "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-        "token.actions.githubusercontent.com:sub": "repo:$REPO:environment:production"
-      }
+      "StringEquals": { "token.actions.githubusercontent.com:aud": "sts.amazonaws.com" },
+      "StringEqualsIgnoreCase": { "token.actions.githubusercontent.com:sub": "$SUB" }
     }
   }]
 }
@@ -68,10 +73,10 @@ JSON
 )
 
 if aws iam get-role --role-name "$ROLE" >/dev/null 2>&1; then
-  echo "Updating the role $ROLE..."
+  echo "Updating the role $ROLE (GitHub identity: $SUB)..."
   aws iam update-assume-role-policy --role-name "$ROLE" --policy-document "$trust"
 else
-  echo "Creating the role $ROLE..."
+  echo "Creating the role $ROLE (GitHub identity: $SUB)..."
   aws iam create-role --role-name "$ROLE" --assume-role-policy-document "$trust" \
     --description "GitHub Actions deploys of CivicScope from $REPO" >/dev/null
 fi
