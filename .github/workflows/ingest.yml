@@ -1,0 +1,68 @@
+name: Run import
+
+# Runs one of the scheduled imports in production now, instead of waiting for its next
+# scheduled time. "Run workflow" on the Actions tab, pick the import, and the job starts
+# the same worker task the schedule would (infra/run-task.sh admin ...) and waits for it.
+# The task's own output is in CloudWatch (the worker log group); this job shows whether it
+# finished cleanly. Uses the deploy role, which can already start worker tasks, so no new
+# AWS access is needed.
+on:
+  workflow_dispatch:
+    inputs:
+      import:
+        description: Which import to run
+        type: choice
+        default: congress
+        options:
+          - congress
+          - fec
+          - fec-totals
+          - legislators
+          - openstates
+          - check-ingest
+
+permissions:
+  contents: read
+  id-token: write # signs in to AWS as the deploy role, with no stored AWS keys
+
+# Never alongside a deploy: a deploy can replace the task definition mid-run.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  run:
+    if: vars.AWS_DEPLOY_ROLE_ARN != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+          role-session-name: civicscope-ingest
+      - name: Run the import
+        env:
+          IMPORT: ${{ inputs.import }}
+        working-directory: infra
+        run: |
+          # The same arguments as the schedules in lib/civicscope-stack.ts, from cdk.json.
+          congress=$(jq -r '.context["civicscope:congress"]' cdk.json)
+          cycle=$(jq -r '.context["civicscope:fecCycle"]' cdk.json)
+          case "$IMPORT" in
+            congress)     set -- ingest:congress "$congress" ;;
+            fec)          set -- ingest:fec "$cycle" ;;
+            fec-totals)   set -- ingest:fec-totals "$((cycle - 2))" "$cycle" ;;
+            legislators)  set -- ingest:legislators ;;
+            openstates)   set -- ingest:openstates ;;
+            check-ingest) set -- check:ingest --hours 24 ;;
+            *) echo "::error::Unknown import $IMPORT"; exit 2 ;;
+          esac
+          echo "Running: pnpm $*"
+          ./run-task.sh admin "$@"
+      - name: Summary
+        if: always()
+        run: |
+          echo "Import \`${{ inputs.import }}\` finished: ${{ job.status }}. Output: CloudWatch, worker log group." >> "$GITHUB_STEP_SUMMARY"
