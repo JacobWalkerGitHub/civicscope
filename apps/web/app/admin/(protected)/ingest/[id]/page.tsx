@@ -9,6 +9,7 @@ import {
   type FecRunSummary,
   type ImportSummary,
   type OpenStatesSummary,
+  type StateOfficialsSummary,
 } from '@civicscope/cms';
 import { bioguideUrl } from '@civicscope/core';
 import { getDb } from '@/lib/db';
@@ -54,6 +55,9 @@ export default async function IngestRunPage({ params }: { params: Promise<{ id: 
       )}
       {run.source === 'openstates' && run.summary != null && (
         <OpenStatesDetail s={run.summary as OpenStatesSummary} pages={pages} />
+      )}
+      {run.source === 'state_officials' && run.summary != null && (
+        <StateOfficialsDetail s={run.summary as StateOfficialsSummary} pages={pages} />
       )}
     </>
   );
@@ -375,6 +379,68 @@ function OpenStatesDetail({ s, pages }: { s: OpenStatesSummary; pages: number })
                     <a href={`https://openstates.org/person/${a.openstatesId}`}>{a.openstatesId}</a>
                   </td>
                   <td>{a.name}</td>
+                  <td>{a.problem}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+    </>
+  );
+}
+
+function StateOfficialsDetail({ s, pages }: { s: StateOfficialsSummary; pages: number }) {
+  return (
+    <>
+      <dl className="facts">
+        <dt>Requests</dt>
+        <dd>
+          {s.requests} ({pages} changed files kept)
+        </dd>
+      </dl>
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">State</th>
+            <th scope="col">Governor</th>
+            <th scope="col">Legislators</th>
+            <th scope="col">Added</th>
+            <th scope="col">Changed</th>
+            <th scope="col">Left office</th>
+            <th scope="col">Refreshed</th>
+          </tr>
+        </thead>
+        <tbody>
+          {s.states.map((x) => (
+            <tr key={x.state}>
+              <th scope="row">{x.state}</th>
+              <td>{x.governor ?? '—'}</td>
+              <td>{x.legislators}</td>
+              <td>{x.added}</td>
+              <td>{x.updated}</td>
+              <td>{x.left}</td>
+              <td>{x.refreshed ? 'Yes' : 'No, kept as it was'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <section aria-labelledby="attention-heading">
+        <h2 id="attention-heading">Needs a person ({s.attention.length})</h2>
+        {s.attention.length === 0 ? (
+          <p className="muted">Nothing.</p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">State</th>
+                <th scope="col">Why</th>
+              </tr>
+            </thead>
+            <tbody>
+              {s.attention.map((a, i) => (
+                <tr key={`${a.state}-${i}`}>
+                  <td>{a.state}</td>
                   <td>{a.problem}</td>
                 </tr>
               ))}

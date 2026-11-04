@@ -162,6 +162,13 @@
       "when": 1793807357541,
       "tag": "0022_bill_details",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "5",
+      "when": 1793825376301,
+      "tag": "0023_state_officials",
+      "breakpoints": true
     }
   ]
 }

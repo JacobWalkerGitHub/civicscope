@@ -24,6 +24,7 @@
     "check:congress-votes": "tsx packages/cms/src/scripts/spot-check-congress.ts",
     "check:ingest": "tsx packages/cms/src/scripts/check-ingest.ts",
     "ingest:openstates": "tsx packages/cms/src/scripts/ingest-openstates.ts",
+    "ingest:state-officials": "tsx packages/cms/src/scripts/ingest-state-officials.ts",
     "dev": "pnpm --filter @civicscope/web dev",
     "admin:create-user": "pnpm --filter @civicscope/auth create-user",
     "test:e2e": "tsx tests/e2e/run.ts",

@@ -38,6 +38,7 @@ including users), `reviewer` (edit, verify, publish), `editor` (draft only), `vi
 | `pnpm ingest:legislators`                      | Match Members of Congress to people by Bioguide/FEC/Wikidata IDs   |
 | `pnpm ingest:congress 119`                     | Import members, bills, House and Senate votes (`CONGRESS_API_KEY`) |
 | `pnpm ingest:openstates`                       | Import state legislators and their votes (`OPENSTATES_API_KEY`)    |
+| `pnpm ingest:state-officials [--states VA,NJ]` | Import governors and state legislators in office (no key needed)   |
 | `pnpm data:calendar --as you@example.com`      | Load the reviewed 2027 election calendar (drafts, dates, links)    |
 | `pnpm check:congress-votes [--chamber senate]` | Spot-check a random sample of imported House (or Senate) votes     |
 | `pnpm check:ingest`                            | Alert on ingest runs that failed or are stuck (hourly in AWS)      |
@@ -58,7 +59,8 @@ infra             AWS CDK app and deploy runbook (see infra/README.md)
 See `docs/adr/0001-foundation-choices.md` for why things are the way they are.
 
 Public sections: Elections, Politicians (`/politicians` lists Members of Congress in office,
-`/politicians/<bioguide>` their bills and votes, `/politicians/candidates` every candidate in
+`/politicians/<bioguide>` their bills and votes, `/politicians/state` governors and state
+legislators in office from Open States, with a page each at `/politicians/state/<id>`, `/politicians/candidates` every candidate in
 every election with won/lost filters), Bills (`/bills`, with a page per bill at
 `/bills/<congress>/<type>/<number>`), Issues and My ballot. Bill summaries are the Congressional
 Research Service's; a bill's status label is worked out from its latest action (see
