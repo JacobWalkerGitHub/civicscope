@@ -155,6 +155,13 @@
       "when": 1793759584966,
       "tag": "0021_fec_outside_spending",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "5",
+      "when": 1793807357541,
+      "tag": "0022_bill_details",
+      "breakpoints": true
     }
   ]
 }

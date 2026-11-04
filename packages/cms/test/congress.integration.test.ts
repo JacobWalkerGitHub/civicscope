@@ -6,7 +6,12 @@ import {
   addPersonIdentifier,
   createPerson,
   getCongressRecord,
+  getPublicBill,
+  getPublicMember,
+  listCurrentMembers,
   listIngestRuns,
+  listPublicBills,
+  parseBillNumber,
   runCongressImport,
   runLegislatorCrosswalk,
   spotCheckVotes,
@@ -263,8 +268,45 @@ const fakeFetch = (async (input: string | URL | Request) => {
           },
         ],
         cosponsors: { count: COSPONSORS.length },
+        summaries: { count: 2 },
+        textVersions: { count: 1 },
         updateDate: BILL_UPDATED,
       },
+    });
+  }
+  if (p === '/v3/bill/119/hr/101/summaries') {
+    return json({
+      summaries: [
+        {
+          actionDate: '2026-01-15',
+          actionDesc: 'Introduced in House',
+          text: '<p><strong>Example Act</strong></p><p>This bill does things &amp; more.</p>',
+          updateDate: '2026-01-20T00:00:00Z',
+        },
+        {
+          actionDate: '2026-01-30',
+          actionDesc: 'Reported to House',
+          text: '<p>The reported version.</p>',
+          updateDate: '2026-02-01T00:00:00Z',
+        },
+      ],
+    });
+  }
+  if (p === '/v3/bill/119/hr/101/text') {
+    return json({
+      textVersions: [
+        {
+          date: '2026-01-15T05:00:00Z',
+          type: 'Introduced in House',
+          formats: [
+            { type: 'PDF', url: 'https://www.congress.gov/119/bills/hr101/BILLS-119hr101ih.pdf' },
+            {
+              type: 'Formatted Text',
+              url: 'https://www.congress.gov/119/bills/hr101/BILLS-119hr101ih.htm',
+            },
+          ],
+        },
+      ],
     });
   }
   if (p === '/v3/bill/119/hr/101/cosponsors') return json(page('cosponsors', COSPONSORS));
@@ -442,6 +484,18 @@ describe('Congress.gov import', () => {
       publishState: 'draft',
       url: 'https://www.congress.gov/bill/119th-congress/house-bill/101',
     });
+    // The latest summary, as text; the latest printed version; the stage.
+    const [full] = await db.select().from(schema.bill);
+    expect(full).toMatchObject({
+      stage: 'committee',
+      summary: 'The reported version.',
+      summaryVersion: 'Reported to House',
+      summaryDate: '2026-01-30',
+      textUrl: 'https://www.congress.gov/119/bills/hr101/BILLS-119hr101ih.htm',
+      textVersion: 'Introduced in House',
+      textDate: '2026-01-15',
+    });
+    expect(full!.extrasCheckedAt).not.toBeNull();
 
     // The public view shows imported records, with their source, until an editor takes
     // one down.
@@ -475,6 +529,78 @@ describe('Congress.gov import', () => {
     expect(billList.searchParams.get('sort')).toBe('updateDate asc');
   });
 
+  it('shows bills with their sponsors and votes, and current members', async () => {
+    const list = await listPublicBills(db, { tab: 'progress' });
+    expect(list.total).toBe(1);
+    expect(list.rows[0]).toMatchObject({
+      label: 'H.R. 101',
+      stage: 'committee',
+      hasSummary: true,
+      sponsor: { bioguideId: 'X000001', name: 'Harper House', party: 'I', state: 'KY' },
+    });
+    expect((await listPublicBills(db, { tab: 'outcomes' })).total).toBe(0);
+    expect((await listPublicBills(db, { q: 'hr 101' })).total).toBe(1);
+    expect((await listPublicBills(db, { q: 'Example' })).total).toBe(1);
+    expect((await listPublicBills(db, { q: 'Nothing like it' })).total).toBe(0);
+    expect((await listPublicBills(db, { chamber: 'senate' })).total).toBe(0);
+    expect(parseBillNumber('H.R. 3424')).toEqual({ type: 'hr', number: 3424 });
+    expect(parseBillNumber('S 5')).toEqual({ type: 's', number: 5 });
+    expect(parseBillNumber('Tax cuts')).toBeNull();
+
+    const page = (await getPublicBill(db, 119, 'hr', 101))!;
+    expect(page.bill).toMatchObject({ label: 'H.R. 101', summary: 'The reported version.' });
+    expect(page.sponsors.map((s) => s.name)).toEqual(['Harper House']);
+    expect(page.cosponsors).toEqual([
+      expect.objectContaining({
+        bioguideId: 'X000002',
+        name: 'Robin A. Newmember',
+        isOriginal: true,
+      }),
+    ]);
+    // Both House votes on the bill, newest first, with a tally and every member's vote.
+    expect(page.votes.map((v) => [v.session, v.tally])).toEqual([
+      [2, { yes: 1, no: 0, present: 1, absent: 1, other: 0 }],
+      [1, { yes: 1, no: 1, present: 1, absent: 0, other: 0 }],
+    ]);
+    expect(page.votes[1]!.positions.map((p) => [p.name, p.voteCast])).toEqual([
+      ['Harper House', 'Yea'],
+      ['Robin A. Newmember', 'Nay'],
+      ['Una Unknown', 'Present'],
+    ]);
+    // Profile links only for published people.
+    expect(page.sponsors[0]!.personSlug).toBeNull();
+    await db
+      .update(schema.person)
+      .set({ publishState: 'published' })
+      .where(eq(schema.person.id, harperId));
+    expect((await getPublicBill(db, 119, 'hr', 101))!.sponsors[0]!.personSlug).not.toBeNull();
+    await db
+      .update(schema.person)
+      .set({ publishState: 'draft' })
+      .where(eq(schema.person.id, harperId));
+    expect(await getPublicBill(db, 119, 'hr', 999)).toBeNull();
+    expect(await getPublicBill(db, 119, 'xyz', 101)).toBeNull();
+
+    const members = await listCurrentMembers(db, {}, '2026-11-02');
+    expect(members.congress).toBe(119);
+    expect(members.rows.map((m) => [m.name, m.state, m.district])).toEqual([
+      ['Harper House', 'KY', 6],
+      ['Robin A. Newmember', 'OH', 3],
+      ['Una Unknown', 'GU', 0],
+    ]);
+    expect((await listCurrentMembers(db, { state: 'oh' }, '2026-11-02')).rows).toHaveLength(1);
+    expect((await listCurrentMembers(db, { q: 'harp' }, '2026-11-02')).rows).toHaveLength(1);
+
+    const harper = (await getPublicMember(db, 'X000001'))!;
+    expect(harper.member.name).toBe('Harper House');
+    expect(harper.sponsorCount).toBe(1);
+    expect(harper.votes.map((v) => [v.voteCast, v.bill?.label])).toEqual([
+      ['Yea', 'H.R. 101'],
+      ['Yea', 'H.R. 101'],
+    ]);
+    expect(await getPublicMember(db, 'Z999999')).toBeNull();
+  });
+
   it('changes nothing when run again on the same data', async () => {
     const revisions = (await db.select().from(schema.revision)).length;
     const calls = requested.length;
@@ -494,8 +620,8 @@ describe('Congress.gov import', () => {
     const calls = requested.length;
     const { summary } = await congressRun({ parts: ['bills'] });
     expect(summary.bills).toMatchObject({ created: 0, updated: 0, unchanged: 1 });
-    // The list page, the bill and its cosponsors.
-    expect(requested.length - calls).toBe(3);
+    // The list page, the bill, its cosponsors, summaries and text.
+    expect(requested.length - calls).toBe(5);
     const [b] = await db.select().from(schema.bill);
     expect(b!.sourceCheckedAt!.getTime()).toBeGreaterThan(Date.parse('2026-10-03T12:00:00Z'));
     // Now it is known to be current: the next run only reads the list.

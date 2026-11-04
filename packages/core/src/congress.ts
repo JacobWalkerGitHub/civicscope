@@ -164,10 +164,38 @@ export const congressBillDetailSchema = z.looseObject({
     latestAction,
     sponsors: z.array(sponsorSchema).optional(),
     cosponsors: z.looseObject({ count: z.number().int().nonnegative() }).nullable().optional(),
+    /** Present once the bill became law. */
+    laws: z.array(z.looseObject({ number: z.string().nullable().optional() })).optional(),
+    summaries: z.looseObject({ count: z.number().int().nonnegative() }).nullable().optional(),
+    textVersions: z.looseObject({ count: z.number().int().nonnegative() }).nullable().optional(),
     updateDate: z.string().min(1),
   }),
 });
 export type CongressBillDetail = z.infer<typeof congressBillDetailSchema>['bill'];
+
+/** Summaries written by the Congressional Research Service, one per version of the bill. */
+export const congressBillSummariesSchema = z.looseObject({
+  summaries: z.array(
+    z.looseObject({
+      actionDate: z.iso.date().nullable().optional(),
+      actionDesc: z.string().nullable().optional(),
+      /** HTML. */
+      text: z.string(),
+      updateDate: z.string().nullable().optional(),
+    }),
+  ),
+});
+
+/** The printed versions of a bill (introduced, reported, engrossed, enrolled...). */
+export const congressBillTextSchema = z.looseObject({
+  textVersions: z.array(
+    z.looseObject({
+      date: z.string().nullable().optional(),
+      type: z.string().nullable().optional(),
+      formats: z.array(z.looseObject({ type: z.string(), url: z.url() })),
+    }),
+  ),
+});
 
 export const congressCosponsorPageSchema = z.looseObject({
   cosponsors: z.array(
@@ -343,4 +371,135 @@ const STATE_CODES: Record<string, string> = {
 /** "Massachusetts" -> "MA"; null for a name it doesn't know. */
 export function stateCode(name: string): string | null {
   return STATE_CODES[name.trim()] ?? null;
+}
+
+/** "Warren, Elizabeth" -> "Elizabeth Warren"; other shapes are returned as given. */
+export function memberDisplayName(name: string): string {
+  const m = /^([^,]+),\s*(.+)$/.exec(name.trim());
+  return m ? `${m[2]} ${m[1]}` : name.trim();
+}
+
+/** The Congress sitting on a date: the 119th runs from January 3, 2025 to January 3, 2027. */
+export function congressOn(iso: string): number {
+  const year = Number(iso.slice(0, 4));
+  const beforeJan3 = iso.slice(5) < '01-03';
+  const y = beforeJan3 ? year - 1 : year;
+  return Math.floor((y - 1789) / 2) + 1;
+}
+
+const ENTITIES: Record<string, string> = {
+  amp: '&',
+  lt: '<',
+  gt: '>',
+  quot: '"',
+  apos: "'",
+  nbsp: ' ',
+  mdash: '—',
+  ndash: '–',
+  rsquo: '’',
+  lsquo: '‘',
+  rdquo: '”',
+  ldquo: '“',
+  sect: '§',
+  hellip: '…',
+};
+
+/**
+ * Plain text from a Congress.gov summary's HTML: paragraphs separated by a blank line,
+ * list items starting with "• ". Every tag is dropped, so the result is safe to show as
+ * text. Returns null when nothing is left.
+ */
+export function htmlToPlainText(html: string): string | null {
+  const text = html
+    .replace(/<\s*br\s*\/?>/gi, '\n')
+    .replace(/<\s*li[^>]*>/gi, '\n• ')
+    .replace(/<\/\s*(p|div|li|ul|ol|h[1-6])\s*>/gi, '\n\n')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&#(\d+);/g, (_, n: string) => String.fromCodePoint(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n: string) => String.fromCodePoint(parseInt(n, 16)))
+    .replace(/&([a-z]+);/gi, (m, n: string) => ENTITIES[n.toLowerCase()] ?? m)
+    .split(/\n\s*\n/)
+    .map((p) =>
+      p
+        .split('\n')
+        .map((l) => l.replace(/[ \t]+/g, ' ').trim())
+        .filter(Boolean)
+        .join('\n'),
+    )
+    .filter(Boolean)
+    .join('\n\n');
+  return text || null;
+}
+
+/**
+ * Where a bill stands, worked out from Congress.gov's latest action. A label, not a
+ * record: pages show it next to the latest action's own words.
+ */
+export const BILL_STAGES = [
+  'introduced',
+  'committee',
+  'reported',
+  'passed_house',
+  'passed_senate',
+  'passed_both',
+  'law',
+  'adopted',
+  'vetoed',
+  'failed',
+] as const;
+export type BillStage = (typeof BILL_STAGES)[number];
+/** Stages where the bill's course has ended, at least for now. */
+export const FINAL_BILL_STAGES: readonly BillStage[] = ['law', 'adopted', 'vetoed', 'failed'];
+
+export function billStage(
+  type: BillType,
+  latestActionText: string | null | undefined,
+  { becameLaw = false }: { becameLaw?: boolean } = {},
+): BillStage {
+  const t = (latestActionText ?? '').toLowerCase();
+  if (becameLaw || /became (public|private) law/.test(t)) return 'law';
+  if (/veto/.test(t) && !/passed over veto|veto overridden/.test(t)) return 'vetoed';
+  if (/passed over veto|veto overridden/.test(t)) return 'law';
+  if (/failed|not agreed to|rejected/.test(t)) return 'failed';
+  if (
+    /presented to president|sent to the president|signed by (the )?(speaker|president of the senate)|cleared for white house/.test(
+      t,
+    )
+  )
+    return 'passed_both';
+  const origin = type.startsWith('h') ? 'house' : 'senate';
+  const simple = type === 'hres' || type === 'sres';
+  const concurrent = type === 'hconres' || type === 'sconres';
+  const passedIn = /(passed|agreed to)[^.]*\bin (the )?(house|senate)\b/.exec(t);
+  const passedChamber =
+    passedIn?.[3] ??
+    (/^(on passage|on agreeing to the resolution|on motion to suspend the rules and (pass|agree))[^.]*\b(passed|agreed to)\b/.test(
+      t,
+    )
+      ? origin
+      : /passed senate|passed house/.exec(t)?.[0].split(' ')[1]);
+  if (passedChamber === 'house' || passedChamber === 'senate') {
+    if (simple) return 'adopted';
+    if (passedChamber !== origin) return concurrent ? 'adopted' : 'passed_both';
+    return passedChamber === 'house' ? 'passed_house' : 'passed_senate';
+  }
+  if (
+    /resolution agreed to|agreed to without amendment|agreed to by (voice vote|unanimous consent)|submitted and agreed to/.test(
+      t,
+    )
+  ) {
+    return simple ? 'adopted' : origin === 'house' ? 'passed_house' : 'passed_senate';
+  }
+  // A bill reaches the other chamber only after passing its own.
+  if (/received in the (house|senate)|held at the desk/.test(t)) {
+    return origin === 'house' ? 'passed_house' : 'passed_senate';
+  }
+  if (
+    /placed on (the )?(union |house |senate legislative |private )?calendar|reported by|reported \(amended\)|reported with|ordered to be reported/.test(
+      t,
+    )
+  )
+    return 'reported';
+  if (/referred to|committee|subcommittee|hearings? held|read twice/.test(t)) return 'committee';
+  return 'introduced';
 }

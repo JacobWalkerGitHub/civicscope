@@ -292,6 +292,31 @@ export interface DirectoryFilters {
   partyId?: number;
   /** Include elections before today. */
   includePast?: boolean;
+  /** Where the candidacy ended up, by its latest status. */
+  outcome?: CandidateOutcome;
+  /** Elections held in this year. */
+  year?: number;
+}
+
+export const CANDIDATE_OUTCOMES = ['won', 'lost', 'running', 'withdrawn'] as const;
+export type CandidateOutcome = (typeof CANDIDATE_OUTCOMES)[number];
+
+function outcomeWhere(outcome: CandidateOutcome | undefined): SQL | undefined {
+  switch (outcome) {
+    case 'won':
+      return eq(candidacy.status, 'won');
+    case 'lost':
+      return eq(candidacy.status, 'lost');
+    case 'withdrawn':
+      return inArray(candidacy.status, ['withdrawn', 'disqualified']);
+    case 'running':
+      return or(
+        isNull(candidacy.status),
+        inArray(candidacy.status, ['announced', 'registered', 'filed', 'qualified', 'advanced']),
+      );
+    default:
+      return undefined;
+  }
 }
 
 export const DIRECTORY_PAGE_SIZE = 50;
@@ -312,7 +337,9 @@ export async function listPublicCandidates(
     visible(person, {}),
     visible(race, {}),
     visible(election, {}),
-    filters.includePast ? undefined : gte(election.date, today),
+    filters.includePast || filters.year ? undefined : gte(election.date, today),
+    filters.year ? sql`year(${election.date}) = ${filters.year}` : undefined,
+    outcomeWhere(filters.outcome),
     filters.jurisdictionId ? eq(election.jurisdictionId, filters.jurisdictionId) : undefined,
     filters.level ? eq(office.level, filters.level) : undefined,
     filters.partyId ? eq(candidacy.partyId, filters.partyId) : undefined,
@@ -335,8 +362,10 @@ export async function listPublicCandidates(
       photoId: person.photoId,
       raceId: race.id,
       raceName: race.name,
+      officeTitle: office.title,
       electionName: election.name,
       electionDate: election.date,
+      electionType: election.type,
       jurisdictionName: jurisdiction.name,
     })
     .from(candidacy)
@@ -389,7 +418,15 @@ export async function directoryFilterOptions(db: Db) {
     .innerJoin(party, eq(party.id, candidacy.partyId))
     .where(live)
     .orderBy(asc(party.name));
-  return { states, parties };
+  const years = await db
+    .selectDistinct({ year: sql<number>`year(${election.date})` })
+    .from(candidacy)
+    .innerJoin(person, eq(person.id, candidacy.personId))
+    .innerJoin(race, eq(race.id, candidacy.raceId))
+    .innerJoin(election, eq(election.id, race.electionId))
+    .where(live)
+    .orderBy(desc(sql`year(${election.date})`));
+  return { states, parties, years: years.map((y) => Number(y.year)) };
 }
 
 export interface BallotDistricts {
