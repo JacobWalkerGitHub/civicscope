@@ -2,7 +2,15 @@ import { createHash } from 'node:crypto';
 import { and, eq, inArray, notInArray, sql } from 'drizzle-orm';
 import { schema, type Db } from '@civicscope/db';
 import { activeFeeds, type ResultFeedConfig } from './feeds';
-import { addCountyAreas, PARSERS, type ParsedContest } from './parse';
+import {
+  addCaCountyAreas,
+  addCountyAreas,
+  parseCaSos,
+  parseFlDos,
+  parseMnSos,
+  parseNcsbe,
+  type ParsedContest,
+} from './parse';
 import { describeUpdates, type ContestSnapshot } from './updates';
 
 const { ingestRun, resultArea, resultCandidate, resultContest, resultFeed, resultUpdate } = schema;
@@ -113,26 +121,38 @@ export async function readFeed(
   const feed = await ensureFeed(db, f);
   try {
     const body = await fetchBody(f.url, doFetch);
-    // States that publish one file per county: read them all, a few at a time. A county
-    // that fails keeps its last numbers rather than failing the whole state.
-    const counties: { code: string; name: string; body: string }[] = [];
-    if (f.counties) {
-      const list = f.counties.names.map((name, i) => ({ code: String(i + 1), name }));
+    // Extra files (a state that publishes one document per race) and per-county files
+    // are read a few at a time. One that fails is skipped rather than failing the
+    // state: its contest or county keeps its last numbers.
+    const many = async <T extends { url: string }>(list: T[]) => {
+      const out: (T & { body: string })[] = [];
       for (let i = 0; i < list.length; i += 10) {
         const got = await Promise.all(
-          list.slice(i, i + 10).map(async (c) => {
+          list.slice(i, i + 10).map(async (x) => {
             try {
-              return { ...c, body: await fetchBody(f.counties!.url(Number(c.code)), doFetch) };
+              return { ...x, body: await fetchBody(x.url, doFetch) };
             } catch {
               return null;
             }
           }),
         );
-        for (const g of got) if (g) counties.push(g);
+        for (const g of got) if (g) out.push(g);
       }
-    }
+      return out;
+    };
+    const parts = await many((f.parts ?? []).map((url) => ({ url })));
+    const counties = f.counties
+      ? await many(
+          f.counties.names.map((name, i) => ({
+            code: String(i + 1),
+            name,
+            url: f.counties!.url(i + 1, name),
+          })),
+        )
+      : [];
     const hash = createHash('sha256')
       .update(body)
+      .update(parts.map((c) => c.body).join('\n'))
       .update(counties.map((c) => c.body).join('\n'))
       .digest('hex');
     if (hash === feed.bodyHash) {
@@ -142,7 +162,7 @@ export async function readFeed(
         .where(eq(resultFeed.id, feed.id));
       return { ...base, outcome: 'unchanged' };
     }
-    const contests = addCountyAreas(PARSERS[f.kind](body), counties);
+    const contests = parseFeed(f, body, parts, counties);
     if (contests.length === 0) throw new Error('The file has no contests in it.');
     const before = await snapshot(db, feed.id);
     await storeContests(db, feed.id, contests);
@@ -162,6 +182,30 @@ export async function readFeed(
     const message = (error instanceof Error ? error.message : String(error)).slice(0, 1000);
     await db.update(resultFeed).set({ error: message }).where(eq(resultFeed.id, feed.id));
     return { ...base, outcome: 'failed', error: message };
+  }
+}
+
+/** Turns what was read into contests, by the state's format. */
+export function parseFeed(
+  f: ResultFeedConfig,
+  body: string,
+  parts: { url: string; body: string }[],
+  counties: { code: string; name: string; body: string }[],
+): ParsedContest[] {
+  switch (f.kind) {
+    case 'ncsbe':
+      return addCountyAreas(parseNcsbe(body), counties);
+    case 'fl-dos':
+      return parseFlDos(body);
+    case 'mn-sos':
+      return parseMnSos([body]);
+    case 'ca-sos': {
+      const path = (url: string) => url.replace(/^.*\/returns\//, '');
+      const contests = parseCaSos(
+        [{ url: f.url, body }, ...parts].map((x) => ({ path: path(x.url), body: x.body })),
+      );
+      return f.counties?.race ? addCaCountyAreas(contests, f.counties.race, counties) : contests;
+    }
   }
 }
 
