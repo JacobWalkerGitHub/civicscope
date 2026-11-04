@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getClaim, listIssues, NotFoundError } from '@civicscope/cms';
+import { getClaim, isPromise, listIssues, NotFoundError } from '@civicscope/cms';
 import { can } from '@civicscope/core';
 import { PublishBadge, VerificationBadge } from '@/components/admin/badges';
 import { ActionButton, ActionForm, TextAreaField } from '@/components/admin/form';
@@ -19,6 +19,7 @@ import {
   updateClaimAction,
 } from '../../cms-actions';
 import { ClaimForm } from '../claim-form';
+import { PromiseRecordPanel } from '../promise-record-panel';
 
 export const metadata: Metadata = { title: 'Profile entry · CivicScope admin' };
 
@@ -161,6 +162,16 @@ export default async function ClaimPage({ params }: { params: Promise<{ id: stri
         editable={!archived}
         fieldOptions={CITABLE_FIELDS}
       />
+
+      {isPromise(c) && (
+        <PromiseRecordPanel
+          claimId={id}
+          personId={c.personId}
+          editable={canEdit}
+          published={published}
+          canReview={canReview}
+        />
+      )}
 
       <History entityType="claim" entityId={id} role={user.role} />
     </>

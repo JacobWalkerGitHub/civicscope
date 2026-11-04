@@ -173,8 +173,15 @@
     {
       "idx": 24,
       "version": "5",
-      "when": 1793831845807,
-      "tag": "0024_alert_follows",
+      "when": 1793831882732,
+      "tag": "0024_promise_record_links",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "5",
+      "when": 1793833843978,
+      "tag": "0025_alert_follows",
       "breakpoints": true
     }
   ]

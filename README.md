@@ -69,4 +69,5 @@ Research Service's; a bill's status label is worked out from its latest action (
 database tables are kept, unused, until a later migration drops them.
 
 Public pages include `/search` (candidates, races, issues and entry text), `/issues`, and a
-side-by-side comparison for each race at `/races/<id>/compare` (see ADR 0009).
+side-by-side comparison for each race at `/races/<id>/compare` (see ADR 0009). Candidate profiles
+show each campaign promise beside the bills and votes an editor linked to it (see ADR 0003).

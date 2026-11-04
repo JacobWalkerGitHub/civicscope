@@ -3,6 +3,7 @@ import {
   BIO_CATEGORIES,
   CANDIDACY_STATUSES,
   CLAIM_KINDS,
+  PROMISE_RECORD_TYPES,
   CONTENT_KINDS,
   POSITION_TYPES,
   CITATION_SUBJECTS,
@@ -366,6 +367,25 @@ export const claimInputSchema = z
     }
   });
 export type ClaimInput = z.infer<typeof claimInputSchema>;
+
+/**
+ * An official record set next to a campaign promise. `record` is "type:id" from the
+ * picker, e.g. "vote:812". The note describes the record, not whether a promise was kept.
+ */
+export const promiseLinkInputSchema = z.object({
+  record: z
+    .string({ error: 'Choose a bill or vote.' })
+    .regex(
+      new RegExp(`^(${PROMISE_RECORD_TYPES.join('|')}):[1-9][0-9]{0,9}$`),
+      'Choose a bill or vote.',
+    )
+    .transform((v) => {
+      const [type, rid] = v.split(':');
+      return { type: type as (typeof PROMISE_RECORD_TYPES)[number], id: Number(rid) };
+    }),
+  note: requiredText('a note on how this record relates', 10, 500),
+});
+export type PromiseLinkInput = z.infer<typeof promiseLinkInputSchema>;
 
 export const reviewNoteSchema = z.object({
   note: optionalText(1000),

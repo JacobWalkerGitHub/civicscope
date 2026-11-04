@@ -93,12 +93,40 @@ export async function createClaim(db: Db, actor: Actor, input: unknown): Promise
 }
 
 /**
- * Saves changes to an entry. Any change to its content means it needs review again:
+ * What a content change does to an entry's review state:
  * - a draft that was approved but not yet published goes back to unverified;
  * - a published entry edited by an editor is taken off the public site and queued
  *   for review, so unreviewed words never appear publicly;
  * - a published entry edited by a reviewer stays published, recorded as verified by them.
  */
+export async function reviewAfterEdit(
+  tx: Tx,
+  actor: Actor,
+  before: Claim,
+): Promise<{ review: Partial<Claim>; note?: string }> {
+  const review: Partial<Claim> = { lastEditedBy: actor.userId };
+  if (before.publishState === 'published') {
+    if (can(await roleOf(tx, actor), 'content:publish')) {
+      Object.assign(review, {
+        verificationStatus: 'verified',
+        verifiedBy: actor.userId,
+        verifiedAt: new Date(),
+      });
+      return { review, note: 'Edited and re-verified by a reviewer' };
+    }
+    Object.assign(review, {
+      publishState: 'unpublished',
+      verificationStatus: 'pending_review',
+      submittedAt: new Date(),
+      reviewNote: null,
+    });
+    return { review, note: 'Edited after publishing: taken down until a reviewer approves it' };
+  }
+  if (before.verificationStatus === 'verified') review.verificationStatus = 'unverified';
+  return { review };
+}
+
+/** Saves changes to an entry. Any change to its content means it needs review again (see reviewAfterEdit). */
 export async function updateClaim(
   db: Db,
   actor: Actor,
@@ -118,28 +146,8 @@ export async function updateClaim(
     const values = contentValues(data);
     if (Object.keys(diffRows(before, { ...before, ...values })).length === 0) return;
 
-    const review: Partial<Claim> = { lastEditedBy: actor.userId };
-    let note = opts.note;
-    if (before.publishState === 'published') {
-      if (can(await roleOf(tx, actor), 'content:publish')) {
-        Object.assign(review, {
-          verificationStatus: 'verified',
-          verifiedBy: actor.userId,
-          verifiedAt: new Date(),
-        });
-        note ??= 'Edited and re-verified by a reviewer';
-      } else {
-        Object.assign(review, {
-          publishState: 'unpublished',
-          verificationStatus: 'pending_review',
-          submittedAt: new Date(),
-          reviewNote: null,
-        });
-        note ??= 'Edited after publishing: taken down until a reviewer approves it';
-      }
-    } else if (before.verificationStatus === 'verified') {
-      review.verificationStatus = 'unverified';
-    }
+    const { review, note: reviewNote } = await reviewAfterEdit(tx, actor, before);
+    const note = opts.note ?? reviewNote;
 
     await tx
       .update(claim)

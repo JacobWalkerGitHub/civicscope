@@ -1,7 +1,7 @@
 {
   "version": "5",
   "dialect": "mysql",
-  "id": "432a3bf6-75e2-4fd0-b386-f0cafc9d15bb",
+  "id": "dc0e8529-aeeb-4db0-88c9-f174e734af87",
   "prevId": "150f93e5-1426-4728-b8cd-2c0cebe0fb68",
   "tables": {
     "district": {
@@ -5956,8 +5956,8 @@
       "uniqueConstraints": {},
       "checkConstraint": {}
     },
-    "alert_follow": {
-      "name": "alert_follow",
+    "promise_record_link": {
+      "name": "promise_record_link",
       "columns": {
         "id": {
           "name": "id",
@@ -5966,122 +5966,95 @@
           "notNull": true,
           "autoincrement": true
         },
-        "email": {
-          "name": "email",
-          "type": "varchar(254)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "kind": {
-          "name": "kind",
-          "type": "enum('member','bill')",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "target_key": {
-          "name": "target_key",
-          "type": "varchar(40)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "target_label": {
-          "name": "target_label",
-          "type": "varchar(300)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "requested_at": {
-          "name": "requested_at",
-          "type": "datetime(3)",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "request_ip": {
-          "name": "request_ip",
-          "type": "varchar(45)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "confirmed_at": {
-          "name": "confirmed_at",
-          "type": "datetime(3)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "last_sent_at": {
-          "name": "last_sent_at",
-          "type": "datetime(3)",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "seen_vote_id": {
-          "name": "seen_vote_id",
+        "claim_id": {
+          "name": "claim_id",
           "type": "int",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": 0
+          "autoincrement": false
         },
-        "seen_sponsorship_id": {
-          "name": "seen_sponsorship_id",
+        "record_type": {
+          "name": "record_type",
+          "type": "enum('bill','vote','state_vote')",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "record_id": {
+          "name": "record_id",
           "type": "int",
           "primaryKey": false,
           "notNull": true,
+          "autoincrement": false
+        },
+        "note": {
+          "name": "note",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "int",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "datetime(3)",
+          "primaryKey": false,
+          "notNull": true,
           "autoincrement": false,
-          "default": 0
+          "default": "CURRENT_TIMESTAMP(3)"
         },
-        "seen_action": {
-          "name": "seen_action",
-          "type": "char(51)",
+        "updated_at": {
+          "name": "updated_at",
+          "type": "datetime(3)",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "seen_filing_end": {
-          "name": "seen_filing_end",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)"
         }
       },
       "indexes": {
-        "alert_follow_uq": {
-          "name": "alert_follow_uq",
+        "promise_record_link_uq": {
+          "name": "promise_record_link_uq",
           "columns": [
-            "email",
-            "kind",
-            "target_key"
+            "claim_id",
+            "record_type",
+            "record_id"
           ],
           "isUnique": true
         },
-        "alert_follow_confirmed_idx": {
-          "name": "alert_follow_confirmed_idx",
+        "promise_record_link_record_idx": {
+          "name": "promise_record_link_record_idx",
           "columns": [
-            "confirmed_at"
-          ],
-          "isUnique": false
-        },
-        "alert_follow_requested_idx": {
-          "name": "alert_follow_requested_idx",
-          "columns": [
-            "requested_at"
+            "record_type",
+            "record_id"
           ],
           "isUnique": false
         }
       },
-      "foreignKeys": {},
+      "foreignKeys": {
+        "promise_record_link_claim_id_claim_id_fk": {
+          "name": "promise_record_link_claim_id_claim_id_fk",
+          "tableFrom": "promise_record_link",
+          "tableTo": "claim",
+          "columnsFrom": [
+            "claim_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {
-        "alert_follow_id": {
-          "name": "alert_follow_id",
+        "promise_record_link_id": {
+          "name": "promise_record_link_id",
           "columns": [
             "id"
           ]

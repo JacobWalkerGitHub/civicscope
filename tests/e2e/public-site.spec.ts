@@ -272,7 +272,7 @@ test('search, comparison and issue pages show public records with sources', asyn
     .click();
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Issues');
   await expectNoSeriousA11yIssues(page);
-  await page.locator('.issue-list a').first().click();
+  await page.locator('.issue-grid a').first().click();
   await expect(page.getByText('No positions on this issue are published')).toBeVisible();
   await expectNoSeriousA11yIssues(page);
 });
