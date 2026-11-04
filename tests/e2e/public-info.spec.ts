@@ -13,6 +13,8 @@ async function signIn(page: Page, email: string) {
 }
 
 async function expectNoSeriousA11yIssues(page: Page) {
+  // Next.js streams a page's generated <title> in after the content; wait for it first.
+  await expect(page).toHaveTitle(/\S/);
   const results = await new AxeBuilder({ page }).analyze();
   const serious = results.violations.filter(
     (v) => v.impact === 'serious' || v.impact === 'critical',

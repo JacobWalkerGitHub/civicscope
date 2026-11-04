@@ -19,6 +19,8 @@ async function press(page: Page, name: string | RegExp) {
 const status = (page: Page) => page.locator('.page-header');
 
 async function noSeriousA11yIssues(page: Page) {
+  // Next.js streams a page's generated <title> in after the content; wait for it first.
+  await expect(page).toHaveTitle(/\S/);
   const results = await new AxeBuilder({ page }).analyze();
   const serious = results.violations.filter(
     (v) => v.impact === 'serious' || v.impact === 'critical',
