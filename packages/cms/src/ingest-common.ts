@@ -27,6 +27,11 @@ export const CONGRESS_ACCOUNT: SystemAccount = {
   email: 'congress-import@system.civicscope.invalid',
   name: 'Automated import (Congress)',
 };
+export const OPENSTATES_ACCOUNT: SystemAccount = {
+  key: 'openstates-import',
+  email: 'openstates-import@system.civicscope.invalid',
+  name: 'Automated import (Open States)',
+};
 
 /** The admin account an automated import acts as. It can never sign in. */
 export async function systemActor(db: Db, account: SystemAccount = FEC_ACCOUNT): Promise<Actor> {
@@ -78,6 +83,7 @@ export async function fetchText(
   url: URL,
   opts: FetchOptions,
   accept = 'application/json',
+  headers: Record<string, string> = {},
 ): Promise<string> {
   const doFetch = opts.fetch ?? fetch;
   const sleep = opts.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
@@ -87,7 +93,7 @@ export async function fetchText(
     let res: Response;
     try {
       res = await doFetch(url, {
-        headers: { accept },
+        headers: { accept, ...headers },
         signal: AbortSignal.timeout(30_000),
       });
     } catch (error) {

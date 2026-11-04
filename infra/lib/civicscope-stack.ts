@@ -447,6 +447,9 @@ export class CivicScopeStack extends Stack {
               AUTH_ENCRYPTION_KEY: ecs.Secret.fromSecretsManager(appSecret, 'AUTH_ENCRYPTION_KEY'),
               FEC_API_KEY: ecs.Secret.fromSecretsManager(appSecret, 'FEC_API_KEY'),
               CONGRESS_API_KEY: ecs.Secret.fromSecretsManager(appSecret, 'CONGRESS_API_KEY'),
+              // Added to the secret by hand, not in secretObjectValue above, so a deploy
+              // never overwrites the real key.
+              OPENSTATES_API_KEY: ecs.Secret.fromSecretsManager(appSecret, 'OPENSTATES_API_KEY'),
               ALERT_WEBHOOK_URL: ecs.Secret.fromSecretsManager(appSecret, 'ALERT_WEBHOOK_URL'),
               ...extraSecrets,
             },
@@ -487,6 +490,8 @@ export class CivicScopeStack extends Stack {
       'ingest:congress',
       String(props.congress),
     ]);
+    // State legislative votes. About 300 spaced-out requests, so it runs for under an hour.
+    schedule('OpenStatesDaily', { hour: '12', minute: '0' }, ['ingest:openstates']);
     schedule('IngestCheckHourly', { minute: '30' }, ['check:ingest', '--hours', '1']);
     // Live election-night results. Exits at once on days with no live results file
     // (packages/cms/src/results/feeds.ts), so the cost outside election weeks is a

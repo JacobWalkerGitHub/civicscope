@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -7,6 +8,7 @@ import {
   type CrosswalkSummary,
   type FecRunSummary,
   type ImportSummary,
+  type OpenStatesSummary,
 } from '@civicscope/cms';
 import { bioguideUrl } from '@civicscope/core';
 import { getDb } from '@/lib/db';
@@ -49,6 +51,9 @@ export default async function IngestRunPage({ params }: { params: Promise<{ id: 
       )}
       {run.source === 'congress_gov' && run.summary != null && (
         <CongressDetail s={run.summary as CongressRunSummary} pages={pages} />
+      )}
+      {run.source === 'openstates' && run.summary != null && (
+        <OpenStatesDetail s={run.summary as OpenStatesSummary} pages={pages} />
       )}
     </>
   );
@@ -316,6 +321,59 @@ function CongressDetail({ s, pages }: { s: CongressRunSummary; pages: number }) 
               {s.attention.map((a, i) => (
                 <tr key={`${a.ref}-${i}`}>
                   <td>{a.ref}</td>
+                  <td>{a.name}</td>
+                  <td>{a.problem}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+    </>
+  );
+}
+
+function OpenStatesDetail({ s, pages }: { s: OpenStatesSummary; pages: number }) {
+  return (
+    <>
+      <dl className="facts">
+        <dt>Requests</dt>
+        <dd>
+          {s.requests} ({pages} responses kept)
+        </dd>
+        <dt>People</dt>
+        <dd>
+          {s.created} new drafts, {s.linked} existing people linked, {s.unchanged} unchanged
+        </dd>
+        {s.states.map((x) => (
+          <Fragment key={x.state}>
+            <dt>{x.state}</dt>
+            <dd>
+              {x.legislators} legislators; {x.billPages} pages of bills read, {x.billsWithVotes}{' '}
+              with votes ({x.votes} votes); {x.caughtUp ? 'caught up' : 'continues on the next run'}
+            </dd>
+          </Fragment>
+        ))}
+      </dl>
+      <section aria-labelledby="attention-heading">
+        <h2 id="attention-heading">Needs a person ({s.attention.length})</h2>
+        {s.attention.length === 0 ? (
+          <p className="muted">Nothing.</p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Open States ID</th>
+                <th scope="col">Name</th>
+                <th scope="col">Why</th>
+              </tr>
+            </thead>
+            <tbody>
+              {s.attention.map((a) => (
+                <tr key={a.openstatesId}>
+                  <td>
+                    <a href={`https://openstates.org/person/${a.openstatesId}`}>{a.openstatesId}</a>
+                  </td>
                   <td>{a.name}</td>
                   <td>{a.problem}</td>
                 </tr>
