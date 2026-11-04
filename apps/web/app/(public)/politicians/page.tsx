@@ -104,6 +104,17 @@ export default async function PoliticiansPage({ searchParams }: { searchParams: 
             : `${rows.length} ${rows.length === 1 ? 'member' : 'members'} of the ${ordinal(congress)} Congress, alphabetical by last name.`}
       </p>
 
+      {groups.length > 1 && (
+        <nav aria-label="Jump to a chamber" className="jump-links">
+          <span>Jump to:</span>
+          {groups.map((g) => (
+            <a key={g.key} href={`#g-${g.key}`}>
+              {g.title}
+            </a>
+          ))}
+        </nav>
+      )}
+
       {groups.map((g) => (
         <section key={g.key} aria-labelledby={`g-${g.key}`} className="member-group">
           <h2 id={`g-${g.key}`}>
