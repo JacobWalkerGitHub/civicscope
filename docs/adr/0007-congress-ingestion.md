@@ -74,8 +74,11 @@ attached to a person, 278 of them to FEC-imported people, and 430 of 430 passed 
 ## Consequences
 
 - Senate votes come from senate.gov instead (see the addendum below).
-- Members are not shown on the public site yet; the admin person page shows what
-  attached ("Record in Congress").
+- Members' records are shown on their public profile ("Record in Congress": seats, bills
+  and recent roll calls, each linked to the chamber's own record) once the person is
+  published, decided 2026-11-04 after the spot check passed. Imported rows stay `draft`
+  but are shown; an editor hides one by setting it to `unpublished` or `archived`. The
+  admin person page shows the same record.
 - Districts come from the member list's current district, which can differ from the
   district served in an older Congress after redistricting.
 - Names on people created by the FEC import still use the FEC's capitalization guesses

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { getPublicPerson } from '@civicscope/cms';
-import { CLAIM_KINDS, type ClaimKind } from '@civicscope/core';
+import { billLabel, CLAIM_KINDS, congressGovBillUrl, type ClaimKind } from '@civicscope/core';
 import {
   BIO_CATEGORY_LABELS,
   CANDIDACY_STATUS_LABELS,
@@ -11,6 +11,7 @@ import {
   POSITION_TYPE_LABELS,
   VERIFICATION_LABELS,
 } from '@/lib/labels';
+import { rollCallUrl, voteDate, voteMeasure } from '../congress-format';
 import { initials, NotPublic, ReportLink, Sources } from './sources';
 
 type Profile = NonNullable<Awaited<ReturnType<typeof getPublicPerson>>>;
@@ -178,6 +179,8 @@ export function CandidateProfile({
         );
       })}
 
+      {profile.congress && <CongressRecord record={profile.congress} />}
+
       {profile.stateVotes.total > 0 && <StateVotes record={profile.stateVotes} />}
 
       {claims.length === 0 && (
@@ -271,6 +274,121 @@ function StateVotes({ record }: { record: Profile['stateVotes'] }) {
           </tbody>
         </table>
       </div>
+    </section>
+  );
+}
+
+const ordinal = (n: number) => {
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return `${n}${s[(v - 20) % 10] ?? s[v] ?? s[0]}`;
+};
+
+/** Seats, bills and recent roll calls in Congress, from the chambers' own records. */
+function CongressRecord({ record }: { record: NonNullable<Profile['congress']> }) {
+  const { memberships, bills, votes } = record;
+  if (!memberships.length && !bills.length && !votes.length) return null;
+  return (
+    <section aria-labelledby="congress-heading">
+      <h2 id="congress-heading">Record in Congress</h2>
+      <p className="muted">
+        From Congress.gov, the House Clerk and senate.gov. Each vote links to the chamber’s own roll
+        call.
+      </p>
+      {memberships.length > 0 && (
+        <>
+          <h3>Seats</h3>
+          <ul className="congress-seats">
+            {memberships.map((m) => (
+              <li key={m.id}>
+                {ordinal(m.congress)} Congress ({m.startYear}–{m.endYear ?? 'present'}):{' '}
+                {m.chamber === 'senate'
+                  ? `Senate, ${m.state}`
+                  : `House, ${m.state}${m.district ? ` District ${m.district}` : ' at-large'}`}
+                {m.partyName && ` · ${m.partyName}`}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {bills.length > 0 && (
+        <>
+          <h3>Bills</h3>
+          <p className="muted">
+            Sponsored {record.sponsorCount.toLocaleString('en-US')}, cosponsored{' '}
+            {record.cosponsorCount.toLocaleString('en-US')}. The most recent:
+          </p>
+          <ul className="congress-bills">
+            {bills.slice(0, 10).map((b) => (
+              <li key={b.id}>
+                <a
+                  href={congressGovBillUrl(b.congress, b.billType, b.number)}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  {billLabel(b.billType, b.number)}
+                </a>{' '}
+                {b.title}{' '}
+                <span className="muted">
+                  · {b.role === 'sponsor' ? 'Sponsor' : 'Cosponsor'}
+                  {b.sponsoredOn && `, ${formatDate(b.sponsoredOn)}`}
+                  {b.withdrawnOn && ` (withdrew ${formatDate(b.withdrawnOn)})`}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {votes.length > 0 && (
+        <>
+          <h3>Recent votes</h3>
+          <p className="muted">
+            {record.voteCount > votes.length
+              ? `The ${votes.length} most recent of ${record.voteCount.toLocaleString('en-US')} recorded votes.`
+              : `${record.voteCount} recorded ${record.voteCount === 1 ? 'vote' : 'votes'}.`}
+          </p>
+          <div className="table-scroll">
+            <table className="area-table state-votes">
+              <thead>
+                <tr>
+                  <th scope="col">Date</th>
+                  <th scope="col">Question</th>
+                  <th scope="col">Vote</th>
+                  <th scope="col">Result</th>
+                </tr>
+              </thead>
+              <tbody>
+                {votes.map((v) => {
+                  const measure = voteMeasure(v);
+                  const url = rollCallUrl(v);
+                  return (
+                    <tr key={v.id}>
+                      <td>{voteDate.format(v.votedAt)}</td>
+                      <td>
+                        {measure && <strong>{measure}</strong>} {v.question}
+                        <span className="muted state-vote-motion">
+                          {v.chamber === 'senate' ? 'Senate' : 'House'} roll call {v.rollNumber}
+                          {url && (
+                            <>
+                              {' '}
+                              ·{' '}
+                              <a href={url} rel="noopener noreferrer" target="_blank">
+                                Official record
+                              </a>
+                            </>
+                          )}
+                        </span>
+                      </td>
+                      <td>{v.voteCast}</td>
+                      <td>{v.result}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
     </section>
   );
 }

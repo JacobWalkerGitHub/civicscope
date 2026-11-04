@@ -1,4 +1,5 @@
-import { and, count, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, count, desc, eq, inArray, notInArray, sql } from 'drizzle-orm';
+import type { MySqlColumn } from 'drizzle-orm/mysql-core';
 import type { z } from 'zod';
 import {
   billLabel,
@@ -48,6 +49,7 @@ const {
   ingestSnapshot,
   personIdentifier,
   rollCallVote,
+  source,
   votePosition,
 } = schema;
 
@@ -1019,8 +1021,19 @@ export async function runCongressImport(
 // ---------------------------------------------------------------------------------
 // Reading
 
-/** A person's congressional record, through their Bioguide ID(s). */
-export async function getCongressRecord(db: Db, personId: number, limit = 20) {
+/**
+ * A person's congressional record, through their Bioguide ID(s). With `publicOnly`,
+ * leaves out the records an editor unpublished or archived: imported records are shown
+ * as they come from Congress.gov and senate.gov unless an editor takes one down.
+ */
+export async function getCongressRecord(
+  db: Db,
+  personId: number,
+  limit = 20,
+  { publicOnly = false }: { publicOnly?: boolean } = {},
+) {
+  const shown = (t: { publishState: MySqlColumn }) =>
+    publicOnly ? notInArray(t.publishState, ['unpublished', 'archived']) : undefined;
   const ids = (
     await db
       .select({ value: personIdentifier.value, scheme: personIdentifier.scheme })
@@ -1033,7 +1046,7 @@ export async function getCongressRecord(db: Db, personId: number, limit = 20) {
   const memberships = await db
     .select()
     .from(congressMembership)
-    .where(inArray(congressMembership.bioguideId, ids))
+    .where(and(inArray(congressMembership.bioguideId, ids), shown(congressMembership)))
     .orderBy(desc(congressMembership.congress));
   const [sponsored] = await db
     .select({
@@ -1041,7 +1054,8 @@ export async function getCongressRecord(db: Db, personId: number, limit = 20) {
       cosponsor: sql<number>`sum(${billSponsorship.role} = 'cosponsor')`,
     })
     .from(billSponsorship)
-    .where(inArray(billSponsorship.bioguideId, ids));
+    .innerJoin(bill, eq(bill.id, billSponsorship.billId))
+    .where(and(inArray(billSponsorship.bioguideId, ids), shown(bill)));
   const bills = await db
     .select({
       id: bill.id,
@@ -1055,13 +1069,14 @@ export async function getCongressRecord(db: Db, personId: number, limit = 20) {
     })
     .from(billSponsorship)
     .innerJoin(bill, eq(bill.id, billSponsorship.billId))
-    .where(inArray(billSponsorship.bioguideId, ids))
+    .where(and(inArray(billSponsorship.bioguideId, ids), shown(bill)))
     .orderBy(desc(billSponsorship.sponsoredOn), desc(bill.id))
     .limit(limit);
   const [voteCount] = await db
     .select({ n: count() })
     .from(votePosition)
-    .where(inArray(votePosition.bioguideId, ids));
+    .innerJoin(rollCallVote, eq(rollCallVote.id, votePosition.voteId))
+    .where(and(inArray(votePosition.bioguideId, ids), shown(rollCallVote)));
   const votes = await db
     .select({
       id: rollCallVote.id,
@@ -1077,10 +1092,12 @@ export async function getCongressRecord(db: Db, personId: number, limit = 20) {
       voteCast: votePosition.voteCast,
       party: votePosition.party,
       state: votePosition.state,
+      sourceUrl: source.url,
     })
     .from(votePosition)
     .innerJoin(rollCallVote, eq(rollCallVote.id, votePosition.voteId))
-    .where(inArray(votePosition.bioguideId, ids))
+    .leftJoin(source, eq(source.id, rollCallVote.sourceId))
+    .where(and(inArray(votePosition.bioguideId, ids), shown(rollCallVote)))
     .orderBy(desc(rollCallVote.votedAt))
     .limit(limit);
   return {

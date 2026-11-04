@@ -443,6 +443,24 @@ describe('Congress.gov import', () => {
       url: 'https://www.congress.gov/bill/119th-congress/house-bill/101',
     });
 
+    // The public view shows imported records, with their source, until an editor takes
+    // one down.
+    const pub = (await getCongressRecord(db, harperId, 20, { publicOnly: true }))!;
+    expect(pub.voteCount).toBe(2);
+    expect(pub.votes[1]!.sourceUrl).toBe('https://clerk.house.gov/evs/2025/roll007.xml');
+    await db
+      .update(schema.rollCallVote)
+      .set({ publishState: 'unpublished' })
+      .where(eq(schema.rollCallVote.session, 1));
+    const hidden = (await getCongressRecord(db, harperId, 20, { publicOnly: true }))!;
+    expect(hidden.voteCount).toBe(1);
+    expect(hidden.votes.map((v) => v.session)).toEqual([2]);
+    expect((await getCongressRecord(db, harperId))!.voteCount).toBe(2);
+    await db
+      .update(schema.rollCallVote)
+      .set({ publishState: 'draft' })
+      .where(eq(schema.rollCallVote.session, 1));
+
     // The raw responses are kept, without the API key.
     const snaps = await db
       .select()
