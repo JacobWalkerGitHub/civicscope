@@ -29,3 +29,4 @@ export { LEGISLATURES_2027, districtOcdId } from './legislature-data/2027';
 export * from './discover';
 export * from './alerts';
 export * from './health';
+export * from './results';

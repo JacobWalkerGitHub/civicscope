@@ -25,13 +25,22 @@ await runCli(async () => {
       since: new Date(Date.now() - hours * 3_600_000),
       stuckAfterHours,
     });
+    // A source that runs every few minutes (live results) can fail many times in an
+    // hour: one alert per source and kind, naming the latest run, is enough.
+    const latest = new Map<string, (typeof problems)[number] & { count: number }>();
     for (const p of problems) {
+      const key = `${p.source}:${p.kind}`;
+      latest.set(key, { ...p, count: (latest.get(key)?.count ?? 0) + 1 });
+    }
+    for (const p of latest.values()) {
       await sendAlert({
         title:
           p.kind === 'failed'
             ? `${p.source} ingest run failed`
             : `${p.source} ingest run has been running for over ${stuckAfterHours} hours`,
-        detail: p.error ?? `Started ${p.startedAt.toISOString()}`,
+        detail:
+          (p.count > 1 ? `${p.count} runs. Latest: ` : '') +
+          (p.error ?? `Started ${p.startedAt.toISOString()}`),
         source: p.source,
         runId: p.runId,
       });

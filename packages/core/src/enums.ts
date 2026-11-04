@@ -253,7 +253,12 @@ export type CoverageLevel = (typeof COVERAGE_LEVELS)[number];
  * - congress_legislators: the unitedstates/congress-legislators ID crosswalk
  * - congress_gov: members, bills and House votes from the Congress.gov API
  */
-export const INGEST_SOURCES = ['fec', 'congress_legislators', 'congress_gov'] as const;
+export const INGEST_SOURCES = [
+  'fec',
+  'congress_legislators',
+  'congress_gov',
+  'state_results',
+] as const;
 export type IngestSource = (typeof INGEST_SOURCES)[number];
 
 export const INGEST_RUN_STATES = ['running', 'succeeded', 'failed'] as const;
@@ -265,3 +270,14 @@ export type CongressChamber = (typeof CONGRESS_CHAMBERS)[number];
 /** A member's part in a bill: its sponsor, or a cosponsor who signed on. */
 export const SPONSORSHIP_ROLES = ['sponsor', 'cosponsor'] as const;
 export type SponsorshipRole = (typeof SPONSORSHIP_ROLES)[number];
+
+/** How a live-results contest is grouped on the page, most prominent first. */
+export const RESULT_GROUPS = [
+  'federal',
+  'statewide',
+  'legislature',
+  'judicial',
+  'measure',
+  'local',
+] as const;
+export type ResultGroup = (typeof RESULT_GROUPS)[number];

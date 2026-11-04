@@ -1,4 +1,9 @@
-import type { CongressRunSummary, CrosswalkSummary, FecRunSummary } from '@civicscope/cms';
+import type {
+  CongressRunSummary,
+  CrosswalkSummary,
+  FecRunSummary,
+  FeedReadSummary,
+} from '@civicscope/cms';
 import type { IngestSource } from '@civicscope/core';
 
 /** How each automated source's runs are named and summed up in one line. */
@@ -16,6 +21,8 @@ export function runTitle(source: IngestSource, params: unknown): string {
       const where = senate ? (gov ? 'Congress.gov and Senate.gov' : 'Senate.gov') : 'Congress.gov';
       return `${where}, ${p.congress}th Congress`;
     }
+    case 'state_results':
+      return `Live results (${((params as { states?: string[] })?.states ?? []).join(', ')})`;
   }
 }
 
@@ -48,11 +55,16 @@ export function runResult(source: IngestSource, summary: unknown): string {
         .filter(Boolean)
         .join(', ');
     }
+    case 'state_results':
+      return (summary as FeedReadSummary[])
+        .map((f) => `${f.state} ${f.outcome}${f.error ? `: ${f.error}` : ''}`)
+        .join('; ');
   }
 }
 
 export function needsPerson(source: IngestSource, summary: unknown): number | null {
   if (!summary) return null;
+  if (source === 'state_results') return null;
   if (source === 'congress_gov') {
     const s = summary as CongressRunSummary;
     return s.attention.length + s.unmatched.length;
