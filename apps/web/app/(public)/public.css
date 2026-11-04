@@ -2712,3 +2712,64 @@
     padding: 7px 12px;
   }
 }
+
+/* Issues index: one small card per issue. */
+.public .issue-grid {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  gap: 12px;
+}
+
+.public .issue-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  height: 100%;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.public .issue-card:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+  box-shadow: var(--shadow);
+}
+
+.public .issue-name {
+  font-weight: 700;
+}
+
+.public .issue-desc {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.public .issue-count {
+  margin-top: auto;
+  padding-top: 4px;
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.public .issue-count.empty {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+@media (max-width: 560px) {
+  .public .issue-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .public .issue-card {
+    padding: 12px;
+  }
+}
