@@ -2660,3 +2660,43 @@
     margin-top: 0;
   }
 }
+
+/* Home bill lists: long official titles stop at two lines; the bill page has the full title. */
+.public .mini-bills a {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+/* On phones the four Explore cards sit two by two, so the page gets to elections sooner. */
+@media (max-width: 560px) {
+  .public .explore-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 28px;
+  }
+
+  .public .explore-card {
+    gap: 4px;
+    padding: 14px;
+  }
+
+  .public .explore-title {
+    font-size: 1rem;
+  }
+
+  .public .explore-text {
+    font-size: 0.85rem;
+  }
+
+  .public .explore-stat {
+    font-size: 0.82rem;
+  }
+
+  .public .explore-arrow {
+    top: 12px;
+    right: 14px;
+  }
+}
