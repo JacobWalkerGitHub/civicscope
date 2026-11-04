@@ -409,5 +409,343 @@ export function parseFlDos(body: string): ParsedContest[] {
   );
 }
 
-export const PARSERS = { ncsbe: parseNcsbe, 'fl-dos': parseFlDos } as const;
-export type FeedKind = keyof typeof PARSERS;
+// ------------------------------------------------------------------ Minnesota
+
+/** MN's county IDs 1..87: its counties in FIPS order (St. Louis files as "Saint"). */
+export const MN_COUNTIES = [
+  'Aitkin',
+  'Anoka',
+  'Becker',
+  'Beltrami',
+  'Benton',
+  'Big Stone',
+  'Blue Earth',
+  'Brown',
+  'Carlton',
+  'Carver',
+  'Cass',
+  'Chippewa',
+  'Chisago',
+  'Clay',
+  'Clearwater',
+  'Cook',
+  'Cottonwood',
+  'Crow Wing',
+  'Dakota',
+  'Dodge',
+  'Douglas',
+  'Faribault',
+  'Fillmore',
+  'Freeborn',
+  'Goodhue',
+  'Grant',
+  'Hennepin',
+  'Houston',
+  'Hubbard',
+  'Isanti',
+  'Itasca',
+  'Jackson',
+  'Kanabec',
+  'Kandiyohi',
+  'Kittson',
+  'Koochiching',
+  'Lac qui Parle',
+  'Lake',
+  'Lake of the Woods',
+  'Le Sueur',
+  'Lincoln',
+  'Lyon',
+  'McLeod',
+  'Mahnomen',
+  'Marshall',
+  'Martin',
+  'Meeker',
+  'Mille Lacs',
+  'Morrison',
+  'Mower',
+  'Murray',
+  'Nicollet',
+  'Nobles',
+  'Norman',
+  'Olmsted',
+  'Otter Tail',
+  'Pennington',
+  'Pine',
+  'Pipestone',
+  'Polk',
+  'Pope',
+  'Ramsey',
+  'Red Lake',
+  'Redwood',
+  'Renville',
+  'Rice',
+  'Rock',
+  'Roseau',
+  'St. Louis',
+  'Scott',
+  'Sherburne',
+  'Sibley',
+  'Stearns',
+  'Steele',
+  'Stevens',
+  'Swift',
+  'Todd',
+  'Traverse',
+  'Wabasha',
+  'Wadena',
+  'Waseca',
+  'Washington',
+  'Watonwan',
+  'Wilkin',
+  'Winona',
+  'Wright',
+  'Yellow Medicine',
+];
+
+function mnGroup(name: string): ResultGroup {
+  if (/^U\.S\. /i.test(name)) return 'federal';
+  if (/^(Governor|Attorney General|Secretary of State|State Auditor)/i.test(name))
+    return 'statewide';
+  if (/^State (Senator|Representative)/i.test(name)) return 'legislature';
+  if (/AMENDMENT/i.test(name)) return 'measure';
+  if (/^(Judge|Associate Justice|Chief Justice)/i.test(name)) return 'judicial';
+  return 'local';
+}
+
+/**
+ * Minnesota Secretary of State: electionresultsfiles.sos.mn.gov/<yyyymmdd>/
+ * allracesbycounty.txt, semicolon-separated, one row per candidate per county:
+ * state; county id; precinct; office id; office name; district; candidate order;
+ * candidate; suffix; incumbent; party; precincts reporting; precincts; votes; pct; total.
+ * Contests that cross counties are summed; county offices stay in their county.
+ */
+export function parseMnSos(bodies: string[]): ParsedContest[] {
+  const contests = new Map<string, ParsedContest & { byKey: Map<string, ParsedCandidate> }>();
+  for (const body of bodies) {
+    for (const line of body.split(/\r?\n/)) {
+      const f = line.split(';');
+      if (f.length < 16 || f[0] !== 'MN') continue;
+      const county = clean(f[1]);
+      const officeName = clean(f[4]);
+      if (!officeName) continue;
+      const group = mnGroup(officeName);
+      const id = [clean(f[3]), clean(f[5]), officeName, group === 'local' ? county : '']
+        .join('|')
+        .slice(0, 191);
+      let c = contests.get(id);
+      if (!c) {
+        c = {
+          sourceKey: id,
+          name: officeName,
+          group,
+          voteFor: 1,
+          precinctsTotal: 0,
+          precinctsReporting: 0,
+          candidates: [],
+          areas: [],
+          byKey: new Map(),
+        };
+        contests.set(id, c);
+      }
+      const name = clean(f[7]);
+      const party = clean(f[10]) || null;
+      const shownParty = party === 'NP' ? null : party;
+      const key = candidateKey(name, shownParty);
+      const votes = int(f[13]);
+      let cand = c.byKey.get(key);
+      if (!cand) {
+        cand = { key, name, party: shownParty, votes: 0 };
+        c.byKey.set(key, cand);
+        c.candidates.push(cand);
+      }
+      cand.votes += votes;
+      if (!county) continue;
+      let area = c.areas.find((a) => a.code === county);
+      if (!area) {
+        area = {
+          code: county,
+          name: MN_COUNTIES[Number(county) - 1] ?? county,
+          precinctsTotal: int(f[12]),
+          precinctsReporting: int(f[11]),
+          votes: {},
+        };
+        c.areas.push(area);
+        c.precinctsTotal! += area.precinctsTotal!;
+        c.precinctsReporting! += area.precinctsReporting!;
+      }
+      area.votes[key] = (area.votes[key] ?? 0) + votes;
+    }
+  }
+  return sortContests(
+    [...contests.values()].map(({ byKey: _k, ...c }) => ({
+      ...c,
+      // A county office is reported by its county alone: no county map for it.
+      areas: c.group === 'local' ? [] : c.areas.sort((a, b) => a.name.localeCompare(b.name)),
+    })),
+  );
+}
+
+// ------------------------------------------------------------------ California
+
+export const CA_COUNTIES = [
+  'Alameda',
+  'Alpine',
+  'Amador',
+  'Butte',
+  'Calaveras',
+  'Colusa',
+  'Contra Costa',
+  'Del Norte',
+  'El Dorado',
+  'Fresno',
+  'Glenn',
+  'Humboldt',
+  'Imperial',
+  'Inyo',
+  'Kern',
+  'Kings',
+  'Lake',
+  'Lassen',
+  'Los Angeles',
+  'Madera',
+  'Marin',
+  'Mariposa',
+  'Mendocino',
+  'Merced',
+  'Modoc',
+  'Mono',
+  'Monterey',
+  'Napa',
+  'Nevada',
+  'Orange',
+  'Placer',
+  'Plumas',
+  'Riverside',
+  'Sacramento',
+  'San Benito',
+  'San Bernardino',
+  'San Diego',
+  'San Francisco',
+  'San Joaquin',
+  'San Luis Obispo',
+  'San Mateo',
+  'Santa Barbara',
+  'Santa Clara',
+  'Santa Cruz',
+  'Shasta',
+  'Sierra',
+  'Siskiyou',
+  'Solano',
+  'Sonoma',
+  'Stanislaus',
+  'Sutter',
+  'Tehama',
+  'Trinity',
+  'Tulare',
+  'Tuolumne',
+  'Ventura',
+  'Yolo',
+  'Yuba',
+];
+
+interface CaRace {
+  raceTitle?: string;
+  Reporting?: string;
+  candidates?: { Name: string; Party?: string; Votes: string }[];
+  'ballot-measures'?: { Name: string; Number: string; yesVotes: string; noVotes: string }[];
+}
+
+const caReporting = (s: string | undefined) => {
+  const m = /\(([\d,]+) of ([\d,]+)\)/.exec(s ?? '');
+  return m ? { reporting: int(m[1]), total: int(m[2]) } : { reporting: null, total: null };
+};
+
+const caTitle = (t: string | undefined) =>
+  clean(t).replace(/\s+-\s+(Statewide|Districtwide|[A-Za-z .]+ County) Results$/, '');
+
+/**
+ * California Secretary of State: api.sos.ca.gov/returns/<race>, one JSON document per
+ * race (statewide offices, each U.S. House district, the ballot measures). Each part
+ * comes with the path it was read from, which is the contest's ID.
+ */
+export function parseCaSos(parts: { path: string; body: string }[]): ParsedContest[] {
+  const out: ParsedContest[] = [];
+  for (const { path, body } of parts) {
+    const race = JSON.parse(body) as CaRace;
+    const { reporting, total } = caReporting(race.Reporting);
+    if (race['ballot-measures']) {
+      for (const m of race['ballot-measures']) {
+        const yes = int(m.yesVotes);
+        const no = int(m.noVotes);
+        out.push({
+          sourceKey: `${path}/${clean(m.Number)}`,
+          name: `Proposition ${Number(m.Number)}: ${clean(m.Name)}`.slice(0, 300),
+          group: 'measure',
+          voteFor: 1,
+          precinctsTotal: total,
+          precinctsReporting: reporting,
+          candidates: [
+            { key: 'Yes|', name: 'Yes', party: null, votes: yes },
+            { key: 'No|', name: 'No', party: null, votes: no },
+          ],
+          areas: [],
+        });
+      }
+      continue;
+    }
+    if (!race.candidates?.length) continue;
+    out.push({
+      sourceKey: path,
+      name: caTitle(race.raceTitle) || path,
+      group: path.startsWith('us-')
+        ? 'federal'
+        : path.includes('/district/')
+          ? 'legislature'
+          : 'statewide',
+      voteFor: 1,
+      precinctsTotal: total,
+      precinctsReporting: reporting,
+      candidates: race.candidates.map((c) => {
+        const name = clean(c.Name);
+        const party = clean(c.Party) || null;
+        return { key: candidateKey(name, party), name, party, votes: int(c.Votes) };
+      }),
+      areas: [],
+    });
+  }
+  return sortContests(out);
+}
+
+/** Adds each county's numbers for one California race (…/<race>/county/<county>). */
+export function addCaCountyAreas(
+  contests: ParsedContest[],
+  race: string,
+  counties: { code: string; name: string; body: string }[],
+): ParsedContest[] {
+  const c = contests.find((x) => x.sourceKey === race);
+  if (!c) return contests;
+  for (const county of counties) {
+    const docs = JSON.parse(county.body) as CaRace[];
+    const doc = (Array.isArray(docs) ? docs : [docs]).find((d) =>
+      /County Results$/.test(d.raceTitle ?? ''),
+    );
+    if (!doc?.candidates) continue;
+    const { reporting, total } = caReporting(doc.Reporting);
+    c.areas.push({
+      code: county.code,
+      name: county.name,
+      precinctsTotal: total,
+      precinctsReporting: reporting,
+      votes: Object.fromEntries(
+        doc.candidates.map((x) => [
+          candidateKey(clean(x.Name), clean(x.Party) || null),
+          int(x.Votes),
+        ]),
+      ),
+    });
+  }
+  c.areas.sort((a, b) => a.name.localeCompare(b.name));
+  return contests;
+}
+
+export type FeedKind = 'ncsbe' | 'fl-dos' | 'mn-sos' | 'ca-sos';

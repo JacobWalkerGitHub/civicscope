@@ -43,7 +43,7 @@ export const LEGEND = [
 export function partySide(party: string | null | undefined): 'rep' | 'dem' | 'oth' {
   const p = (party ?? '').toUpperCase();
   if (p === 'REP' || p === 'R' || p.startsWith('REPUBLICAN')) return 'rep';
-  if (p === 'DEM' || p === 'D' || p.startsWith('DEMOCRAT')) return 'dem';
+  if (p === 'DEM' || p === 'D' || p === 'DFL' || p.startsWith('DEMOCRAT')) return 'dem';
   return 'oth';
 }
 
