@@ -6,14 +6,15 @@ import { CONGRESS_PARTS, runCongressImport, type CongressPart } from '../congres
 
 /**
  * Imports one Congress from the Congress.gov API: members, bills (with sponsors and
- * cosponsors) and House roll-call votes; and Senate roll-call votes from senate.gov.
+ * cosponsors) and House roll-call votes; and Senate roll-call votes from Voteview (or
+ * from senate.gov with --senate-source senate.gov, on a host senate.gov answers).
  * Run `pnpm ingest:legislators` first.
  *   pnpm ingest:congress 119 [--parts members,bills,house-votes,senate-votes]
  *                            [--max-bills 500] [--max-votes 100] [--max-requests 4000]
- *                            [--refresh-senate]
+ *                            [--refresh-senate] [--senate-source voteview|senate.gov]
  * Needs CONGRESS_API_KEY (a free api.data.gov key) for every part except senate-votes.
  * DEMO_KEY allows about 10 requests an hour, so use it only with a small --max-requests.
- * --refresh-senate fetches stored Senate votes again to pick up corrections.
+ * --refresh-senate rewrites stored Senate votes even when nothing seems to have changed.
  */
 await runCli(() =>
   alertOnFailure('Congress import failed', async () => {
@@ -26,6 +27,7 @@ await runCli(() =>
         'max-votes': { type: 'string' },
         'max-requests': { type: 'string' },
         'refresh-senate': { type: 'boolean' },
+        'senate-source': { type: 'string' },
       },
     });
     const congress = Number(positionals[0]);
@@ -42,6 +44,10 @@ await runCli(() =>
       if (!Number.isInteger(n) || n < 0) throw new Error(`--${name} must be a whole number.`);
       return n;
     };
+    const senateSource = values['senate-source'] ?? 'voteview';
+    if (senateSource !== 'voteview' && senateSource !== 'senate.gov') {
+      throw new Error('--senate-source must be voteview or senate.gov.');
+    }
     const apiKey = process.env.CONGRESS_API_KEY ?? '';
     if (!apiKey && parts.some((p) => p !== 'senate-votes')) {
       throw new Error(
@@ -57,6 +63,7 @@ await runCli(() =>
         maxVotes: num(values['max-votes'], 'max-votes'),
         maxRequests: num(values['max-requests'], 'max-requests'),
         refreshSenateVotes: values['refresh-senate'] ?? false,
+        senateSource,
       });
       const t = (x: { created: number; updated: number; unchanged: number; deferred: number }) =>
         `${x.created} new, ${x.updated} updated, ${x.unchanged} unchanged${x.deferred ? `, ${x.deferred} left for next run` : ''}`;

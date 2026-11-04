@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { and, count, desc, eq, inArray, isNull, notInArray, sql } from 'drizzle-orm';
 import type { MySqlColumn } from 'drizzle-orm/mysql-core';
 import type { z } from 'zod';
@@ -17,6 +18,8 @@ import {
   houseVoteMembersSchema,
   houseVotePageSchema,
   htmlToPlainText,
+  isVoteviewNay,
+  isVoteviewYea,
   legislatorFileSchema,
   LEGISLATORS_BASE,
   parseSenateDateTime,
@@ -29,6 +32,18 @@ import {
   senateVoteSchema,
   senateVoteXmlUrl,
   stateCode,
+  readVoteviewCsv,
+  VOTEVIEW_BASE,
+  VOTEVIEW_COLUMNS,
+  voteviewCast,
+  voteviewDate,
+  voteviewFileUrl,
+  voteviewMeasure,
+  voteviewMemberSchema,
+  voteviewParty,
+  voteviewRollcallSchema,
+  voteviewRollcallUrl,
+  voteviewVoteSchema,
   type BillType,
   type CongressChamber,
   type CongressMember,
@@ -59,9 +74,11 @@ const {
 
 /*
  * Congress.gov ingestion: members, bills with their sponsors and cosponsors, and House
- * roll-call votes for one Congress. Senate roll-call votes come from senate.gov's own
- * XML files (Congress.gov has none) and are matched to members by their LIS ID, which
- * congress-legislators lists next to the Bioguide ID. Records are stored by Bioguide ID and reach a
+ * roll-call votes for one Congress. Congress.gov has no Senate votes. They come from
+ * Voteview (see packages/core/src/voteview.ts), which lists each senator's Bioguide ID,
+ * because senate.gov refuses requests from servers. The older senate.gov reader stays
+ * for a host senate.gov does answer (`senateSource: 'senate.gov'`); it matches senators
+ * by their LIS ID, which congress-legislators lists next to the Bioguide ID. Records are stored by Bioguide ID and reach a
  * CivicScope person through the crosswalk (see congress-crosswalk.ts). Everything is a
  * draft, keeps the source it came from, and is only rewritten when Congress.gov's own
  * "updated" stamp changes, so a second run on the same data changes nothing.
@@ -106,7 +123,13 @@ export interface CongressOptions extends FetchOptions {
   /** Needed for every part except Senate votes. */
   apiKey: string;
   baseUrl?: string;
+  /**
+   * Where Senate votes come from. Voteview by default: senate.gov's firewall refuses
+   * requests from servers, so its files can only be read from a host it answers.
+   */
+  senateSource?: 'voteview' | 'senate.gov';
   senateBaseUrl?: string;
+  voteviewBaseUrl?: string;
   legislatorsBaseUrl?: string;
   /**
    * Fetch Senate votes that are already stored again, to pick up corrections. The
@@ -386,7 +409,10 @@ export async function runCongressImport(
     if (parts.includes('members')) await importMembers();
     if (parts.includes('bills')) await importBills();
     if (parts.includes('house-votes')) await importHouseVotes();
-    if (parts.includes('senate-votes')) await importSenateVotes();
+    if (parts.includes('senate-votes')) {
+      if ((opts.senateSource ?? 'voteview') === 'voteview') await importVoteviewSenateVotes();
+      else await importSenateVotes();
+    }
   } catch (error) {
     if (error instanceof RequestBudgetReached) {
       summary.stoppedEarly = error.message;
@@ -1107,6 +1133,229 @@ export async function runCongressImport(
       ]++;
     }
   }
+
+  /**
+   * Senate votes from Voteview's three files for this Congress. Each vote is stored by
+   * the Senate's own session and roll call number, so a vote read from senate.gov and the
+   * same vote from Voteview are one record. Voteview has no "last changed" date, so the
+   * stored stamp is a hash of what we take from it: a vote is rewritten only when that
+   * changes. A vote already stored from senate.gov is left as the Senate published it.
+   */
+  async function importVoteviewSenateVotes() {
+    const s = summary.senateVotes!;
+    const base = opts.voteviewBaseUrl ?? VOTEVIEW_BASE;
+    const read = async <S extends z.ZodType>(
+      kind: 'rollcalls' | 'votes' | 'members',
+      schemaFor: S,
+    ): Promise<z.infer<S>[]> => {
+      const url = new URL(voteviewFileUrl(kind, congress).replace(VOTEVIEW_BASE, base));
+      const what = `Voteview's Senate ${kind} file for the ${congress}th Congress`;
+      const body = await api.getRaw(url, 'text/csv');
+      let rows;
+      try {
+        rows = readVoteviewCsv(body, VOTEVIEW_COLUMNS[kind]);
+      } catch (error) {
+        throw new Error(
+          `${what} is not in the expected format (${error instanceof Error ? error.message : String(error)}). Nothing more was imported.`,
+          { cause: error },
+        );
+      }
+      return rows.map(({ line, row }) => {
+        const parsed = schemaFor.safeParse(row);
+        if (!parsed.success) {
+          const issue = parsed.error.issues[0];
+          throw new Error(
+            `${what}, line ${line}, is not in the expected format (${issue?.path.join('.')}: ${issue?.message}). Nothing more was imported.`,
+          );
+        }
+        return parsed.data;
+      });
+    };
+
+    const rollcalls = await read('rollcalls', voteviewRollcallSchema);
+    const members = await read('members', voteviewMemberSchema);
+    const votes = await read('votes', voteviewVoteSchema);
+    for (const r of [...rollcalls, ...members, ...votes]) {
+      if (r.congress !== congress) {
+        throw new Error(
+          `Asked Voteview for the ${congress}th Congress and got a row for the ${r.congress}th. Nothing more was imported.`,
+        );
+      }
+    }
+    // Only senators: Voteview also scores the President's position on some votes.
+    const senators = new Map(
+      members.filter((m) => m.chamber === 'Senate').map((m) => [m.icpsr, m]),
+    );
+    const byRoll = new Map<number, typeof votes>();
+    for (const v of votes) {
+      if (!senators.has(v.icpsr)) continue;
+      const list = byRoll.get(v.rollnumber) ?? [];
+      list.push(v);
+      byRoll.set(v.rollnumber, list);
+    }
+
+    const existing = new Map(
+      (
+        await db
+          .select()
+          .from(rollCallVote)
+          .where(and(eq(rollCallVote.chamber, 'senate'), eq(rollCallVote.congress, congress)))
+      ).map((r) => [`${r.session}:${r.rollNumber}`, r] as const),
+    );
+    const unknownMembers = new Set<number>();
+    let detailed = 0;
+    // Oldest first, so a capped run leaves the newest for next time.
+    for (const rc of [...rollcalls].sort((a, b) => a.rollnumber - b.rollnumber)) {
+      s.listed++;
+      const label = `Senate roll call ${rc.clerk_rollnumber}, ${rc.date.slice(0, 4)}`;
+      const before = existing.get(`${rc.session}:${rc.clerk_rollnumber}`);
+      if (
+        before &&
+        before.sourceUpdatedAt !== '' &&
+        !before.sourceUpdatedAt.startsWith('voteview:')
+      ) {
+        // Stored from senate.gov itself, the primary record.
+        s.unchanged++;
+        continue;
+      }
+
+      const positions = new Map<string, typeof votePosition.$inferInsert>();
+      let incomplete = false;
+      let yeas = 0;
+      let nays = 0;
+      for (const v of byRoll.get(rc.rollnumber) ?? []) {
+        const m = senators.get(v.icpsr)!;
+        if (isVoteviewYea(v.cast_code)) yeas++;
+        if (isVoteviewNay(v.cast_code)) nays++;
+        const voteCast = voteviewCast(v.cast_code);
+        if (!voteCast) continue;
+        const name = m.bioname ?? `ICPSR ${m.icpsr}`;
+        if (!m.bioguide_id) {
+          incomplete = true;
+          if (!unknownMembers.has(m.icpsr)) {
+            unknownMembers.add(m.icpsr);
+            summary.attention.push({
+              ref: `Voteview ICPSR ${m.icpsr}`,
+              name,
+              problem:
+                'Voteview has no Bioguide ID for this senator yet, so their Senate votes were not stored. Votes that include them are read again on the next run.',
+            });
+          }
+          continue;
+        }
+        see(m.bioguide_id, name, m.state_abbrev);
+        if (positions.has(m.bioguide_id)) {
+          summary.attention.push({
+            ref: label,
+            name: m.bioguide_id,
+            problem: 'This senator is listed twice in the vote; the first entry was kept.',
+          });
+          continue;
+        }
+        positions.set(m.bioguide_id, {
+          voteId: 0,
+          bioguideId: m.bioguide_id,
+          voteCast,
+          party: voteviewParty(m.party_code),
+          state: m.state_abbrev.slice(0, 2) || null,
+        });
+      }
+      // The senators' votes must add up to the totals Voteview gives for the vote.
+      if (yeas !== rc.yea_count || nays !== rc.nay_count) {
+        summary.attention.push({
+          ref: label,
+          name: rc.vote_question ?? label,
+          problem: `Voteview's totals (${rc.yea_count}-${rc.nay_count}) don't match its senators' votes (${yeas}-${nays}), so this vote was not stored. It is read again on the next run.`,
+        });
+        continue;
+      }
+
+      const measure = voteviewMeasure(rc.bill_number);
+      const question =
+        [rc.vote_question, rc.vote_desc].filter(Boolean).join(': ').slice(0, 500) || null;
+      const values = {
+        chamber: 'senate',
+        congress,
+        session: rc.session,
+        rollNumber: rc.clerk_rollnumber,
+        votedAt: voteviewDate(rc.date),
+        question,
+        voteType: rc.majority_requirement
+          ? `${rc.majority_requirement} majority required`.slice(0, 100)
+          : null,
+        result: rc.vote_result?.slice(0, 100) ?? null,
+        legislationType: measure?.type.slice(0, 20) ?? null,
+        legislationNumber: measure?.number.slice(0, 20) ?? null,
+      };
+      const rows = [...positions.values()].sort((a, b) => a.bioguideId.localeCompare(b.bioguideId));
+      const stamp = incomplete
+        ? ''
+        : `voteview:${createHash('sha256')
+            .update(
+              JSON.stringify([
+                values,
+                rows.map((p) => [p.bioguideId, p.voteCast, p.party, p.state]),
+              ]),
+            )
+            .digest('hex')
+            .slice(0, 30)}`;
+      if (before && before.sourceUpdatedAt === stamp && !opts.refreshSenateVotes) {
+        s.unchanged++;
+        continue;
+      }
+      if (opts.maxVotes != null && detailed >= opts.maxVotes) {
+        s.deferred++;
+        continue;
+      }
+      detailed++;
+
+      const result = await db.transaction(async (tx) => {
+        const sourceId = await ensureImportSource(
+          tx,
+          actor,
+          {
+            url: voteviewRollcallUrl(congress, rc.rollnumber),
+            title: `Senate roll call ${rc.clerk_rollnumber}, ${rc.date.slice(0, 4)}${rc.vote_question ? `: ${rc.vote_question}` : ''}${rc.bill_number ? ` (${rc.bill_number})` : ''}`,
+            publisher: "Voteview (UCLA), from the U.S. Senate's roll-call record",
+            sourceType: 'legislative_record',
+          },
+          today,
+        );
+        const r = await upsert(
+          tx,
+          actor,
+          rollCallVote,
+          'roll_call_vote',
+          before,
+          { ...values, sourceId, sourceUpdatedAt: stamp },
+          `From Voteview; ${positions.size} senators recorded`,
+        );
+        if (r.action === 'unchanged') {
+          const key = (p: typeof votePosition.$inferInsert) =>
+            [p.bioguideId, p.voteCast, p.party, p.state].join('|');
+          const stored = await tx.select().from(votePosition).where(eq(votePosition.voteId, r.id));
+          const same =
+            stored.length === rows.length &&
+            new Set(stored.map(key)).size === new Set([...stored.map(key), ...rows.map(key)]).size;
+          if (same) return { ...r, positionsChanged: false };
+        }
+        await tx.delete(votePosition).where(eq(votePosition.voteId, r.id));
+        const insert = rows.map((p) => ({ ...p, voteId: r.id }));
+        for (let i = 0; i < insert.length; i += 500) {
+          await tx.insert(votePosition).values(insert.slice(i, i + 500));
+        }
+        return { ...r, positionsChanged: true };
+      });
+      if (result.positionsChanged) s.positions += positions.size;
+      s[
+        result.action === 'unchanged'
+          ? result.positionsChanged
+            ? 'updated'
+            : 'unchanged'
+          : result.action
+      ]++;
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------------
@@ -1115,7 +1364,7 @@ export async function runCongressImport(
 /**
  * A person's congressional record, through their Bioguide ID(s). With `publicOnly`,
  * leaves out the records an editor unpublished or archived: imported records are shown
- * as they come from Congress.gov and senate.gov unless an editor takes one down.
+ * as they come from Congress.gov, Voteview and senate.gov unless an editor takes one down.
  */
 export async function getCongressRecord(
   db: Db,
@@ -1184,6 +1433,7 @@ export async function getCongressRecord(
       party: votePosition.party,
       state: votePosition.state,
       sourceUrl: source.url,
+      sourcePublisher: source.publisher,
     })
     .from(votePosition)
     .innerJoin(rollCallVote, eq(rollCallVote.id, votePosition.voteId))

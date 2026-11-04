@@ -5,7 +5,7 @@ import { getPublicBill } from '@civicscope/cms';
 import type { BillStage, BillType } from '@civicscope/core';
 import { ReportLink } from '@/components/public/sources';
 import { Avatar, StageBadge } from '@/components/public/ui';
-import { rollCallUrl, voteDate } from '@/components/congress-format';
+import { rollCallUrl, voteDataSource, voteDate } from '@/components/congress-format';
 import { getDb } from '@/lib/db';
 import { CONGRESS_CHAMBER_LABELS, formatDate, ordinal } from '@/lib/labels';
 
@@ -261,6 +261,15 @@ export default async function BillPage({ params }: { params: Params }) {
                         <a href={rollCallUrl(v) ?? v.sourceUrl} rel="noopener">
                           Official record of this vote
                         </a>
+                        {voteDataSource(v) && (
+                          <>
+                            {' '}
+                            · Data from{' '}
+                            <a href={voteDataSource(v)!.url} rel="noopener">
+                              {voteDataSource(v)!.name}
+                            </a>
+                          </>
+                        )}
                       </p>
                     </li>
                   );
