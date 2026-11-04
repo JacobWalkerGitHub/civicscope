@@ -797,6 +797,46 @@ table.compare tbody th {
   margin: 0;
 }
 
+.compare-seats {
+  margin: 0 0 6px;
+  padding-left: 18px;
+}
+
+.compare-record p {
+  margin: 4px 0;
+}
+
+.compare-money {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 12px;
+  margin: 0 0 4px;
+}
+
+.compare-money dt {
+  color: var(--muted);
+}
+
+.compare-money dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.compare-shared {
+  margin-top: 32px;
+}
+
+table.compare-votes caption {
+  text-align: left;
+  font-weight: 600;
+  padding: 8px 0;
+}
+
+table.compare-votes td,
+table.compare-votes th {
+  vertical-align: top;
+}
+
 .compare-picker {
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -811,4 +851,17 @@ table.compare tbody th {
 
 .issue-list p {
   margin: 2px 0 0;
+}
+
+.compare-votes .state-vote-motion {
+  display: block;
+  font-size: 0.875em;
+}
+
+table.compare-votes td:first-child {
+  white-space: nowrap;
+}
+
+table.compare-votes td:nth-child(2) {
+  min-width: 220px;
 }

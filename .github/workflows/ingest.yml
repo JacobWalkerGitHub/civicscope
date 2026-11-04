@@ -20,6 +20,7 @@ on:
           - fec-totals
           - legislators
           - openstates
+          - state-officials
           - check-ingest
 
 permissions:
@@ -60,6 +61,7 @@ jobs:
             fec-totals)   set -- ingest:fec-totals "$((cycle - 2))" "$cycle" ;;
             legislators)  set -- ingest:legislators ;;
             openstates)   set -- ingest:openstates ;;
+            state-officials) set -- ingest:state-officials ;;
             check-ingest) set -- check:ingest --hours 24 ;;
             *) echo "::error::Unknown import $IMPORT"; exit 2 ;;
           esac

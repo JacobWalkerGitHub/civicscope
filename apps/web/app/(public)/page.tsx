@@ -5,7 +5,7 @@ import {
   listPublicBills,
   listUpcomingPublicRaces,
 } from '@civicscope/cms';
-import { StageBadge } from '@/components/public/ui';
+import { DateTile, StageBadge, countdown } from '@/components/public/ui';
 import { getDb } from '@/lib/db';
 import { formatDate } from '@/lib/labels';
 
@@ -14,34 +14,6 @@ export const dynamic = 'force-dynamic';
 
 /** Races shown per election before "See all". Legislatures have a hundred or more. */
 const RACES_PER_ELECTION = 8;
-
-function daysUntil(iso: string): number {
-  const today = new Date();
-  const start = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate());
-  return Math.round((Date.parse(`${iso}T00:00:00Z`) - start) / 86_400_000);
-}
-
-function countdown(iso: string): string {
-  const d = daysUntil(iso);
-  if (d <= 0) return 'Today';
-  if (d === 1) return 'Tomorrow';
-  if (d < 60) return `In ${d} days`;
-  const months = Math.round(d / 30.44);
-  return `In about ${months} months`;
-}
-
-function DateTile({ iso }: { iso: string }) {
-  const date = new Date(`${iso}T12:00:00Z`);
-  return (
-    <span className="date-tile" aria-hidden="true">
-      <span className="date-tile-month">
-        {date.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' })}
-      </span>
-      <span className="date-tile-day">{date.getUTCDate()}</span>
-      <span className="date-tile-year">{date.getUTCFullYear()}</span>
-    </span>
-  );
-}
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
