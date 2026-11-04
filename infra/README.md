@@ -54,6 +54,15 @@ A step-by-step version for a Mac, naming the app for each step, is in the projec
    Then set `BOOTSTRAP_ADMIN_PASSWORD` back to `unset`, sign in and set up two-step sign-in.
 6. Confirm the email from SNS so alarms reach you.
 
+## Running an import now
+
+The imports run on their schedules by themselves. To run one now (after changing an API key,
+say), open **Actions → Run import → Run workflow** on GitHub and pick it: Congress, FEC, FEC
+totals, legislators, Open States, or the ingest check. It starts the same worker task as the
+schedule, with the same arguments, and fails if the import does. The import's own output is
+in CloudWatch, in the worker tasks' log group. From a Mac, `./run-task.sh admin ingest:congress 119`
+does the same.
+
 ## Every deploy
 
 Merge to `main` (see [Deploying from GitHub](#deploying-from-github)), or commit, open

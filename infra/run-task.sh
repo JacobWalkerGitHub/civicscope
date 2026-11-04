@@ -34,7 +34,14 @@ arn=$(aws ecs run-task --region us-east-1 --cluster "$cluster" --task-definition
   --network-configuration "awsvpcConfiguration={subnets=[${subnets}],securityGroups=[$sg],assignPublicIp=DISABLED}" \
   --query 'tasks[0].taskArn' --output text)
 echo "Started $arn; waiting for it to finish..."
-aws ecs wait tasks-stopped --region us-east-1 --cluster "$cluster" --tasks "$arn"
+# The waiter gives up after 10 minutes and an import can run for an hour, so keep waiting
+# while the task is still going.
+until aws ecs wait tasks-stopped --region us-east-1 --cluster "$cluster" --tasks "$arn" 2>/dev/null; do
+  status=$(aws ecs describe-tasks --region us-east-1 --cluster "$cluster" --tasks "$arn" \
+    --query 'tasks[0].lastStatus' --output text)
+  [ "$status" = STOPPED ] && break
+  echo "Still running ($status)..."
+done
 code=$(aws ecs describe-tasks --region us-east-1 --cluster "$cluster" --tasks "$arn" \
   --query 'tasks[0].containers[0].exitCode' --output text)
 echo "Exit code $code. Logs: CloudWatch log group of the worker tasks."
