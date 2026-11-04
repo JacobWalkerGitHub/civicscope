@@ -413,7 +413,8 @@ function CampaignMoney({ totals }: { totals: Profile['money'] }) {
       <h2 id="money-heading">Campaign money</h2>
       <p className="muted">
         Totals the Federal Election Commission compiles from the reports the candidate’s own
-        campaign committees file. Money spent by outside groups is not included.
+        campaign committees file, and, separately, what outside groups reported spending to support
+        or oppose the candidate.
       </p>
       {totals.map((t) => (
         <div key={t.candidateId} className="money-block">
@@ -438,6 +439,7 @@ function CampaignMoney({ totals }: { totals: Profile['money'] }) {
               <dd>{t.debts == null ? '—' : dollars.format(t.debts)}</dd>
             </div>
           </dl>
+          {(t.outside.support > 0 || t.outside.oppose > 0) && <OutsideSpending t={t} />}
           <p className="muted">
             {t.coverageEnd ? `Through ${formatDate(t.coverageEnd)}. ` : ''}
             <a
@@ -452,5 +454,36 @@ function CampaignMoney({ totals }: { totals: Profile['money'] }) {
         </div>
       ))}
     </section>
+  );
+}
+
+/** Independent expenditures: groups outside the campaign, for and against. */
+function OutsideSpending({ t }: { t: Profile['money'][number] }) {
+  const side = (label: string, total: number, list: typeof t.outside.topSupport) => (
+    <div>
+      <h4>
+        {label}: {dollars.format(total)}
+      </h4>
+      {list.length > 0 ? (
+        <ol className="outside-list">
+          {list.map((x) => (
+            <li key={x.committeeId}>
+              {x.committeeName} <span className="muted">{dollars.format(x.total)}</span>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p className="muted">None reported.</p>
+      )}
+    </div>
+  );
+  return (
+    <div className="outside-spending">
+      <h4 className="outside-heading">Outside groups</h4>
+      <div className="outside-sides">
+        {side('Spent supporting', t.outside.support, t.outside.topSupport)}
+        {side('Spent opposing', t.outside.oppose, t.outside.topOppose)}
+      </div>
+    </div>
   );
 }

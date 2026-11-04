@@ -1353,6 +1353,27 @@ h2.contest-name {
   font-variant-numeric: tabular-nums;
 }
 
+.public .outside-spending {
+  margin: 12px 0;
+}
+
+.public .outside-sides {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.public .outside-sides h4 {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+}
+
+.public .outside-list {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 0.9rem;
+}
+
 .public .state-votes td {
   vertical-align: top;
 }

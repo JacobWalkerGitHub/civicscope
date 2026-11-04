@@ -67,7 +67,7 @@ export function runResult(source: IngestSource, summary: unknown): string {
         .join('; ');
     case 'fec_totals': {
       const s = summary as FecTotalsSummary;
-      return `${s.stored} totals stored, ${s.missing} with nothing filed`;
+      return `${s.stored} totals stored, ${s.missing} with nothing filed, ${s.outsideRows ?? 0} outside-spending rows`;
     }
     case 'openstates': {
       const s = summary as OpenStatesSummary;

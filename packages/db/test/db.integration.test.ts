@@ -73,6 +73,7 @@ describe('migrations', () => {
       'election_cycle',
       'election_deadline',
       'fec_candidate_totals',
+      'fec_outside_spending',
       'field_lock',
       'import_batch',
       'ingest_run',

@@ -123,7 +123,81 @@ export function RaceOverview({
           </>
         )}
       </section>
+      {page.money.size > 0 && <RaceMoney page={page} candidateHref={candidateHref} />}
       <ReportLink path={`/races/${race.id}`} />
     </>
+  );
+}
+
+const dollars = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  maximumFractionDigits: 0,
+});
+const usd = (n: number | null) => (n == null ? '—' : dollars.format(n));
+
+/** Campaign money side by side, for the candidates the FEC reports on. */
+function RaceMoney({
+  page,
+  candidateHref,
+}: {
+  page: RacePage;
+  candidateHref: (slug: string) => string;
+}) {
+  const rows = page.candidates.filter((c) => page.money.has(c.candidacyId));
+  return (
+    <section aria-labelledby="money-heading">
+      <h2 id="money-heading">Campaign money</h2>
+      <p className="muted">
+        From reports filed with the Federal Election Commission: what each campaign raised and
+        spent, and what outside groups reported spending for or against each candidate. Each
+        candidate’s page links to the filings.
+      </p>
+      <div className="table-scroll">
+        <table className="area-table money-table">
+          <thead>
+            <tr>
+              <th scope="col">Candidate</th>
+              <th scope="col" className="num">
+                Raised
+              </th>
+              <th scope="col" className="num">
+                Spent
+              </th>
+              <th scope="col" className="num">
+                Cash on hand
+              </th>
+              <th scope="col" className="num">
+                Outside, supporting
+              </th>
+              <th scope="col" className="num">
+                Outside, opposing
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((c) => {
+              const m = page.money.get(c.candidacyId)!;
+              return (
+                <tr key={c.candidacyId}>
+                  <th scope="row">
+                    <Link href={candidateHref(c.personSlug)}>{c.ballotName}</Link>
+                    <span className="muted state-vote-motion">
+                      {m.cycle - 1}–{m.cycle}
+                      {m.coverageEnd && `, through ${formatDate(m.coverageEnd)}`}
+                    </span>
+                  </th>
+                  <td className="num">{usd(m.receipts)}</td>
+                  <td className="num">{usd(m.disbursements)}</td>
+                  <td className="num">{usd(m.cashOnHand)}</td>
+                  <td className="num">{usd(m.outside.support)}</td>
+                  <td className="num">{usd(m.outside.oppose)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }

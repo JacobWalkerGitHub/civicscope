@@ -38,3 +38,32 @@ export const fecCandidateTotals = mysqlTable(
   },
   (t) => [uniqueIndex('fec_candidate_totals_uq').on(t.candidateId, t.cycle)],
 );
+
+/**
+ * Independent expenditures: money a committee outside the campaign reported spending
+ * to support or oppose a candidate in one two-year period, summed by the FEC per
+ * committee from Schedule E filings. Replaced on each read.
+ */
+export const fecOutsideSpending = mysqlTable(
+  'fec_outside_spending',
+  {
+    id: int('id').autoincrement().primaryKey(),
+    candidateId: char('candidate_id', { length: 9 }).notNull(),
+    cycle: smallint('cycle').notNull(),
+    committeeId: char('committee_id', { length: 9 }).notNull(),
+    committeeName: varchar('committee_name', { length: 200 }).notNull(),
+    /** 'S' to support the candidate, 'O' to oppose. */
+    supportOppose: char('support_oppose', { length: 1 }).notNull(),
+    total: money('total').notNull(),
+    /** How many expenditures make up the total. */
+    count: int('count').notNull().default(0),
+  },
+  (t) => [
+    uniqueIndex('fec_outside_spending_uq').on(
+      t.candidateId,
+      t.cycle,
+      t.committeeId,
+      t.supportOppose,
+    ),
+  ],
+);
