@@ -10,10 +10,13 @@ import { LEAD_LEGEND } from './format';
 export function UsResultsMap({
   states,
   leads,
+  query = '',
 }: {
   states: ResultStateSummary[];
   /** Map class per state, from leaderClass(). */
   leads: Record<string, string>;
+  /** Added to each state's link, e.g. "?date=2026-11-03" for an earlier night. */
+  query?: string;
 }) {
   const byState = new Map(states.map((s) => [s.state, s]));
   return (
@@ -37,7 +40,7 @@ export function UsResultsMap({
           return (
             <Link
               key={shape.usps}
-              href={`/results/${shape.usps.toLowerCase()}`}
+              href={`/results/${shape.usps.toLowerCase()}${query}`}
               aria-label={label}
               className="map-link"
             >

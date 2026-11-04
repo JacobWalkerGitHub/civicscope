@@ -24,7 +24,7 @@ export const dynamic = 'force-dynamic';
 
 type Params = {
   params: Promise<{ state: string }>;
-  searchParams: Promise<{ race?: string }>;
+  searchParams: Promise<{ race?: string; date?: string }>;
 };
 
 const GROUPS: { group: ResultGroup; title: string; open: boolean }[] = [
@@ -36,15 +36,19 @@ const GROUPS: { group: ResultGroup; title: string; open: boolean }[] = [
   { group: 'local', title: 'Local', open: false },
 ];
 
-const load = cache(async (state: string) => {
+/** One state's results for an election night: the one asked for if stored, else the newest. */
+const load = cache(async (state: string, asked?: string) => {
   if (!/^[a-z]{2}$/i.test(state)) return null;
   const db = getDb();
-  const [date] = await listResultDates(db);
-  return date ? getStateResults(db, state, date) : null;
+  const dates = await listResultDates(db);
+  const date = dates.find((d) => d === asked) ?? dates[0];
+  if (!date) return null;
+  const page = await getStateResults(db, state, date);
+  return page && { ...page, latest: date === dates[0] };
 });
 
-export async function generateMetadata({ params }: Pick<Params, 'params'>): Promise<Metadata> {
-  const page = await load((await params).state);
+export async function generateMetadata({ params, searchParams }: Params): Promise<Metadata> {
+  const page = await load((await params).state, (await searchParams).date);
   if (!page) return { title: 'Not found · CivicScope' };
   return {
     title: `${page.summary.stateName} results · CivicScope`,
@@ -53,7 +57,7 @@ export async function generateMetadata({ params }: Pick<Params, 'params'>): Prom
 }
 
 export default async function StateResultsPage({ params, searchParams }: Params) {
-  const page = await load((await params).state);
+  const page = await load((await params).state, (await searchParams).date);
   if (!page) notFound();
   const { summary: s, contests } = page;
   // Key races: the contests on every ballot in the state (Senate, Governor, ...).
@@ -76,11 +80,14 @@ export default async function StateResultsPage({ params, searchParams }: Params)
   for (const c of contests) byGroup.set(c.group, [...(byGroup.get(c.group) ?? []), c]);
   const groups = GROUPS.filter((g) => byGroup.has(g.group));
   const base = `/results/${s.state.toLowerCase()}`;
+  // Keeps an earlier election night selected on links within the page.
+  const dateQ = page.latest ? '' : `date=${s.electionDate}&`;
 
   return (
     <>
       <nav aria-label="Breadcrumb" className="breadcrumb">
-        <Link href="/results">Results</Link> <span aria-hidden="true">/</span> {s.stateName}
+        <Link href={page.latest ? '/results' : `/results?date=${s.electionDate}`}>Results</Link>{' '}
+        <span aria-hidden="true">/</span> {s.stateName}
       </nav>
       <section className="hero results-hero" aria-labelledby="state-title">
         <p className="eyebrow">Live · Unofficial results</p>
@@ -94,7 +101,7 @@ export default async function StateResultsPage({ params, searchParams }: Params)
             </>
           )}
         </p>
-        <AutoRefresh />
+        {page.latest && <AutoRefresh />}
       </section>
 
       <div className="results-source">
@@ -124,7 +131,7 @@ export default async function StateResultsPage({ params, searchParams }: Params)
               {keyRaces.map((c) => (
                 <Link
                   key={c.id}
-                  href={`${base}?race=${c.id}`}
+                  href={`${base}?${dateQ}race=${c.id}`}
                   scroll={false}
                   aria-current={c.id === key.id ? 'true' : undefined}
                 >
