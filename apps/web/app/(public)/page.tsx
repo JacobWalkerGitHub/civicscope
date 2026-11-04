@@ -54,7 +54,8 @@ export default async function HomePage() {
   const db = getDb();
   const [races, [resultsDate]] = await Promise.all([
     listUpcomingPublicRaces(db),
-    listResultDates(db),
+    // Never let results take the home page down (e.g. mid-deploy, before the migration).
+    listResultDates(db).catch(() => [] as string[]),
   ]);
   const liveResults = resultsDate && -daysUntil(resultsDate) < FEED_ACTIVE_DAYS;
   const byElection = new Map<number, typeof races>();
