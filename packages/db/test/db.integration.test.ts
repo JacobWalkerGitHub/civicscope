@@ -96,6 +96,10 @@ describe('migrations', () => {
       'sign_in_attempt',
       'sign_in_challenge',
       'source',
+      'state_bill',
+      'state_vote',
+      'state_vote_cursor',
+      'state_vote_position',
       'vote_position',
     ]);
   });

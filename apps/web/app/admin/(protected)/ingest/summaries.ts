@@ -3,6 +3,7 @@ import type {
   CrosswalkSummary,
   FecRunSummary,
   FeedReadSummary,
+  OpenStatesSummary,
 } from '@civicscope/cms';
 import type { IngestSource } from '@civicscope/core';
 
@@ -23,6 +24,8 @@ export function runTitle(source: IngestSource, params: unknown): string {
     }
     case 'state_results':
       return `Live results (${((params as { states?: string[] })?.states ?? []).join(', ')})`;
+    case 'openstates':
+      return `Open States (${((params as { states?: string[] })?.states ?? []).join(', ')})`;
   }
 }
 
@@ -59,6 +62,11 @@ export function runResult(source: IngestSource, summary: unknown): string {
       return (summary as FeedReadSummary[])
         .map((f) => `${f.state} ${f.outcome}${f.error ? `: ${f.error}` : ''}`)
         .join('; ');
+    case 'openstates': {
+      const s = summary as OpenStatesSummary;
+      const votes = s.states.reduce((n, x) => n + x.votes, 0);
+      return `${s.created} new people, ${s.linked} linked, ${votes} votes read`;
+    }
   }
 }
 

@@ -1327,6 +1327,15 @@ h2.contest-name {
   font-size: 0.8em;
 }
 
+.public .state-votes td {
+  vertical-align: top;
+}
+
+.public .state-votes .state-vote-motion {
+  display: block;
+  margin-top: 2px;
+}
+
 /* Who leads: party colors on results maps, deeper for wider leads (the owner's call). */
 .public {
   --rep-1: #f2b8bb;

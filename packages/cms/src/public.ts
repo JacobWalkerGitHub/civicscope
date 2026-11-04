@@ -11,6 +11,7 @@ import { and, asc, desc, eq, gte, inArray, isNull, or, sql, type SQL } from 'dri
 import type { MySqlColumn } from 'drizzle-orm/mysql-core';
 import { todayIso, type CitationSubject } from '@civicscope/core';
 import { schema, type Db } from '@civicscope/db';
+import { getStateVotes } from './openstates';
 
 const {
   person,
@@ -173,7 +174,8 @@ export async function getPublicPerson(db: Db, slug: string, opts: ViewOptions = 
     { type: 'candidacy', ids: candidacies.map((c) => c.id) },
     { type: 'claim', ids: claims.map((c) => c.id) },
   ]);
-  return { person: p, candidacies, claims, citations };
+  const stateVotes = await getStateVotes(db, p.id);
+  return { person: p, candidacies, claims, citations, stateVotes };
 }
 
 export async function getPublicRace(db: Db, id: number, opts: ViewOptions = {}) {

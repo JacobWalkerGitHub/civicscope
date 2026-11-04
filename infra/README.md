@@ -38,7 +38,9 @@ A step-by-step version for a Mac, naming the app for each step, is in the projec
 4. Fill in the app secret (`AppSecretArn` output): `AUTH_ENCRYPTION_KEY` (`openssl rand -base64 32`,
    and keep a copy: losing it means every admin re-enrols their authenticator app), `FEC_API_KEY`,
    `CONGRESS_API_KEY`, optionally `ALERT_WEBHOOK_URL`, and `BOOTSTRAP_ADMIN_PASSWORD` (12+
-   characters, for the first owner). Never change these placeholders in the code afterwards.
+   characters, for the first owner). Never change these placeholders in the code afterwards. Keys
+   added later (`OPENSTATES_API_KEY`) are added to the secret by hand in the console, before
+   the deploy that first reads them.
 5. Put the images in place with the site still off, migrate, then turn the site on
    (`infra/deploy.sh` does these three steps by itself whenever the site isn't running yet).
    The web tasks' health check needs the database, so they can't start before the migration:

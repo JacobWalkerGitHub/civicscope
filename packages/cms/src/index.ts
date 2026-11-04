@@ -31,3 +31,4 @@ export * from './alerts';
 export * from './health';
 export * from './results';
 export * from './geocode';
+export * from './openstates';

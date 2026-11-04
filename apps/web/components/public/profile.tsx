@@ -178,6 +178,8 @@ export function CandidateProfile({
         );
       })}
 
+      {profile.stateVotes.total > 0 && <StateVotes record={profile.stateVotes} />}
+
       {claims.length === 0 && (
         <p className="muted">
           No positions or biography entries are published for this candidate yet.
@@ -191,5 +193,84 @@ export function CandidateProfile({
       </p>
       <ReportLink path={`/candidates/${person.slug}`} />
     </>
+  );
+}
+
+const CHAMBER: Record<string, { upper: string; lower: string }> = {
+  NJ: { upper: 'Senate', lower: 'Assembly' },
+  VA: { upper: 'Senate', lower: 'House of Delegates' },
+};
+const chamberName = (state: string, c: 'upper' | 'lower' | 'legislature') =>
+  c === 'legislature' ? 'Legislature' : (CHAMBER[state] ?? { upper: 'Senate', lower: 'House' })[c];
+const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+const RESULTS: Record<string, string> = { pass: 'Passed', fail: 'Failed' };
+
+/** Recent roll calls from the state legislature, as Open States recorded them. */
+function StateVotes({ record }: { record: Profile['stateVotes'] }) {
+  return (
+    <section aria-labelledby="state-votes-heading">
+      <h2 id="state-votes-heading">State legislative votes</h2>
+      <p className="muted">
+        {record.total > record.votes.length
+          ? `The ${record.votes.length} most recent of ${record.total.toLocaleString('en-US')} recorded votes`
+          : `${record.total} recorded ${record.total === 1 ? 'vote' : 'votes'}`}
+        , from each legislature’s own roll calls as collected by{' '}
+        <a href="https://openstates.org/" rel="noopener noreferrer" target="_blank">
+          Open States
+        </a>
+        .
+      </p>
+      <div className="table-scroll">
+        <table className="area-table state-votes">
+          <thead>
+            <tr>
+              <th scope="col">Date</th>
+              <th scope="col">Bill and motion</th>
+              <th scope="col">Vote</th>
+              <th scope="col">Result</th>
+            </tr>
+          </thead>
+          <tbody>
+            {record.votes.map((v) => (
+              <tr key={v.voteId}>
+                <td>{formatDate(v.votedOn)}</td>
+                <td>
+                  <strong>
+                    {v.bill.openstatesUrl ? (
+                      <a href={v.bill.openstatesUrl} rel="noopener noreferrer" target="_blank">
+                        {v.bill.identifier}
+                      </a>
+                    ) : (
+                      v.bill.identifier
+                    )}
+                  </strong>{' '}
+                  {v.bill.title}
+                  <span className="muted state-vote-motion">
+                    {chamberName(v.bill.state, v.chamber)}, {v.bill.session}: {v.motion}
+                    {v.sourceUrl && (
+                      <>
+                        {' '}
+                        ·{' '}
+                        <a href={v.sourceUrl} rel="noopener noreferrer nofollow" target="_blank">
+                          Roll call
+                        </a>
+                      </>
+                    )}
+                  </span>
+                </td>
+                <td>{capital(v.option)}</td>
+                <td>
+                  {RESULTS[v.result] ?? capital(v.result)}{' '}
+                  <span className="muted">
+                    ({v.yes}–{v.no}
+                    {v.other ? `, ${v.other} other` : ''})
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
