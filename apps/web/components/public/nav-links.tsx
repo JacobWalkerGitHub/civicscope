@@ -5,10 +5,11 @@ import { usePathname } from 'next/navigation';
 
 const LINKS = [
   { href: '/results', label: 'Results' },
+  { href: '/ballot', label: 'My ballot' },
   { href: '/', label: 'Upcoming races' },
   { href: '/candidates', label: 'Candidates' },
   { href: '/issues', label: 'Issues' },
-  { href: '/elections', label: 'Election calendar' },
+  { href: '/elections', label: 'Calendar' },
   { href: '/coverage', label: 'Coverage' },
   { href: '/methodology', label: 'How we work' },
   { href: '/search', label: 'Search' },

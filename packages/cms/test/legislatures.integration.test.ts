@@ -2,7 +2,13 @@ import { and, count, eq, isNotNull } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { schema, seedJurisdictions, type Db } from '@civicscope/db';
 import { startTestDatabase, type TestDatabase } from '@civicscope/db/testing';
-import { createElection, loadLegislatures, LEGISLATURES_2027, type Actor } from '../src/index';
+import {
+  createElection,
+  listBallotRaces,
+  loadLegislatures,
+  LEGISLATURES_2027,
+  type Actor,
+} from '../src/index';
 
 let test: TestDatabase;
 let db: Db;
@@ -94,5 +100,33 @@ describe('loadLegislatures', () => {
         ),
       );
     expect(audits).toHaveLength(1);
+  });
+
+  it('finds the races on one address’s ballot by its districts', async () => {
+    const va = await stateId('VA');
+    await db
+      .update(schema.election)
+      .set({ publishState: 'published' })
+      .where(eq(schema.election.jurisdictionId, va));
+    await db.update(schema.race).set({ publishState: 'published' });
+    const races = await listBallotRaces(
+      db,
+      { state: 'VA', congressional: 4, stateUpper: 14, stateLower: 78 },
+      '2026-11-04',
+    );
+    expect(races.map((r) => r.name)).toEqual([
+      'Senate of Virginia, District 14 (Democratic primary)',
+      'Senate of Virginia, District 14 (Republican primary)',
+      'Virginia House of Delegates, District 78 (Democratic primary)',
+      'Virginia House of Delegates, District 78 (Republican primary)',
+    ]);
+    // Another state's districts with the same numbers are not on it.
+    expect(
+      await listBallotRaces(
+        db,
+        { state: 'LA', congressional: null, stateUpper: 14, stateLower: 78 },
+        '2026-11-04',
+      ),
+    ).toEqual([]);
   });
 });

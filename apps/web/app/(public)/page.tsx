@@ -88,6 +88,9 @@ export default async function HomePage() {
           <input id="home-q" type="search" name="q" placeholder="Search names, offices, issues" />
           <button type="submit">Search</button>
         </form>
+        <p className="hero-alt">
+          <Link href="/ballot">Enter your address to see what’s on your ballot →</Link>
+        </p>
         {races.length > 0 && (
           <dl className="hero-stats">
             <div>
