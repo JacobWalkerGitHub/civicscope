@@ -2700,3 +2700,15 @@
     right: 14px;
   }
 }
+
+/* On phones, tabs wrap onto a second line rather than hiding off the edge. */
+@media (max-width: 560px) {
+  .public .tab-bar {
+    flex-wrap: wrap;
+    border-radius: 18px;
+  }
+
+  .public .tab-bar a {
+    padding: 7px 12px;
+  }
+}
