@@ -483,6 +483,13 @@ export class CivicScopeStack extends Stack {
     };
     // Times are UTC.
     schedule('FecDaily', { hour: '10', minute: '0' }, ['ingest:fec', String(props.fecCycle)]);
+    // Money raised and spent: the current period and the one before it, whose late
+    // reports keep arriving after its election.
+    schedule('FecTotalsDaily', { hour: '10', minute: '30' }, [
+      'ingest:fec-totals',
+      String(props.fecCycle - 2),
+      String(props.fecCycle),
+    ]);
     schedule('LegislatorsWeekly', { weekDay: 'MON', hour: '9', minute: '0' }, [
       'ingest:legislators',
     ]);

@@ -34,6 +34,7 @@ including users), `reviewer` (edit, verify, publish), `editor` (draft only), `vi
 | `pnpm lint` / `pnpm typecheck` / `pnpm format` | Code quality                                                       |
 | `pnpm db:generate --name <change>`             | Create a migration after editing `packages/db/src/schema`          |
 | `pnpm ingest:fec 2028`                         | Import FEC candidate registrations (needs `FEC_API_KEY`)           |
+| `pnpm ingest:fec-totals 2026 2028`             | Import FEC money totals for people in races (needs `FEC_API_KEY`)  |
 | `pnpm ingest:legislators`                      | Match Members of Congress to people by Bioguide/FEC/Wikidata IDs   |
 | `pnpm ingest:congress 119`                     | Import members, bills, House and Senate votes (`CONGRESS_API_KEY`) |
 | `pnpm ingest:openstates`                       | Import state legislators and their votes (`OPENSTATES_API_KEY`)    |

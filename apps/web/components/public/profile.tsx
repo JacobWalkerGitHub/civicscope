@@ -179,6 +179,8 @@ export function CandidateProfile({
         );
       })}
 
+      {profile.money.length > 0 && <CampaignMoney totals={profile.money} />}
+
       {profile.congress && <CongressRecord record={profile.congress} />}
 
       {profile.stateVotes.total > 0 && <StateVotes record={profile.stateVotes} />}
@@ -389,6 +391,66 @@ function CongressRecord({ record }: { record: NonNullable<Profile['congress']> }
           </div>
         </>
       )}
+    </section>
+  );
+}
+
+const dollars = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+  maximumFractionDigits: 0,
+});
+const CAMPAIGN_KIND: Record<string, string> = {
+  H: 'House campaign',
+  S: 'Senate campaign',
+  P: 'Presidential campaign',
+};
+
+/** Money raised and spent, as the campaign reported it to the FEC. */
+function CampaignMoney({ totals }: { totals: Profile['money'] }) {
+  return (
+    <section aria-labelledby="money-heading">
+      <h2 id="money-heading">Campaign money</h2>
+      <p className="muted">
+        Totals the Federal Election Commission compiles from the reports the candidate’s own
+        campaign committees file. Money spent by outside groups is not included.
+      </p>
+      {totals.map((t) => (
+        <div key={t.candidateId} className="money-block">
+          <h3>
+            {CAMPAIGN_KIND[t.candidateId[0]!] ?? 'Campaign'}, {t.cycle - 1}–{t.cycle}
+          </h3>
+          <dl className="money-facts">
+            <div>
+              <dt>Raised</dt>
+              <dd>{t.receipts == null ? '—' : dollars.format(t.receipts)}</dd>
+            </div>
+            <div>
+              <dt>Spent</dt>
+              <dd>{t.disbursements == null ? '—' : dollars.format(t.disbursements)}</dd>
+            </div>
+            <div>
+              <dt>Cash on hand</dt>
+              <dd>{t.cashOnHand == null ? '—' : dollars.format(t.cashOnHand)}</dd>
+            </div>
+            <div>
+              <dt>Debts</dt>
+              <dd>{t.debts == null ? '—' : dollars.format(t.debts)}</dd>
+            </div>
+          </dl>
+          <p className="muted">
+            {t.coverageEnd ? `Through ${formatDate(t.coverageEnd)}. ` : ''}
+            <a
+              href={`https://www.fec.gov/data/candidate/${t.candidateId}/?cycle=${t.cycle}&election_full=false`}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              Filings on FEC.gov
+            </a>{' '}
+            (candidate ID {t.candidateId})
+          </p>
+        </div>
+      ))}
     </section>
   );
 }

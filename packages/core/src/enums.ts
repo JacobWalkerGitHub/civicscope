@@ -259,6 +259,7 @@ export const INGEST_SOURCES = [
   'congress_gov',
   'state_results',
   'openstates',
+  'fec_totals',
 ] as const;
 export type IngestSource = (typeof INGEST_SOURCES)[number];
 
