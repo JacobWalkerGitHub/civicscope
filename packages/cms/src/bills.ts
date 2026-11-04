@@ -13,7 +13,6 @@ import {
   asc,
   desc,
   eq,
-  gte,
   inArray,
   isNull,
   like,
@@ -421,7 +420,10 @@ export interface MemberFilters {
 
 /**
  * Members of Congress serving now: the sitting Congress's members whose term has not
- * ended, alphabetical by last name.
+ * ended, alphabetical by last name. Congress.gov gives a sitting member's term no end
+ * year and sets one only once they leave, so any end year means they have gone. Comparing
+ * it with this year kept members who left this year (two senators replaced in 2026
+ * showed alongside their successors).
  */
 export async function listCurrentMembers(db: Db, filters: MemberFilters = {}, today = todayIso()) {
   const [latest] = await db
@@ -430,11 +432,10 @@ export async function listCurrentMembers(db: Db, filters: MemberFilters = {}, to
     .where(shown(congressMembership));
   const congress = Math.min(Number(latest?.congress ?? 0), congressOn(today));
   if (!congress) return { congress: null, rows: [], parties: [], states: [] };
-  const year = Number(today.slice(0, 4));
   const base = and(
     eq(congressMembership.congress, congress),
     shown(congressMembership),
-    or(isNull(congressMembership.endYear), gte(congressMembership.endYear, year)),
+    isNull(congressMembership.endYear),
   )!;
   const q = filters.q?.trim().slice(0, 100);
   const rows = await db

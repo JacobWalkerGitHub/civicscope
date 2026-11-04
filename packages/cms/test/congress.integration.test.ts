@@ -636,6 +636,20 @@ describe('Congress.gov import', () => {
       ['Una Unknown', 'GU', 0],
     ]);
     expect((await listCurrentMembers(db, { state: 'oh' }, '2026-11-02')).rows).toHaveLength(1);
+    // A member who left this year (Congress.gov sets the term's end year) is no longer
+    // listed, even before the year is out.
+    await db
+      .update(schema.congressMembership)
+      .set({ endYear: 2026 })
+      .where(eq(schema.congressMembership.bioguideId, 'X000002'));
+    expect((await listCurrentMembers(db, {}, '2026-11-02')).rows.map((m) => m.name)).toEqual([
+      'Harper House',
+      'Una Unknown',
+    ]);
+    await db
+      .update(schema.congressMembership)
+      .set({ endYear: null })
+      .where(eq(schema.congressMembership.bioguideId, 'X000002'));
     expect((await listCurrentMembers(db, { q: 'harp' }, '2026-11-02')).rows).toHaveLength(1);
 
     const harper = (await getPublicMember(db, 'X000001'))!;
