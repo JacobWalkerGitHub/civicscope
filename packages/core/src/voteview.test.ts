@@ -24,8 +24,9 @@ describe('Voteview Senate files', () => {
       'congress,chamber,rollnumber,date,session,clerk_rollnumber,majority_requirement,yea_count,nay_count,nominate_mid_1,nominate_mid_2,nominate_spread_1,nominate_spread_2,nominate_log_likelihood,bill_number,vote_result,vote_desc,vote_question,dtl_desc',
       '119,Senate,915,2026-09-30,2,256,1/2,47,41,-0.003,-0.232,-0.692,0.456,-0.057,PN1129,Nomination Confirmed,"Keith Sonderling, of Florida, to be Secretary of Labor",On the Nomination,',
     ].join('\n');
-    const [{ row }] = readVoteviewCsv(body, VOTEVIEW_COLUMNS.rollcalls) as [{ row: unknown }];
-    expect(voteviewRollcallSchema.parse(row)).toMatchObject({
+    const rows = readVoteviewCsv(body, VOTEVIEW_COLUMNS.rollcalls);
+    expect(rows).toHaveLength(1);
+    expect(voteviewRollcallSchema.parse(rows[0]!.row)).toMatchObject({
       rollnumber: 915,
       session: 2,
       clerk_rollnumber: 256,
