@@ -89,6 +89,7 @@ describe('migrations', () => {
       'result_candidate',
       'result_contest',
       'result_feed',
+      'result_update',
       'review_item',
       'revision',
       'roll_call_vote',

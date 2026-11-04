@@ -1,13 +1,20 @@
 import Link from 'next/link';
 import { reportingShare, type ResultStateSummary } from '@civicscope/cms';
 import { US_STATES, US_VIEWBOX } from './geo';
-import { LEGEND, reportingBucket } from './format';
+import { LEAD_LEGEND } from './format';
 
 /**
- * The country, each state shaded by how much of its count is in (never by who leads).
- * States with an official results feed are links to their results.
+ * The country, each state with a results feed colored by who leads its top race, and a
+ * link to its results. States without a feed stay plain.
  */
-export function UsResultsMap({ states }: { states: ResultStateSummary[] }) {
+export function UsResultsMap({
+  states,
+  leads,
+}: {
+  states: ResultStateSummary[];
+  /** Map class per state, from leaderClass(). */
+  leads: Record<string, string>;
+}) {
   const byState = new Map(states.map((s) => [s.state, s]));
   return (
     <figure className="us-map">
@@ -22,7 +29,7 @@ export function UsResultsMap({ states }: { states: ResultStateSummary[] }) {
             );
           }
           const share = s.headline ? reportingShare(s.headline) : null;
-          const bucket = reportingBucket(share ?? 0);
+          const cls = leads[shape.usps] ?? 'lead-none';
           const label =
             share === null
               ? `${shape.name}: results`
@@ -34,7 +41,7 @@ export function UsResultsMap({ states }: { states: ResultStateSummary[] }) {
               aria-label={label}
               className="map-link"
             >
-              <path d={shape.d} className={`map-state map-${bucket}`}>
+              <path d={shape.d} className={`map-state ${cls}`}>
                 <title>{label}</title>
               </path>
               <text x={shape.cx} y={shape.cy} className="map-label" aria-hidden="true">
@@ -46,12 +53,16 @@ export function UsResultsMap({ states }: { states: ResultStateSummary[] }) {
       </svg>
       <figcaption>
         <ul className="map-legend">
-          {LEGEND.map((l) => (
-            <li key={l.bucket}>
-              <span className={`swatch map-${l.bucket}`} aria-hidden="true" />
+          {LEAD_LEGEND.map((l) => (
+            <li key={l.cls}>
+              <span className={`swatch ${l.cls}`} aria-hidden="true" />
               {l.label}
             </li>
           ))}
+          <li>
+            <span className="swatch map-none" aria-hidden="true" />
+            No official feed yet
+          </li>
         </ul>
       </figcaption>
     </figure>

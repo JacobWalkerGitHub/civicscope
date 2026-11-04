@@ -209,3 +209,24 @@ export async function getContestResults(db: Db, contestId: number) {
     areas,
   };
 }
+
+/** The newest lines of the live updates feed for an election day, optionally one state. */
+export async function listResultUpdates(db: Db, electionDate: string, state?: string, limit = 25) {
+  const where = state
+    ? and(eq(resultFeed.electionDate, electionDate), eq(resultFeed.state, state.toUpperCase()))
+    : eq(resultFeed.electionDate, electionDate);
+  return db
+    .select({
+      id: schema.resultUpdate.id,
+      state: resultFeed.state,
+      contestId: schema.resultUpdate.contestId,
+      kind: schema.resultUpdate.kind,
+      text: schema.resultUpdate.text,
+      createdAt: schema.resultUpdate.createdAt,
+    })
+    .from(schema.resultUpdate)
+    .innerJoin(resultFeed, eq(resultFeed.id, schema.resultUpdate.feedId))
+    .where(where)
+    .orderBy(desc(schema.resultUpdate.createdAt), desc(schema.resultUpdate.id))
+    .limit(limit);
+}

@@ -113,6 +113,136 @@ export function parseNcsbe(body: string): ParsedContest[] {
   return sortContests([...contests.values()]);
 }
 
+/** NC's county IDs: its 100 counties in alphabetical order, 1 to 100. */
+export const NC_COUNTIES = [
+  'Alamance',
+  'Alexander',
+  'Alleghany',
+  'Anson',
+  'Ashe',
+  'Avery',
+  'Beaufort',
+  'Bertie',
+  'Bladen',
+  'Brunswick',
+  'Buncombe',
+  'Burke',
+  'Cabarrus',
+  'Caldwell',
+  'Camden',
+  'Carteret',
+  'Caswell',
+  'Catawba',
+  'Chatham',
+  'Cherokee',
+  'Chowan',
+  'Clay',
+  'Cleveland',
+  'Columbus',
+  'Craven',
+  'Cumberland',
+  'Currituck',
+  'Dare',
+  'Davidson',
+  'Davie',
+  'Duplin',
+  'Durham',
+  'Edgecombe',
+  'Forsyth',
+  'Franklin',
+  'Gaston',
+  'Gates',
+  'Graham',
+  'Granville',
+  'Greene',
+  'Guilford',
+  'Halifax',
+  'Harnett',
+  'Haywood',
+  'Henderson',
+  'Hertford',
+  'Hoke',
+  'Hyde',
+  'Iredell',
+  'Jackson',
+  'Johnston',
+  'Jones',
+  'Lee',
+  'Lenoir',
+  'Lincoln',
+  'Macon',
+  'Madison',
+  'Martin',
+  'McDowell',
+  'Mecklenburg',
+  'Mitchell',
+  'Montgomery',
+  'Moore',
+  'Nash',
+  'New Hanover',
+  'Northampton',
+  'Onslow',
+  'Orange',
+  'Pamlico',
+  'Pasquotank',
+  'Pender',
+  'Perquimans',
+  'Person',
+  'Pitt',
+  'Polk',
+  'Randolph',
+  'Richmond',
+  'Robeson',
+  'Rockingham',
+  'Rowan',
+  'Rutherford',
+  'Sampson',
+  'Scotland',
+  'Stanly',
+  'Stokes',
+  'Surry',
+  'Swain',
+  'Transylvania',
+  'Tyrrell',
+  'Union',
+  'Vance',
+  'Wake',
+  'Warren',
+  'Washington',
+  'Watauga',
+  'Wayne',
+  'Wilkes',
+  'Wilson',
+  'Yadkin',
+  'Yancey',
+];
+
+/**
+ * Adds each county's numbers (results_<county id>.txt, same format as the statewide
+ * file) to the statewide contests, matched by the state's contest ID.
+ */
+export function addCountyAreas(
+  contests: ParsedContest[],
+  counties: { code: string; name: string; body: string }[],
+): ParsedContest[] {
+  const byKey = new Map(contests.map((c) => [c.sourceKey, c]));
+  for (const county of counties) {
+    for (const local of parseNcsbe(county.body)) {
+      const c = byKey.get(local.sourceKey);
+      if (!c) continue;
+      c.areas.push({
+        code: county.code,
+        name: county.name,
+        precinctsTotal: local.precinctsTotal,
+        precinctsReporting: local.precinctsReporting,
+        votes: Object.fromEntries(local.candidates.map((x) => [x.key, x.votes])),
+      });
+    }
+  }
+  for (const c of contests) c.areas.sort((a, b) => a.name.localeCompare(b.name));
+  return contests;
+}
+
 function ncGroup(ogl: string, name: string): ResultGroup {
   switch (ogl) {
     case 'FED':

@@ -101,3 +101,22 @@ export const resultArea = mysqlTable(
   },
   (t) => [uniqueIndex('result_area_code_uq').on(t.contestId, t.code)],
 );
+
+/**
+ * The live updates feed: a line each time a major contest reaches a counting milestone
+ * or its leader changes. Written by the ingest from the numbers, never by hand.
+ */
+export const resultUpdate = mysqlTable(
+  'result_update',
+  {
+    id: int('id').autoincrement().primaryKey(),
+    feedId: int('feed_id')
+      .notNull()
+      .references(() => resultFeed.id),
+    contestId: int('contest_id').notNull(),
+    kind: mysqlEnum('kind', ['first_votes', 'milestone', 'lead_change', 'all_in']).notNull(),
+    text: varchar('text', { length: 500 }).notNull(),
+    createdAt: datetime('created_at', { mode: 'date', fsp: 3 }).notNull(),
+  },
+  (t) => [index('result_update_feed_idx').on(t.feedId, t.createdAt)],
+);
