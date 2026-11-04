@@ -1,7 +1,7 @@
 /**
  * Read queries for the public Bills and Politicians pages: bills of Congress with their
  * sponsors and roll-call votes, and the Members of Congress who sponsor and vote on
- * them. Everything here comes from Congress.gov and senate.gov (see congress-import.ts)
+ * them. Everything here comes from Congress.gov, Voteview and senate.gov (see congress-import.ts)
  * and is shown as imported unless an editor unpublishes or archives a record.
  *
  * Members are identified by Bioguide ID. A member's name comes from the Congress.gov
@@ -320,6 +320,7 @@ export async function getPublicBill(db: Db, congress: number, type: string, numb
     .select({
       id: rollCallVote.id,
       chamber: rollCallVote.chamber,
+      congress: rollCallVote.congress,
       session: rollCallVote.session,
       rollNumber: rollCallVote.rollNumber,
       votedAt: rollCallVote.votedAt,
@@ -327,6 +328,7 @@ export async function getPublicBill(db: Db, congress: number, type: string, numb
       voteType: rollCallVote.voteType,
       result: rollCallVote.result,
       sourceUrl: source.url,
+      sourcePublisher: source.publisher,
     })
     .from(rollCallVote)
     .innerJoin(source, eq(source.id, rollCallVote.sourceId))
@@ -520,6 +522,7 @@ export async function getPublicMember(db: Db, bioguideId: string) {
       id: rollCallVote.id,
       chamber: rollCallVote.chamber,
       congress: rollCallVote.congress,
+      session: rollCallVote.session,
       rollNumber: rollCallVote.rollNumber,
       votedAt: rollCallVote.votedAt,
       question: rollCallVote.question,
@@ -528,6 +531,7 @@ export async function getPublicMember(db: Db, bioguideId: string) {
       legislationNumber: rollCallVote.legislationNumber,
       voteCast: votePosition.voteCast,
       sourceUrl: source.url,
+      sourcePublisher: source.publisher,
     })
     .from(votePosition)
     .innerJoin(rollCallVote, eq(rollCallVote.id, votePosition.voteId))

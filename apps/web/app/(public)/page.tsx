@@ -83,7 +83,7 @@ export default async function HomePage() {
           <label htmlFor="home-q" className="visually-hidden">
             Search by name, office, state, district or issue
           </label>
-          <input id="home-q" type="search" name="q" placeholder="Search names, offices, issues" />
+          <input id="home-q" type="search" name="q" placeholder="Name, office or issue" />
           <button type="submit">Search</button>
         </form>
         <p className="hero-alt">
@@ -126,7 +126,10 @@ export default async function HomePage() {
       </div>
 
       {races.length === 0 ? (
-        <p className="notice">No upcoming races are published yet.</p>
+        <p className="notice">
+          No races are published yet for upcoming elections. The{' '}
+          <Link href="/elections">election calendar</Link> has the dates and deadlines we cover.
+        </p>
       ) : (
         <div className="election-cards">
           {elections.map((list) => {
@@ -222,7 +225,9 @@ export default async function HomePage() {
                         <span className="bill-number">{b.label}</span>
                         <StageBadge stage={b.stage} />
                       </div>
-                      <Link href={`/bills/${b.congress}/${b.billType}/${b.number}`}>{b.title}</Link>
+                      <Link href={`/bills/${b.congress}/${b.billType}/${b.number}`} title={b.title}>
+                        {b.title}
+                      </Link>
                       {b.latestActionOn && (
                         <span className="muted small">{formatDate(b.latestActionOn)}</span>
                       )}

@@ -222,6 +222,45 @@ const senateVote = (session: number, roll: number) => {
   return `<?xml version="1.0" encoding="UTF-8"?><roll_call_vote><congress>119</congress><session>${session}</session><congress_year>${2024 + session}</congress_year><vote_number>${roll}</vote_number><vote_date>${v.date}</vote_date><modify_date>${SENATE_MODIFIED}</modify_date><vote_question_text>On Passage of the Bill S. 5</vote_question_text><vote_document_text/><vote_result_text>Bill Passed (2-1)</vote_result_text><question>On Passage of the Bill</question><vote_title>S. 5 as Amended</vote_title><majority_requirement>1/2</majority_requirement><vote_result>Bill Passed</vote_result><document><document_congress>119</document_congress><document_type>S.</document_type><document_number>5</document_number><document_name>S. 5</document_name><document_title/><document_short_title/></document><amendment><amendment_number/><amendment_to_amendment_number/><amendment_to_amendment_to_amendment_number/><amendment_to_document_number/><amendment_to_document_short_title/><amendment_purpose/></amendment><count><yeas>2</yeas><nays>1</nays><present/><absent/></count><tie_breaker>${v.tie ? `<by_whom>Vice President</by_whom><tie_breaker_vote>${v.tie}</tie_breaker_vote>` : '<by_whom/><tie_breaker_vote/>'}</tie_breaker><members>${members}</members></roll_call_vote>`;
 };
 
+/*
+ * Voteview's Senate files for the 119th Congress, in its CSV format: the same made-up
+ * senators. Voteview's roll call 1 is the Senate's session 1 roll call 1, already stored
+ * from senate.gov above.
+ */
+const VV_MEMBER_HEADER =
+  'congress,chamber,icpsr,state_icpsr,district_code,state_abbrev,party_code,occupancy,last_means,bioname,bioguide_id,born,died';
+let VV_NOTYET_BIOGUIDE = '';
+const vvMembers = () =>
+  [
+    VV_MEMBER_HEADER,
+    '119,President,99912,99,0,USA,200,0,0,"PRESIDENT, The",,1950.0,',
+    '119,Senate,90010,51,0,KY,328,,,"SENATOR, Avery",X000010,1960.0,',
+    '119,Senate,90011,24,0,OH,100,,,"APPOINTEE, Blair",X000011,1970.0,',
+    `119,Senate,90099,12,0,NJ,200,,,"LISTEDYET, Not",${VV_NOTYET_BIOGUIDE},1980.0,`,
+  ].join('\n');
+const VV_ROLLCALLS = [
+  'congress,chamber,rollnumber,date,session,clerk_rollnumber,majority_requirement,yea_count,nay_count,nominate_mid_1,bill_number,vote_result,vote_desc,vote_question,dtl_desc',
+  '119,Senate,1,2025-01-09,1,1,1/2,1,1,0.1,S5,Bill Passed,"A bill, made up.",On Passage of the Bill,',
+  '119,Senate,3,2025-07-16,1,3,3/5,1,1,0.1,HR101,Cloture Motion Agreed to,"Example Act, a made-up bill.",On the Cloture Motion,',
+  '119,Senate,4,2026-03-05,2,2,1/2,2,0,0.1,PN123,Nomination Confirmed,"Someone, to be Something",On the Nomination,',
+  // Its totals don't match the senators' votes below.
+  '119,Senate,5,2026-03-06,2,3,1/2,5,0,0.1,S9,Bill Passed,,On Passage of the Bill,',
+].join('\r\n');
+const VV_VOTES = [
+  'congress,chamber,rollnumber,icpsr,cast_code,prob',
+  '119,Senate,1,90010,1,99.0',
+  '119,Senate,3,90010,1,99.0',
+  '119,Senate,3,90011,6,99.0',
+  // The President's stated position: not a Senate vote.
+  '119,Senate,3,99912,1,99.0',
+  '119,Senate,4,90010,9,99.0',
+  // Paired yea: counted in Voteview's yeas, recorded by the Senate as not voting.
+  '119,Senate,4,90011,2,99.0',
+  '119,Senate,4,90099,1,99.0',
+  '119,Senate,5,90010,1,99.0',
+].join('\n');
+let vvBroken = false;
+
 let broken = false;
 const requested: string[] = [];
 const fakeFetch = (async (input: string | URL | Request) => {
@@ -242,6 +281,14 @@ const fakeFetch = (async (input: string | URL | Request) => {
   if (sv) {
     if (broken) return xml('<html><body>Error</body></html>');
     return xml(senateVote(Number(sv[1]), Number(sv[2])));
+  }
+  const vv = p.match(/^\/static\/data\/out\/(rollcalls|votes|members)\/S119_\1\.csv$/);
+  if (vv) {
+    const csv = (body: string) => new Response(body, { status: 200 });
+    if (vv[1] === 'members') {
+      return csv(vvBroken ? vvMembers().replace('bioguide_id', 'bioguide') : vvMembers());
+    }
+    return csv(vv[1] === 'rollcalls' ? VV_ROLLCALLS : VV_VOTES);
   }
   if (p.endsWith('legislators-current.json')) return json(CURRENT);
   if (p.endsWith('legislators-historical.json')) return json(HISTORICAL);
@@ -704,6 +751,7 @@ describe('Senate votes from senate.gov', () => {
     runCongressImport(db, 119, {
       ...opts,
       apiKey: '',
+      senateSource: 'senate.gov',
       senateBaseUrl: 'https://senate.test',
       minIntervalMs: 0,
       parts: ['senate-votes'],
@@ -843,5 +891,129 @@ describe('Senate votes from senate.gov', () => {
     broken = false;
     const [failed] = await listIngestRuns(db, 1);
     expect(failed).toMatchObject({ state: 'failed', source: 'congress_gov' });
+  });
+});
+
+describe('Senate votes from Voteview', () => {
+  const voteviewRun = (extra: Rec = {}) =>
+    runCongressImport(db, 119, {
+      ...opts,
+      apiKey: '',
+      voteviewBaseUrl: 'https://voteview.test',
+      minIntervalMs: 0,
+      parts: ['senate-votes'],
+      ...extra,
+    });
+  const personFor = async (bioguide: string) => (await idOwner('bioguide', bioguide))!;
+
+  it('imports Senate votes from Voteview by default, attached by Bioguide ID', async () => {
+    const calls = requested.length;
+    const { summary } = await voteviewRun();
+    const urls = requested.slice(calls);
+    expect(urls.map((u) => new URL(u).pathname).sort()).toEqual([
+      '/static/data/out/members/S119_members.csv',
+      '/static/data/out/rollcalls/S119_rollcalls.csv',
+      '/static/data/out/votes/S119_votes.csv',
+    ]);
+    expect(urls.some((u) => u.includes('senate.test') || u.includes('api_key'))).toBe(false);
+    // Roll call 1 is already stored from senate.gov and is left as the Senate published it.
+    expect(summary.senateVotes).toMatchObject({
+      listed: 4,
+      created: 2,
+      updated: 0,
+      unchanged: 1,
+      positions: 4,
+    });
+    expect(summary.attention).toEqual([
+      expect.objectContaining({ ref: 'Voteview ICPSR 90099', name: 'LISTEDYET, Not' }),
+      expect.objectContaining({ ref: 'Senate roll call 3, 2026' }),
+    ]);
+
+    const avery = (await getCongressRecord(db, await personFor('X000010')))!;
+    const fromVoteview = avery.votes.filter((v) => v.sourceUrl?.startsWith('https://voteview'));
+    expect(
+      fromVoteview.map((v) => [v.session, v.rollNumber, v.voteCast, v.party, v.state]),
+    ).toEqual([
+      [2, 2, 'Not Voting', 'I', 'KY'],
+      [1, 3, 'Yea', 'I', 'KY'],
+    ]);
+    expect(fromVoteview[1]).toMatchObject({
+      question: 'On the Cloture Motion: Example Act, a made-up bill.',
+      result: 'Cloture Motion Agreed to',
+      legislationType: 'HR',
+      legislationNumber: '101',
+      sourceUrl: 'https://voteview.com/rollcall/RS1190003',
+      sourcePublisher: "Voteview (UCLA), from the U.S. Senate's roll-call record",
+    });
+    // Voteview gives only the date: stored at midday Eastern so it shows on that day.
+    expect(fromVoteview[1]!.votedAt.toISOString()).toBe('2025-07-16T17:00:00.000Z');
+    // A paired yea is recorded as the Senate tallies it.
+    const blair = (await getCongressRecord(db, await personFor('X000011')))!;
+    expect(
+      blair.votes
+        .filter((v) => v.sourceUrl?.startsWith('https://voteview'))
+        .map((v) => [v.rollNumber, v.voteCast, v.party]),
+    ).toEqual([
+      [2, 'Not Voting', 'D'],
+      [3, 'Nay', 'D'],
+    ]);
+
+    // The Senate vote shows on the bill's page next to the House votes.
+    const page = (await getPublicBill(db, 119, 'hr', 101))!;
+    const senate = page.votes.filter((v) => v.chamber === 'senate');
+    expect(senate).toEqual([
+      expect.objectContaining({
+        congress: 119,
+        session: 1,
+        rollNumber: 3,
+        sourceUrl: 'https://voteview.com/rollcall/RS1190003',
+      }),
+    ]);
+
+    const [source] = await db
+      .select()
+      .from(schema.source)
+      .where(eq(schema.source.url, 'https://voteview.com/rollcall/RS1190003'));
+    expect(source).toMatchObject({
+      sourceType: 'legislative_record',
+      retrievedAt: '2026-11-02',
+    });
+    expect(source!.title).toBe('Senate roll call 3, 2025: On the Cloture Motion (HR101)');
+  });
+
+  it('changes nothing when Voteview’s files are the same', async () => {
+    const revisions = (await db.select().from(schema.revision)).length;
+    const { summary } = await voteviewRun();
+    expect(summary.senateVotes).toMatchObject({ listed: 4, created: 0, updated: 0, unchanged: 3 });
+    expect((await db.select().from(schema.revision)).length).toBe(revisions);
+  });
+
+  it('completes a vote once Voteview lists the senator’s Bioguide ID', async () => {
+    VV_NOTYET_BIOGUIDE = 'X000013';
+    const { summary } = await voteviewRun();
+    expect(summary.senateVotes).toMatchObject({ updated: 1, positions: 3 });
+    expect(summary.attention).toEqual([
+      expect.objectContaining({ ref: 'Senate roll call 3, 2026' }),
+    ]);
+    const record = (await getCongressRecord(db, await personFor('X000013')))!;
+    expect(record.votes.map((v) => [v.rollNumber, v.voteCast])).toEqual([
+      [2, 'Yea'],
+      [1, 'Yea'],
+    ]);
+  });
+
+  it('passes the spot check against Voteview’s stored senator list', async () => {
+    const res = await spotCheckVotes(db, { ...opts, chamber: 'senate', sample: 50 });
+    // Six from senate.gov, five from Voteview.
+    expect(res.checked).toBe(11);
+    expect(res.rows.filter((r) => r.problems.length)).toEqual([]);
+  });
+
+  it('fails loudly when a Voteview file is missing a column', async () => {
+    vvBroken = true;
+    await expect(voteviewRun()).rejects.toThrow(
+      /Voteview's Senate members file for the 119th Congress is not in the expected format \(missing column bioguide_id\)/,
+    );
+    vvBroken = false;
   });
 });

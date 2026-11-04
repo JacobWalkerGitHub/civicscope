@@ -8,4 +8,5 @@ export * from './images';
 export * from './fec';
 export * from './congress';
 export * from './senate';
+export * from './voteview';
 export * from './net';

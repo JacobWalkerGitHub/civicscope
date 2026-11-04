@@ -11,7 +11,7 @@ import {
   POSITION_TYPE_LABELS,
   VERIFICATION_LABELS,
 } from '@/lib/labels';
-import { rollCallUrl, voteDate, voteMeasure } from '../congress-format';
+import { rollCallUrl, voteDataSource, voteDate, voteMeasure } from '../congress-format';
 import { Chip, StatusBadge, statusTone, WhenChip } from './badges';
 import { initials, NotPublic, ReportLink, Sources } from './sources';
 import { stateChamberName as chamberName } from '@/lib/labels';
@@ -414,6 +414,19 @@ function CongressRecord({ record }: { record: NonNullable<Profile['congress']> }
                               ·{' '}
                               <a href={url} rel="noopener noreferrer" target="_blank">
                                 Official record
+                              </a>
+                            </>
+                          )}
+                          {voteDataSource(v) && (
+                            <>
+                              {' '}
+                              · data from{' '}
+                              <a
+                                href={voteDataSource(v)!.url}
+                                rel="noopener noreferrer"
+                                target="_blank"
+                              >
+                                {voteDataSource(v)!.name}
                               </a>
                             </>
                           )}
