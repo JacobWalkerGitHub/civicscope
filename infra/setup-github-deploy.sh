@@ -12,7 +12,9 @@
 #   SUB='repo:...' bash setup-github-deploy.sh
 set -euo pipefail
 REPO=${REPO:-JacobWalkerGitHub/civicscope}
-SUB=${SUB:-repo:$REPO:environment:production}
+# GitHub names this repository by owner and repository ID as well as by name in the
+# token's subject (owner@id/repo@id), so a renamed account or repository can't inherit it.
+SUB=${SUB:-repo:JacobWalkerGitHub@127368369/civicscope@1443265880:environment:production}
 ROLE=civicscope-github-deploy
 REGION=us-east-1
 ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
