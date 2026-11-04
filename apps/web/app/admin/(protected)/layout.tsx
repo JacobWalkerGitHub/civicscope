@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { countOpenConflicts, countOpenCorrections, countReviewQueue } from '@civicscope/cms';
 import { can } from '@civicscope/core';
 import { AdminNav, type NavGroup } from '@/components/admin/nav';
+import { MenuDrawer } from '@/components/menu-drawer';
 import { getDb } from '@/lib/db';
 import { requirePermission } from '@/lib/session';
 import { signOutAction } from '../actions';
@@ -65,23 +66,25 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           </span>
           CivicScope <span className="admin-brand-sub">Admin</span>
         </Link>
-        <AdminNav groups={groups} />
-        <div className="admin-who">
-          <Link href="/admin/account" className="admin-who-name">
-            {user.name}
-          </Link>
-          <span className="admin-role">{user.role}</span>
-          <div className="admin-who-actions">
-            <Link href="/" className="admin-quiet-link">
-              View site ↗
+        <MenuDrawer id="admin-menu" className="admin-menu">
+          <AdminNav groups={groups} />
+          <div className="admin-who">
+            <Link href="/admin/account" className="admin-who-name">
+              {user.name}
             </Link>
-            <form action={signOutAction}>
-              <button type="submit" className="link-button">
-                Sign out
-              </button>
-            </form>
+            <span className="admin-role">{user.role}</span>
+            <div className="admin-who-actions">
+              <Link href="/" className="admin-quiet-link">
+                View site ↗
+              </Link>
+              <form action={signOutAction}>
+                <button type="submit" className="link-button">
+                  Sign out
+                </button>
+              </form>
+            </div>
           </div>
-        </div>
+        </MenuDrawer>
       </aside>
       <main id="admin-main" className="admin-main">
         {children}

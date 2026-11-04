@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { MenuDrawer } from '../menu-drawer';
 import { NavLinks } from './nav-links';
 
 /** A ballot with a check mark: the CivicScope mark. Decorative; the name sits beside it. */
@@ -33,14 +34,16 @@ export function PublicShell({ children }: { children: ReactNode }) {
             <Mark />
             <span>CivicScope</span>
           </Link>
-          <NavLinks />
-          <form action="/search" role="search" className="header-search">
-            <label htmlFor="header-q" className="visually-hidden">
-              Search CivicScope
-            </label>
-            <SearchIcon />
-            <input id="header-q" type="search" name="q" placeholder="Search" />
-          </form>
+          <MenuDrawer id="site-menu" className="site-menu">
+            <NavLinks />
+            <form action="/search" role="search" className="header-search">
+              <label htmlFor="header-q" className="visually-hidden">
+                Search CivicScope
+              </label>
+              <SearchIcon />
+              <input id="header-q" type="search" name="q" placeholder="Search" />
+            </form>
+          </MenuDrawer>
         </div>
       </header>
       <main id="content">{children}</main>
