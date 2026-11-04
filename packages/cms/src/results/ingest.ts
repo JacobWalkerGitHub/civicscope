@@ -63,7 +63,12 @@ async function fetchBody(url: string, doFetch: typeof fetch): Promise<string> {
   let last = '';
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      const res = await doFetch(url, {
+      // States serve these files through CDNs that ignore no-cache and keep handing out
+      // an old copy (Florida's was hours stale on election night). A query string they
+      // haven't seen gets the current file.
+      const fresh = new URL(url);
+      fresh.searchParams.set('_', String(Date.now()));
+      const res = await doFetch(fresh.toString(), {
         // Ask every cache on the way for the state's latest copy: on election night a
         // copy even a few minutes old is wrong.
         headers: { accept: 'text/plain, application/json', 'cache-control': 'no-cache' },
