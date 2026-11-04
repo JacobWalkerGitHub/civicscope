@@ -12,6 +12,7 @@ import {
   createOffice,
   createParty,
   createPerson,
+  createPersonWithCandidacy,
   createRace,
   getCandidacy,
   getPerson,
@@ -216,6 +217,36 @@ describe('candidacies', () => {
       'personId',
     );
     expect((await listPeopleForRace(db, generalRaceId)).some((p) => p.id === pid)).toBe(false);
+  });
+
+  it('adds someone new to a race in one step, or not at all', async () => {
+    const { personId, candidacyId } = await createPersonWithCandidacy(db, actor, {
+      fullName: 'Riley Newcomer',
+      raceId: String(generalRaceId),
+      partyId: String(partyA),
+    });
+    const c = await getCandidacy(db, candidacyId);
+    expect(c).toMatchObject({ personId, ballotName: 'Riley Newcomer', partyId: partyA });
+    const [p] = await db.select().from(schema.person).where(eq(schema.person.id, personId));
+    expect(p).toMatchObject({ sortName: 'Newcomer, Riley', publishState: 'draft' });
+
+    // The primary belongs to party A: party B is refused, and no person is left behind.
+    const before = (await db.select().from(schema.person)).length;
+    await expectCmsError(
+      createPersonWithCandidacy(db, actor, {
+        fullName: 'Stray Person',
+        raceId: String(primaryRaceId),
+        partyId: String(partyB),
+      }),
+      /primary/,
+      'partyId',
+    );
+    expect((await db.select().from(schema.person)).length).toBe(before);
+    await expectCmsError(
+      createPersonWithCandidacy(db, actor, { raceId: String(generalRaceId) }),
+      /name/i,
+      'fullName',
+    );
   });
 
   it('gives primary candidates the primary’s party and refuses another', async () => {
