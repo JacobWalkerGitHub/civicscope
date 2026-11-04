@@ -4,8 +4,9 @@ name: Run import
 # scheduled time. "Run workflow" on the Actions tab, pick the import, and the job starts
 # the same worker task the schedule would (infra/run-task.sh admin ...) and waits for it.
 # The task's own output is in CloudWatch (the worker log group); this job shows whether it
-# finished cleanly. Uses the deploy role, which can already start worker tasks, so no new
-# AWS access is needed.
+# finished cleanly. One still running after 50 minutes is left to finish on its own (the
+# AWS sign-in lasts an hour), and the hourly ingest check alerts if it then fails. Uses
+# the deploy role, which can already start worker tasks, so no new AWS access is needed.
 on:
   workflow_dispatch:
     inputs:
@@ -46,6 +47,8 @@ jobs:
       - name: Run the import
         env:
           IMPORT: ${{ inputs.import }}
+          # The AWS sign-in above lasts an hour. A longer import keeps running in AWS.
+          RUN_TASK_MAX_WAIT: '3000'
         working-directory: infra
         run: |
           # The same arguments as the schedules in lib/civicscope-stack.ts, from cdk.json.

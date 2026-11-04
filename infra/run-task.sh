@@ -34,13 +34,21 @@ arn=$(aws ecs run-task --region us-east-1 --cluster "$cluster" --task-definition
   --network-configuration "awsvpcConfiguration={subnets=[${subnets}],securityGroups=[$sg],assignPublicIp=DISABLED}" \
   --query 'tasks[0].taskArn' --output text)
 echo "Started $arn; waiting for it to finish..."
-# The waiter gives up after 10 minutes and an import can run for an hour, so keep waiting
-# while the task is still going.
-until aws ecs wait tasks-stopped --region us-east-1 --cluster "$cluster" --tasks "$arn" 2>/dev/null; do
+# The ECS waiter gives up after 10 minutes and an import can run for over an hour, so poll.
+# RUN_TASK_MAX_WAIT (seconds) stops waiting early and leaves the task running: GitHub's
+# AWS sign-in lasts an hour, and the hourly ingest check alerts if the import then fails.
+deadline=$(( $(date +%s) + ${RUN_TASK_MAX_WAIT:-86400} ))
+while :; do
   status=$(aws ecs describe-tasks --region us-east-1 --cluster "$cluster" --tasks "$arn" \
     --query 'tasks[0].lastStatus' --output text)
   [ "$status" = STOPPED ] && break
+  if [ "$(date +%s)" -ge "$deadline" ]; then
+    echo "Still running after ${RUN_TASK_MAX_WAIT}s; leaving it to finish on its own."
+    echo "Its output is in CloudWatch, and the hourly ingest check alerts if it fails."
+    exit 0
+  fi
   echo "Still running ($status)..."
+  sleep 30
 done
 code=$(aws ecs describe-tasks --region us-east-1 --cluster "$cluster" --tasks "$arn" \
   --query 'tasks[0].containers[0].exitCode' --output text)
