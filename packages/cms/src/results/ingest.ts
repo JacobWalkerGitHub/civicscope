@@ -63,7 +63,9 @@ async function fetchBody(url: string, doFetch: typeof fetch): Promise<string> {
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const res = await doFetch(url, {
-        headers: { accept: 'text/plain, application/json' },
+        // Ask every cache on the way for the state's latest copy: on election night a
+        // copy even a few minutes old is wrong.
+        headers: { accept: 'text/plain, application/json', 'cache-control': 'no-cache' },
         signal: AbortSignal.timeout(60_000),
       });
       if (res.ok) return await res.text();
