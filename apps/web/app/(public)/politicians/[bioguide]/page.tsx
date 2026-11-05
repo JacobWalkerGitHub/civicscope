@@ -51,7 +51,7 @@ export default async function MemberPage({ params }: { params: Params }) {
         <Link href="/politicians">Politicians</Link>
       </p>
       <header className="person-hero">
-        <Avatar name={member.name} size="lg" />
+        <Avatar name={member.name} size="lg" photoId={member.photoId} />
         <div>
           <h1>{member.name}</h1>
           <p className="person-seat">

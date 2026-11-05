@@ -123,6 +123,8 @@ export interface MemberRef {
   name: string;
   /** Set when a published CivicScope profile carries this Bioguide ID. */
   personSlug: string | null;
+  /** The photo on that published profile, if it has one. */
+  photoId: number | null;
 }
 
 /** Names and profile links for Members of Congress, by Bioguide ID. */
@@ -145,6 +147,7 @@ export async function memberRefs(db: Db, ids: string[]): Promise<Map<string, Mem
       slug: person.slug,
       fullName: person.fullName,
       publishState: person.publishState,
+      photoId: person.photoId,
     })
     .from(personIdentifier)
     .innerJoin(person, eq(person.id, personIdentifier.personId))
@@ -162,6 +165,7 @@ export async function memberRefs(db: Db, ids: string[]): Promise<Map<string, Mem
       bioguideId: id,
       name: n?.memberName ? memberDisplayName(n.memberName) : (p?.fullName ?? `Member ${id}`),
       personSlug: p?.publishState === 'published' ? p.slug : null,
+      photoId: p?.publishState === 'published' ? p.photoId : null,
     });
   }
   return out;

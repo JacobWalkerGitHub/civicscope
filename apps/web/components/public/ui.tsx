@@ -77,7 +77,30 @@ const initialsOf = (name: string) =>
     .join('');
 
 /** A round monogram for people without a photo. One color for everyone. */
-export function Avatar({ name, size = 'md' }: { name: string; size?: 'sm' | 'md' | 'lg' }) {
+/**
+ * A person's picture in a card or header: the photo from their CivicScope profile when
+ * one is linked and has a photo, otherwise their initials. Decorative, since the name
+ * is always beside it.
+ */
+export function Avatar({
+  name,
+  size = 'md',
+  photoId,
+}: {
+  name: string;
+  size?: 'sm' | 'md' | 'lg';
+  photoId?: number | null;
+}) {
+  if (photoId) {
+    return (
+      <img
+        className={`avatar avatar-photo avatar-${size}`}
+        src={`/photos/${photoId}`}
+        alt=""
+        loading="lazy"
+      />
+    );
+  }
   return (
     <span className={`avatar avatar-${size}`} aria-hidden="true">
       {initialsOf(name)}

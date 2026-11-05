@@ -241,6 +241,13 @@ describe('public reads', () => {
       .where(eq(schema.person.id, id));
     const page = await getStateOfficial(db, 'ocd-person/l-1');
     expect(page?.personSlug).toMatch(/^legislator-1/);
+    expect(page?.photoId).toBeNull();
+    // The profile's photo shows on the official's cards and page too.
+    await db.update(schema.person).set({ photoId: 4242 }).where(eq(schema.person.id, id));
+    expect((await getStateOfficial(db, 'ocd-person/l-1'))?.photoId).toBe(4242);
+    const listed = await listStateOfficials(db, { state: 'VA' });
+    expect(listed.rows.find((r) => r.osPersonId === 'ocd-person/l-1')?.photoId).toBe(4242);
+    await db.update(schema.person).set({ photoId: null }).where(eq(schema.person.id, id));
     expect(page?.offices[0]).toMatchObject({ role: 'upper', district: '1' });
     expect(await getStateOfficial(db, 'ocd-person/l-2')).toMatchObject({
       offices: [expect.objectContaining({ leftOn: '2026-11-02' })],
