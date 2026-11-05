@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { cache } from 'react';
-import { getPublicPerson } from '@civicscope/cms';
+import { getPublicPerson, mergedProfileSlug } from '@civicscope/cms';
 import { CandidateProfile } from '@/components/public/profile';
 import { getDb } from '@/lib/db';
 
@@ -20,7 +20,13 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 }
 
 export default async function CandidatePage({ params }: Params) {
-  const profile = await load((await params).slug);
-  if (!profile) notFound();
+  const { slug } = await params;
+  const profile = await load(slug);
+  if (!profile) {
+    // A record merged into another person: send old links to the profile that's kept.
+    const target = await mergedProfileSlug(getDb(), slug);
+    if (target) permanentRedirect(`/candidates/${target}`);
+    notFound();
+  }
   return <CandidateProfile profile={profile} raceHref={(id) => `/races/${id}`} />;
 }

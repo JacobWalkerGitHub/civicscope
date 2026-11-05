@@ -6,7 +6,7 @@ import {
   personInputSchema,
   statusEventInputSchema,
 } from './schemas';
-import { defaultSortName, normalizeSourceUrl, sourceTier } from './sources';
+import { defaultSortName, linkLabel, normalizeSourceUrl, shortUrl, sourceTier } from './sources';
 
 describe('sources', () => {
   it('ranks official records above news above campaign material', () => {
@@ -130,5 +130,35 @@ describe('profile entries', () => {
     expect(r.error!.issues.map((i) => i.path[0])).toEqual(
       expect.arrayContaining(['endYear', 'statedOn']),
     );
+  });
+});
+
+describe('shortUrl', () => {
+  it('keeps short links whole, without the scheme or www', () => {
+    expect(shortUrl('https://www.smithforsenate.com/')).toBe('smithforsenate.com');
+    expect(shortUrl('https://elect.ky.gov/candidates')).toBe('elect.ky.gov/candidates');
+  });
+  it('leaves out the middle of a long path and marks a query string', () => {
+    expect(
+      shortUrl(
+        'https://elect.ky.gov/Resources/Documents/2027%20General/candidate-list.pdf?v=3&utm_source=x',
+      ),
+    ).toBe('elect.ky.gov/…/candidate-list.pdf…');
+  });
+  it('never exceeds the limit by much', () => {
+    const s = shortUrl(`https://example.com/${'a'.repeat(300)}`);
+    expect(s.length).toBeLessThanOrEqual(40);
+    expect(s.endsWith('…')).toBe(true);
+  });
+  it('copes with text that is not a URL', () => {
+    expect(shortUrl('not a url')).toBe('not a url');
+  });
+});
+
+describe('linkLabel', () => {
+  it('uses a real title, and shortens a pasted URL used as a title', () => {
+    expect(linkLabel('https://a.gov/x', 'Candidate list')).toBe('Candidate list');
+    expect(linkLabel('https://a.gov/x/y/z', 'https://a.gov/x/y/z')).toBe('a.gov/x/y/z');
+    expect(linkLabel('https://a.gov/x', null)).toBe('a.gov/x');
   });
 });

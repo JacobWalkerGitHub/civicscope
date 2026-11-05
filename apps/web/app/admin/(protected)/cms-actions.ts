@@ -15,6 +15,7 @@ import {
   updateIssue,
   addCitation,
   addPersonIdentifier,
+  mergePeople,
   addStatusEvent,
   createCandidacy,
   createPersonWithCandidacy,
@@ -301,6 +302,29 @@ export async function addIdentifierAction(personId: number, _: FormState, formDa
 
 export async function removeIdentifierAction(id: number, _: FormState) {
   return runButtonAction('content:edit', (actor) => removePersonIdentifier(getDb(), actor, id));
+}
+
+/** Gives a person an officeholder's ID, so the politician's record joins their profile. */
+export async function linkOfficeholderAction(
+  personId: number,
+  scheme: 'bioguide' | 'openstates',
+  value: string,
+  _: FormState,
+) {
+  const state = await runButtonAction('content:edit', async (actor) => {
+    await addPersonIdentifier(getDb(), actor, personId, { scheme, value });
+  });
+  if (state.saved) redirect(`/admin/candidates/${personId}?linked=1`);
+  return state;
+}
+
+/** Merges a duplicate into the record being kept, then opens the kept record. */
+export async function mergePeopleAction(keepId: number, mergeId: number, _: FormState) {
+  const state = await runButtonAction('content:archive', (actor) =>
+    mergePeople(getDb(), actor, keepId, mergeId),
+  );
+  if (state.saved) redirect(`/admin/candidates/${keepId}?merged=${mergeId}`);
+  return state;
 }
 
 /** Adds a person to a race, then opens the candidacy to cite it and set its status. */

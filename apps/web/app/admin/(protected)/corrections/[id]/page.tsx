@@ -10,6 +10,7 @@ import { dateTime } from '@/lib/labels';
 import { requirePermission } from '@/lib/session';
 import { resolveCorrectionAction } from '../actions';
 import { CORRECTION_STATE_LABELS } from '../labels';
+import { ExternalLink } from '@/components/external-link';
 
 export const metadata: Metadata = { title: 'Correction request · CivicScope admin' };
 
@@ -48,9 +49,7 @@ export default async function CorrectionPage({ params }: { params: Promise<{ id:
         <dt>Their source</dt>
         <dd>
           {r.evidenceUrl ? (
-            <a href={r.evidenceUrl} target="_blank" rel="noopener noreferrer nofollow">
-              {r.evidenceUrl}
-            </a>
+            <ExternalLink href={r.evidenceUrl} rel="noopener noreferrer nofollow" max={60} />
           ) : (
             'None given'
           )}

@@ -13,6 +13,7 @@ import { getDb } from '@/lib/db';
 import { CLAIM_KIND_LABELS, dateTime, formatDate } from '@/lib/labels';
 import { requirePermission } from '@/lib/session';
 import { resolveConflictAction } from '../imports/actions';
+import { ExternalLink } from '@/components/external-link';
 
 export const metadata: Metadata = { title: 'Review queue · CivicScope admin' };
 
@@ -98,10 +99,7 @@ export default async function ReviewPage() {
                   .
                 </p>
                 <p className="muted">
-                  Source:{' '}
-                  <a href={c.sourceUrl} rel="noopener noreferrer" target="_blank">
-                    {c.sourceTitle}
-                  </a>
+                  Source: <ExternalLink href={c.sourceUrl} label={c.sourceTitle} />
                   {c.importBatchId && (
                     <>
                       {' '}

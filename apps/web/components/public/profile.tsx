@@ -16,6 +16,7 @@ import { Chip, StatusBadge, statusTone, WhenChip } from './badges';
 import { initials, NotPublic, ReportLink, Sources } from './sources';
 import { stateChamberName as chamberName } from '@/lib/labels';
 import { PromisesAndRecord } from './promises';
+import { ExternalLink } from '@/components/external-link';
 
 type Profile = NonNullable<Awaited<ReturnType<typeof getPublicPerson>>>;
 type Claim = Profile['claims'][number];
@@ -196,9 +197,7 @@ export function CandidateProfile({
                     <>
                       <dt>Campaign website</dt>
                       <dd>
-                        <a href={c.campaignUrl} rel="noopener noreferrer nofollow" target="_blank">
-                          {c.campaignUrl.replace(/^https:\/\//, '')}
-                        </a>
+                        <ExternalLink href={c.campaignUrl} rel="noopener noreferrer nofollow" />
                       </dd>
                     </>
                   )}

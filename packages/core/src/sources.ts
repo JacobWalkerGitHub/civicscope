@@ -47,3 +47,46 @@ export function defaultSortName(fullName: string): string {
   const given = parts.slice(0, end).join(' ').replace(/,$/, '');
   return `${surname}, ${given}`;
 }
+
+/**
+ * A long link shortened for display: the site, then as much of the path as fits, with
+ * the middle left out, e.g. "elect.ky.gov/…/2027-candidates.pdf". The link itself keeps
+ * the full address; this only keeps long URLs from stretching a page (above all on phones).
+ */
+export function shortUrl(url: string, max = 40): string {
+  let u: URL;
+  try {
+    u = new URL(url.trim());
+  } catch {
+    return url.length > max ? `${url.slice(0, max - 1)}…` : url;
+  }
+  const host = u.hostname.replace(/^www\./, '');
+  const segments = u.pathname.split('/').filter(Boolean).map(safeDecode);
+  const extra = u.search || u.hash ? '…' : '';
+  const room = Math.max(max - host.length, 12);
+  let path = segments.length ? `/${segments.join('/')}` : '';
+  if (path.length + extra.length > room && segments.length > 1) {
+    path = `/…/${segments[segments.length - 1]}`;
+  }
+  path += extra && !path ? '/…' : extra;
+  if (path.length > room) path = `${path.slice(0, room - 1)}…`;
+  return host + path;
+}
+
+function safeDecode(s: string): string {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return s;
+  }
+}
+
+/** True when a label is really just a web address (editors often paste the URL as the title). */
+export function looksLikeUrl(text: string): boolean {
+  return /^(https?:\/\/|www\.)\S+$/i.test(text.trim());
+}
+
+/** The text to show for a link: its title, unless there is none or it is itself a URL. */
+export function linkLabel(url: string, title?: string | null, max?: number): string {
+  return title && !looksLikeUrl(title) ? title : shortUrl(url, max);
+}

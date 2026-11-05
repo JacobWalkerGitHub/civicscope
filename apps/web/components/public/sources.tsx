@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { PublicCitation } from '@civicscope/cms';
 import type { SourceType } from '@civicscope/core';
 import { formatDate, SOURCE_TYPE_LABELS } from '@/lib/labels';
+import { ExternalLink } from '@/components/external-link';
 
 /** The sources behind one fact or entry. Every public fact shows at least one. */
 export function Sources({
@@ -20,9 +21,7 @@ export function Sources({
       <ul>
         {cites.map((c, i) => (
           <li key={`${c.url}-${i}`}>
-            <a href={c.url} rel="noopener noreferrer nofollow" target="_blank">
-              {c.title}
-            </a>
+            <ExternalLink href={c.url} label={c.title} rel="noopener noreferrer nofollow" />
             <span className="muted">
               {' '}
               · {c.publisher} · {SOURCE_TYPE_LABELS[c.sourceType as SourceType] ?? c.sourceType}
