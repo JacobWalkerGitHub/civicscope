@@ -61,15 +61,26 @@ beforeAll(async () => {
     branch: 'executive',
     isPartisan: 'on',
   });
+  const otherOfficeId = await createOffice(db, actor, {
+    jurisdictionId: String(ky!.id),
+    title: 'Example Lieutenant Governor',
+    level: 'state',
+    branch: 'executive',
+    isPartisan: 'on',
+  });
   const electionId = await createElection(db, actor, {
     jurisdictionId: String(ky!.id),
     type: 'general',
     primarySystem: 'not_applicable',
     date: '2027-11-02',
-    name: 'Example 2028 general',
+    name: 'Example 2027 general',
   });
   raceA = await createRace(db, actor, { electionId, officeId, name: 'Example race A' });
-  raceB = await createRace(db, actor, { electionId, officeId, name: 'Example race B' });
+  raceB = await createRace(db, actor, {
+    electionId,
+    officeId: otherOfficeId,
+    name: 'Example race B',
+  });
 });
 afterAll(async () => {
   await test?.stop();
