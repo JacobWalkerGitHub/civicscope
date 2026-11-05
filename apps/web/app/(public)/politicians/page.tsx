@@ -124,7 +124,7 @@ export default async function PoliticiansPage({ searchParams }: { searchParams: 
             {g.list.map((m) => (
               <li key={m.id}>
                 <Link href={`/politicians/${m.bioguideId}`} className="member-card">
-                  <Avatar name={m.name} />
+                  <Avatar name={m.name} photoId={m.photoId} />
                   <span className="member-card-body">
                     <span className="member-name">{m.name}</span>
                     <span className="member-seat">{seatLabel(m.chamber, m.state, m.district)}</span>

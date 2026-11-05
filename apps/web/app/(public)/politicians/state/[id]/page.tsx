@@ -47,7 +47,7 @@ export default async function StateOfficialPage({ params }: { params: Params }) 
         <Link href={`/politicians/state?state=${now.state}`}>State officials</Link>
       </p>
       <header className="person-hero">
-        <Avatar name={now.name} size="lg" />
+        <Avatar name={now.name} size="lg" photoId={data.photoId} />
         <div>
           <h1>{now.name}</h1>
           <p className="person-seat">

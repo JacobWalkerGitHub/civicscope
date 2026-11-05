@@ -193,7 +193,7 @@ export default async function StateOfficialsPage({
 function OfficialCard({ m }: { m: StateOfficialView }) {
   return (
     <Link href={`/politicians/state/${stateOfficialSlug(m.osPersonId)}`} className="member-card">
-      <Avatar name={m.name} />
+      <Avatar name={m.name} photoId={m.photoId} />
       <span className="member-card-body">
         <span className="member-name">{m.name}</span>
         <span className="member-seat">{stateSeatLabel(m.role, m.state, m.district)}</span>

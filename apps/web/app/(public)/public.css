@@ -2910,3 +2910,35 @@
     padding: 12px;
   }
 }
+
+/* A profile photo on a politician's card or header, cropped to the circle. */
+.public .avatar-photo {
+  display: block;
+  object-fit: cover;
+  object-position: center 20%;
+  background: var(--surface-2);
+}
+
+/* Under a profile photo: who took it on one line, a tidy link to where it came from. */
+.public .profile-photo figcaption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  margin-top: 6px;
+  line-height: 1.35;
+}
+
+.public .photo-credit {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.public .photo-source {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.public .photo-source::after {
+  content: ' ↗';
+}

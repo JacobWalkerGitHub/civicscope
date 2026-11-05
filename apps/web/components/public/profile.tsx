@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { getPublicPerson } from '@civicscope/cms';
-import { billLabel, CLAIM_KINDS, type ClaimKind } from '@civicscope/core';
+import { billLabel, CLAIM_KINDS, looksLikeUrl, shortUrl, type ClaimKind } from '@civicscope/core';
 import {
   BIO_CATEGORY_LABELS,
   CANDIDACY_STATUS_LABELS,
@@ -109,13 +109,19 @@ export function CandidateProfile({
           <figure className="profile-photo">
             <img src={`/photos/${person.photoId}`} alt={`Photo of ${person.fullName}`} />
             <figcaption>
-              Photo:{' '}
-              {person.photoSourceUrl ? (
-                <a href={person.photoSourceUrl} rel="noopener noreferrer nofollow" target="_blank">
-                  {person.photoCredit}
-                </a>
-              ) : (
-                person.photoCredit
+              <span className="photo-credit">
+                Photo:{' '}
+                {person.photoCredit && looksLikeUrl(person.photoCredit)
+                  ? shortUrl(person.photoCredit, 32)
+                  : person.photoCredit}
+              </span>
+              {person.photoSourceUrl && (
+                <ExternalLink
+                  href={person.photoSourceUrl}
+                  label="Source"
+                  rel="noopener noreferrer nofollow"
+                  className="photo-source"
+                />
               )}
             </figcaption>
           </figure>

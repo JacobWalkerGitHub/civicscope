@@ -150,6 +150,8 @@ test('an uploaded photo shows on the profile with its credit', async ({ page }) 
   await signIn(page, E2E_USERS.owner.email);
   await page.goto(`/admin/races/${raceId}`);
   await page.locator('tr', { hasText: NAME }).getByRole('link', { name: NAME }).click();
+  // The race page has a link with the same name, so wait until it has been left.
+  await expect(page).toHaveURL(/\/admin\/candidacies\/\d+/);
   await page.getByRole('link', { name: NAME, exact: true }).click();
   await expect(page).toHaveURL(/\/admin\/candidates\/\d+/);
 
@@ -201,7 +203,10 @@ test('an uploaded photo shows on the profile with its credit', async ({ page }) 
   const health = await page.request.get('/api/health');
   expect(health.status()).toBe(200);
   expect(await health.json()).toEqual({ status: 'ok' });
-  await expect(page.getByRole('link', { name: 'E2E campaign' })).toHaveAttribute(
+  // The credit is shown as text, with a short link to where the photo came from.
+  const caption = page.locator('figure figcaption');
+  await expect(caption).toContainText('Photo: E2E campaign');
+  await expect(caption.getByRole('link', { name: /^Source/ })).toHaveAttribute(
     'href',
     'https://campaign.example.com/press',
   );

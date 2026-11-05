@@ -621,6 +621,10 @@ describe('Congress.gov import', () => {
       .set({ publishState: 'published' })
       .where(eq(schema.person.id, harperId));
     expect((await getPublicBill(db, 119, 'hr', 101))!.sponsors[0]!.personSlug).not.toBeNull();
+    // A published profile's photo comes along for the member's cards.
+    await db.update(schema.person).set({ photoId: 4343 }).where(eq(schema.person.id, harperId));
+    expect((await getPublicBill(db, 119, 'hr', 101))!.sponsors[0]!.photoId).toBe(4343);
+    await db.update(schema.person).set({ photoId: null }).where(eq(schema.person.id, harperId));
     await db
       .update(schema.person)
       .set({ publishState: 'draft' })

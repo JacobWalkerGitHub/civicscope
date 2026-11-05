@@ -579,6 +579,8 @@ export interface StateOfficialView {
   sourceUrl: string;
   /** A published CivicScope profile carrying this Open States ID, if there is one. */
   personSlug: string | null;
+  /** The photo on that profile, if it has one. */
+  photoId: number | null;
 }
 
 export interface StateCoverageRow {
@@ -657,7 +659,8 @@ export async function listStateOfficials(db: Db, filters: StateOfficialFilters =
   return {
     rows: list.map((r) => ({
       ...r,
-      personSlug: slugs.get(r.osPersonId) ?? null,
+      personSlug: slugs.get(r.osPersonId)?.slug ?? null,
+      photoId: slugs.get(r.osPersonId)?.photoId ?? null,
     })) as StateOfficialView[],
     capped,
     governorsOnly: !narrowed && !filters.role,
@@ -714,17 +717,21 @@ export async function getStateOfficial(db: Db, osPersonId: string) {
     .where(and(eq(stateOfficeholder.osPersonId, osPersonId), shown))
     .orderBy(sql`${stateOfficeholder.leftOn} is not null`, desc(stateOfficeholder.lastSeenOn));
   if (!rows.length) return null;
-  const personSlug = (await profileSlugs(db, [osPersonId])).get(osPersonId) ?? null;
-  return { offices: rows, personSlug };
+  const profile = (await profileSlugs(db, [osPersonId])).get(osPersonId);
+  return {
+    offices: rows,
+    personSlug: profile?.slug ?? null,
+    photoId: profile?.photoId ?? null,
+  };
 }
 
 async function profileSlugs(db: Db, ids: string[]) {
   const unique = [...new Set(ids)];
-  const out = new Map<string, string>();
+  const out = new Map<string, { slug: string; photoId: number | null }>();
   if (!unique.length) return out;
   for (let i = 0; i < unique.length; i += 1000) {
     const people = await db
-      .select({ value: personIdentifier.value, slug: person.slug })
+      .select({ value: personIdentifier.value, slug: person.slug, photoId: person.photoId })
       .from(personIdentifier)
       .innerJoin(person, eq(person.id, personIdentifier.personId))
       .where(
@@ -735,7 +742,7 @@ async function profileSlugs(db: Db, ids: string[]) {
           eq(person.publishState, 'published'),
         ),
       );
-    for (const p of people) out.set(p.value, p.slug);
+    for (const p of people) out.set(p.value, { slug: p.slug, photoId: p.photoId });
   }
   return out;
 }

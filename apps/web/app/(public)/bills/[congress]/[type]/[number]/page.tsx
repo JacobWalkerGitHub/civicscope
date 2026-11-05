@@ -323,7 +323,7 @@ export default async function BillPage({ params }: { params: Params }) {
               <ul className="people-list">
                 {sponsors.map((s) => (
                   <li key={s.bioguideId}>
-                    <Avatar name={s.name} size="sm" />
+                    <Avatar name={s.name} size="sm" photoId={s.photoId} />
                     <div>
                       <Link href={`/politicians/${s.bioguideId}`}>{s.name}</Link>
                       <span className="muted small">

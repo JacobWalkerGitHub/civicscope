@@ -21,6 +21,7 @@ import {
 import { History } from '@/components/admin/history';
 import { CitationsPanel } from '@/components/admin/sources';
 import { CongressRecord } from '@/components/admin/congress-record';
+import { ExternalLink } from '@/components/external-link';
 import { JoinUpPanel } from '../join-up';
 import { getDb } from '@/lib/db';
 import {
@@ -144,10 +145,7 @@ export default async function PersonPage({
           <div className="admin-photo">
             <img src={`/photos/${photo.id}`} alt={`Current photo of ${person.fullName}`} />
             <p>
-              Credit: {photo.credit} ·{' '}
-              <a href={photo.sourceUrl} rel="noopener noreferrer" target="_blank">
-                where it came from
-              </a>
+              Credit: {photo.credit} · <ExternalLink href={photo.sourceUrl} />
             </p>
             {canEdit && (
               <ActionButton
