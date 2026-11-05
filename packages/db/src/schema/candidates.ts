@@ -37,6 +37,12 @@ export const person = mysqlTable(
     birthYear: smallint('birth_year'),
     /** The photo shown on the profile (see person_photo). */
     photoId: int('photo_id'),
+    /**
+     * Set when an editor merged this record into another person (a duplicate, such as a
+     * candidate entered by hand and the same person created by a Congress or Open States
+     * import). The merged record is archived, not deleted, and its old page redirects here.
+     */
+    mergedIntoId: int('merged_into_id'),
     ...publishable,
     ...timestamps,
     ...softDelete,

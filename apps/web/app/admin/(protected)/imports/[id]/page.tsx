@@ -16,6 +16,7 @@ import { formatImportValue } from '@/lib/imports';
 import { dateTime, formatDate } from '@/lib/labels';
 import { requirePermission } from '@/lib/session';
 import { applyImportAction, discardImportAction } from '../actions';
+import { ExternalLink } from '@/components/external-link';
 
 export const metadata: Metadata = { title: 'Import preview · CivicScope admin' };
 
@@ -82,9 +83,7 @@ export default async function ImportPage({ params }: { params: Promise<{ id: str
         </dd>
         <dt>Source</dt>
         <dd>
-          <a href={ref.sourceUrl} rel="noopener noreferrer" target="_blank">
-            {ref.sourceTitle ?? ref.sourceUrl}
-          </a>
+          <ExternalLink href={ref.sourceUrl} label={ref.sourceTitle} />
         </dd>
         <dt>Uploaded</dt>
         <dd>

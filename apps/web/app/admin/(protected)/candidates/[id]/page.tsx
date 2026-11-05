@@ -21,6 +21,7 @@ import {
 import { History } from '@/components/admin/history';
 import { CitationsPanel } from '@/components/admin/sources';
 import { CongressRecord } from '@/components/admin/congress-record';
+import { JoinUpPanel } from '../join-up';
 import { getDb } from '@/lib/db';
 import {
   CANDIDACY_STATUS_LABELS,
@@ -43,9 +44,16 @@ import { linkPhotoAction, removePhotoAction, uploadPhotoAction } from '../photo-
 
 export const metadata: Metadata = { title: 'Person · CivicScope admin' };
 
-export default async function PersonPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function PersonPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ join?: string; linked?: string; merged?: string }>;
+}) {
   const user = await requirePermission('admin:view');
   const id = Number((await params).id);
+  const query = await searchParams;
   const db = getDb();
   const person = await getPerson(db, id).catch((e) => {
     if (e instanceof NotFoundError) notFound();
@@ -66,6 +74,17 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
       <p>
         <Link href="/admin/candidates">← Candidates</Link>
       </p>
+      {query.linked && (
+        <p className="notice" role="status">
+          Linked. This person&apos;s politician record now appears on their profile.
+        </p>
+      )}
+      {query.merged && (
+        <p className="notice" role="status">
+          Merged. Everything from the other record is now on this one; the other record is archived
+          and its old page redirects here.
+        </p>
+      )}
       <div className="page-header">
         <h1>{person.fullName}</h1>
         <PublishBadge state={person.publishState} />
@@ -345,6 +364,13 @@ export default async function PersonPage({ params }: { params: Promise<{ id: str
           </details>
         )}
       </section>
+
+      <JoinUpPanel
+        personId={id}
+        query={query.join ?? ''}
+        canEdit={canEdit}
+        mergedInto={person.mergedIntoId}
+      />
 
       <CongressRecord personId={id} />
 

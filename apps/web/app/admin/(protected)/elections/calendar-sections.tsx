@@ -1,5 +1,5 @@
 import type { ElectionDeadline, OfficialResource } from '@civicscope/cms';
-import { can, type UserRole as Role } from '@civicscope/core';
+import { can, shortUrl, type UserRole as Role } from '@civicscope/core';
 import { ActionButton, ActionForm, SelectField, TextField } from '@/components/admin/form';
 import {
   dateTime,
@@ -17,6 +17,7 @@ import {
   updateDeadlineAction,
   updateResourceAction,
 } from '../cms-actions';
+import { ExternalLink } from '@/components/external-link';
 
 function DeadlineFields({ d }: { d?: ElectionDeadline }) {
   return (
@@ -212,9 +213,7 @@ export function ResourcesSection({
               <tr key={r.id}>
                 <td>{RESOURCE_KIND_LABELS[r.kind]}</td>
                 <td>
-                  <a href={r.url} target="_blank" rel="noopener noreferrer">
-                    {r.label}
-                  </a>
+                  <ExternalLink href={r.url} label={r.label} />
                 </td>
                 <td>{r.lastCheckedAt ? dateTime.format(r.lastCheckedAt) : 'Never'}</td>
                 <td>
@@ -255,7 +254,7 @@ export function ResourcesSection({
           <ul>
             {archived.map((r) => (
               <li key={r.id}>
-                {r.label} <span className="muted">({r.url})</span>{' '}
+                {r.label} <span className="muted">({shortUrl(r.url)})</span>{' '}
                 {canChange && (
                   <ActionButton
                     action={archiveResourceAction.bind(null, r.id, false)}

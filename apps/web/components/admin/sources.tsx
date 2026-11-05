@@ -5,6 +5,7 @@ import { addCitationAction, removeCitationAction } from '@/app/admin/(protected)
 import { getDb } from '@/lib/db';
 import { formatDate, options, SOURCE_TYPE_LABELS, TIER_LABELS } from '@/lib/labels';
 import { ActionButton, ActionForm, SelectField, TextAreaField, TextField } from './form';
+import { ExternalLink } from '@/components/external-link';
 
 /**
  * The fields that identify a source. A URL CivicScope already knows reuses that
@@ -67,9 +68,7 @@ export async function CitationsPanel({
           {citations.map((c) => (
             <li key={c.id}>
               <div>
-                <a href={c.sourceUrl} rel="noopener noreferrer" target="_blank">
-                  {c.sourceTitle}
-                </a>{' '}
+                <ExternalLink href={c.sourceUrl} label={c.sourceTitle} />{' '}
                 <span className="muted">
                   · {c.sourcePublisher} · {TIER_LABELS[sourceTier(c.sourceType)]} · checked{' '}
                   {formatDate(c.retrievedAt)}

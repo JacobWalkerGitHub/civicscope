@@ -11,6 +11,7 @@ export * from './locks';
 export * from './offices';
 export * from './parties';
 export * from './people';
+export * from './merge';
 export * from './photos';
 export * from './reference';
 export * from './sources';

@@ -113,6 +113,11 @@ export async function setPersonArchived(
 ): Promise<void> {
   await db.transaction(async (tx) => {
     const before = await load(tx, id);
+    if (!archived && before.mergedIntoId) {
+      throw new CmsError(
+        `This record was merged into person ${before.mergedIntoId}. Edit that record instead.`,
+      );
+    }
     if (archived) {
       const [row] = await tx
         .select({ n: sql<number>`count(*)` })

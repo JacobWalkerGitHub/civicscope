@@ -865,3 +865,20 @@ table.compare-votes td:first-child {
 table.compare-votes td:nth-child(2) {
   min-width: 220px;
 }
+
+/*
+ * Outside links show a short form of the address (see ExternalLink), and anything that
+ * still can't fit, such as a long title or a URL quoted in an excerpt, wraps instead of
+ * pushing the page wider than the screen.
+ */
+.ext-link {
+  overflow-wrap: anywhere;
+}
+
+.citations li > *,
+.sources li,
+blockquote,
+dd {
+  min-width: 0;
+  overflow-wrap: break-word;
+}

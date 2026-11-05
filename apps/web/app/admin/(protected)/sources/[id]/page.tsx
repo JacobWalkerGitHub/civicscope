@@ -10,6 +10,7 @@ import { SOURCE_TYPE_LABELS, TIER_LABELS } from '@/lib/labels';
 import { requirePermission } from '@/lib/session';
 import { archiveAction, updateSourceAction } from '../../cms-actions';
 import { SourceForm } from '../source-form';
+import { ExternalLink } from '@/components/external-link';
 
 export const metadata: Metadata = { title: 'Source · CivicScope admin' };
 
@@ -41,9 +42,7 @@ export default async function SourcePage({ params }: { params: Promise<{ id: str
         )}
       </div>
       <p>
-        <a href={source.url} rel="noopener noreferrer" target="_blank">
-          {source.url}
-        </a>
+        <ExternalLink href={source.url} max={60} />
         <br />
         <span className="muted">
           {SOURCE_TYPE_LABELS[source.sourceType]} · {TIER_LABELS[sourceTier(source.sourceType)]}

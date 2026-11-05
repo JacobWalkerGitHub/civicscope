@@ -31,6 +31,7 @@ import {
 } from '../../cms-actions';
 import { unlockFieldAction } from '../../imports/actions';
 import { CANDIDACY_CITABLE_FIELDS, CandidacyForm } from '../candidacy-form';
+import { ExternalLink } from '@/components/external-link';
 
 export const metadata: Metadata = { title: 'Candidacy · CivicScope admin' };
 
@@ -139,10 +140,7 @@ export default async function CandidacyPage({ params }: { params: Promise<{ id: 
             {events.map((e) => (
               <li key={e.id}>
                 <strong>{CANDIDACY_STATUS_LABELS[e.status]}</strong>, {formatDate(e.effectiveDate)}{' '}
-                ·{' '}
-                <a href={e.sourceUrl} rel="noopener noreferrer" target="_blank">
-                  {e.sourceTitle}
-                </a>
+                · <ExternalLink href={e.sourceUrl} label={e.sourceTitle} />
                 {e.note && <span className="muted"> · {e.note}</span>}
                 <span className="muted"> · recorded by {e.recordedByName ?? 'system'}</span>
               </li>
