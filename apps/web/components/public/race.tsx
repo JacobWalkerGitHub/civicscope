@@ -148,6 +148,18 @@ export function RaceOverview({
               <dd>This is the {race.primaryPartyName} primary.</dd>
             </>
           )}
+          {race.termStartsOn && race.termStartSourceUrl && (
+            <>
+              <dt>Winner takes office</dt>
+              <dd>
+                {formatDate(race.termStartsOn)} (
+                <a href={race.termStartSourceUrl} rel="noopener noreferrer" target="_blank">
+                  {new URL(race.termStartSourceUrl).hostname}
+                </a>
+                )
+              </dd>
+            </>
+          )}
           {race.seats > 1 && (
             <>
               <dt>Seats</dt>

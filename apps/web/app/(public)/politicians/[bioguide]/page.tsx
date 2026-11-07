@@ -1,9 +1,15 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { alertsEnabled, getPublicMember } from '@civicscope/cms';
+import {
+  alertsEnabled,
+  getOfficeTimeline,
+  getPublicMember,
+  publishedPersonFor,
+} from '@civicscope/cms';
 import { BIOGUIDE_ID, bioguideUrl } from '@civicscope/core';
 import { FollowButton } from '@/components/public/follow';
+import { ElectionCards, OfficeNowNext } from '@/components/public/offices';
 import { ReportLink } from '@/components/public/sources';
 import { Avatar, StageBadge } from '@/components/public/ui';
 import { rollCallUrl, voteDate } from '@/components/congress-format';
@@ -18,6 +24,12 @@ async function load(params: Params) {
   const id = (await params).bioguide.toUpperCase();
   if (!BIOGUIDE_ID.test(id)) return null;
   return getPublicMember(getDb(), id);
+}
+
+/** Their won races and every election, from the linked CivicScope profile, if published. */
+async function loadTimeline(bioguideId: string) {
+  const personId = await publishedPersonFor(getDb(), 'bioguide', bioguideId);
+  return personId ? getOfficeTimeline(getDb(), personId) : null;
 }
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
@@ -42,6 +54,7 @@ export default async function MemberPage({ params }: { params: Params }) {
   if (!data) notFound();
   const { member, memberships, bills, votes, sponsorCount, cosponsorCount } = data;
   const now = memberships[0]!;
+  const timeline = await loadTimeline(member.bioguideId);
   const sponsored = bills.filter((b) => b.role === 'sponsor');
   const cosponsored = bills.filter((b) => b.role === 'cosponsor');
 
@@ -76,6 +89,10 @@ export default async function MemberPage({ params }: { params: Params }) {
         </div>
       </header>
 
+      {timeline && (
+        <OfficeNowNext timeline={timeline} raceHref={(id) => `/races/${id}`} linkCurrent={false} />
+      )}
+
       <dl className="stat-row">
         <div>
           <dt>Bills sponsored</dt>
@@ -93,6 +110,9 @@ export default async function MemberPage({ params }: { params: Params }) {
 
       <div className="bill-layout">
         <div className="bill-main">
+          {timeline && timeline.elections.length > 0 && (
+            <ElectionCards elections={timeline.elections} raceHref={(id) => `/races/${id}`} />
+          )}
           <section aria-labelledby="votes-h">
             <h2 id="votes-h">Recent votes</h2>
             {votes.length === 0 ? (

@@ -128,16 +128,36 @@ export const electionInputSchema = z
   });
 export type ElectionInput = z.infer<typeof electionInputSchema>;
 
-export const raceInputSchema = z.object({
-  electionId: id('an election'),
-  officeId: id('an office'),
-  districtId: optionalId,
-  partyId: optionalId,
-  name: requiredText('a name', 3, 200),
-  seats: z.coerce.number().int().min(1).max(100).default(1),
-  isSpecial: checkbox,
-  status: z.enum(RACE_STATUSES).default('scheduled'),
-});
+export const raceInputSchema = z
+  .object({
+    electionId: id('an election'),
+    officeId: id('an office'),
+    districtId: optionalId,
+    partyId: optionalId,
+    name: requiredText('a name', 3, 200),
+    seats: z.coerce.number().int().min(1).max(100).default(1),
+    isSpecial: checkbox,
+    status: z.enum(RACE_STATUSES).default('scheduled'),
+    /** When the winner takes office. Only with the official source that states it. */
+    termStartsOn: z.preprocess(blankToNull, isoDate.nullable().optional()),
+    termStartSourceUrl: httpsUrl,
+  })
+  .superRefine((r, ctx) => {
+    if (r.termStartsOn && !r.termStartSourceUrl) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['termStartSourceUrl'],
+        message: 'Link the official source that sets this date.',
+      });
+    }
+    if (!r.termStartsOn && r.termStartSourceUrl) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['termStartsOn'],
+        message: 'Enter the date, or clear the source.',
+      });
+    }
+  });
 export type RaceInput = z.infer<typeof raceInputSchema>;
 
 /**

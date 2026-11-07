@@ -16,6 +16,7 @@ export * from './photos';
 export * from './reference';
 export * from './sources';
 export * from './public';
+export * from './offices-held';
 export * from './accountability';
 export * from './fec-import';
 export * from './ingest-common';

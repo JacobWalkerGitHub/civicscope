@@ -16,6 +16,7 @@ import { Chip, StatusBadge, statusTone, WhenChip } from './badges';
 import { initials, NotPublic, ReportLink, Sources } from './sources';
 import { stateChamberName as chamberName } from '@/lib/labels';
 import { PromisesAndRecord } from './promises';
+import { OfficeNowNext } from './offices';
 import { ExternalLink } from '@/components/external-link';
 
 type Profile = NonNullable<Awaited<ReturnType<typeof getPublicPerson>>>;
@@ -145,6 +146,7 @@ export function CandidateProfile({
             <WhenChip date={current.electionDate} />
           </p>
         )}
+        <OfficeNowNext timeline={profile.offices} raceHref={raceHref} />
         {person.preferredName && <p>Goes by {person.preferredName}</p>}
         {person.birthYear && <p>Born {person.birthYear}</p>}
         <Sources

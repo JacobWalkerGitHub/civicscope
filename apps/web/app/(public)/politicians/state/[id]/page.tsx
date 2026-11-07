@@ -1,7 +1,13 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getStateOfficial, getStateVotesFor } from '@civicscope/cms';
+import {
+  getOfficeTimeline,
+  getStateOfficial,
+  getStateVotesFor,
+  publishedPersonFor,
+} from '@civicscope/cms';
+import { ElectionCards, OfficeNowNext } from '@/components/public/offices';
 import { ReportLink } from '@/components/public/sources';
 import { Avatar } from '@/components/public/ui';
 import { getDb } from '@/lib/db';
@@ -38,6 +44,8 @@ export default async function StateOfficialPage({ params }: { params: Params }) 
   const now = offices[0]!;
   const current = offices.filter((o) => !o.leftOn);
   const votes = await getStateVotesFor(getDb(), [now.osPersonId], 20);
+  const personId = await publishedPersonFor(getDb(), 'openstates', now.osPersonId);
+  const timeline = personId ? await getOfficeTimeline(getDb(), personId) : null;
   const slug = now.osPersonId.replace(/^ocd-person\//, '');
 
   return (
@@ -74,8 +82,15 @@ export default async function StateOfficialPage({ params }: { params: Params }) 
         </div>
       </header>
 
+      {timeline && (
+        <OfficeNowNext timeline={timeline} raceHref={(id) => `/races/${id}`} linkCurrent={false} />
+      )}
+
       <div className="bill-layout">
         <div className="bill-main">
+          {timeline && timeline.elections.length > 0 && (
+            <ElectionCards elections={timeline.elections} raceHref={(id) => `/races/${id}`} />
+          )}
           {now.role !== 'governor' && (
             <section aria-labelledby="votes-h">
               <h2 id="votes-h">Recent votes</h2>
