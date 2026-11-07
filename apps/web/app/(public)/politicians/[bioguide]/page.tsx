@@ -10,6 +10,8 @@ import {
 import { BIOGUIDE_ID, bioguideUrl } from '@civicscope/core';
 import { FollowButton } from '@/components/public/follow';
 import { ElectionCards, OfficeNowNext } from '@/components/public/offices';
+import { PartyChip, ViewBar } from '@/components/public/view-bar';
+import { partyViewOn } from '@/lib/party-view';
 import { ReportLink } from '@/components/public/sources';
 import { Avatar, StageBadge } from '@/components/public/ui';
 import { rollCallUrl, voteDate } from '@/components/congress-format';
@@ -52,6 +54,7 @@ const sideOf = (cast: string) => {
 export default async function MemberPage({ params }: { params: Params }) {
   const data = await load(params);
   if (!data) notFound();
+  const showParty = await partyViewOn();
   const { member, memberships, bills, votes, sponsorCount, cosponsorCount } = data;
   const now = memberships[0]!;
   const timeline = await loadTimeline(member.bioguideId);
@@ -69,7 +72,7 @@ export default async function MemberPage({ params }: { params: Params }) {
           <h1>{member.name}</h1>
           <p className="person-seat">
             {seatLabel(now.chamber, now.state, now.district)}
-            {now.partyName && <span className="chip">{now.partyName}</span>}
+            {showParty && now.partyName && <PartyChip name={now.partyName} />}
           </p>
           <div className="bill-actions">
             {member.personSlug && (
@@ -88,6 +91,7 @@ export default async function MemberPage({ params }: { params: Params }) {
           </div>
         </div>
       </header>
+      <ViewBar partyOn={showParty} />
 
       {timeline && (
         <OfficeNowNext timeline={timeline} raceHref={(id) => `/races/${id}`} linkCurrent={false} />
@@ -111,7 +115,11 @@ export default async function MemberPage({ params }: { params: Params }) {
       <div className="bill-layout">
         <div className="bill-main">
           {timeline && timeline.elections.length > 0 && (
-            <ElectionCards elections={timeline.elections} raceHref={(id) => `/races/${id}`} />
+            <ElectionCards
+              elections={timeline.elections}
+              raceHref={(id) => `/races/${id}`}
+              showParty={showParty}
+            />
           )}
           <section aria-labelledby="votes-h">
             <h2 id="votes-h">Recent votes</h2>
@@ -156,7 +164,7 @@ export default async function MemberPage({ params }: { params: Params }) {
                             {v.voteCast}
                           </span>
                         </td>
-                        <td>{v.result}</td>
+                        <td data-label="Result">{v.result}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -215,7 +223,7 @@ export default async function MemberPage({ params }: { params: Params }) {
                   <br />
                   <span className="small">
                     {seatLabel(m.chamber, m.state, m.district)}
-                    {m.partyName && ` · ${m.partyName}`}
+                    {showParty && m.partyName && ` · ${m.partyName}`}
                   </span>
                   <br />
                   <a className="small" href={m.sourceUrl} rel="noopener">

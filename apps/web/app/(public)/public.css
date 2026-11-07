@@ -1976,6 +1976,8 @@
 
 .public .bill-main {
   display: grid;
+  /* minmax(0, …) so a wide table scrolls inside its box instead of widening the page. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 28px;
   min-width: 0;
 }
@@ -1991,7 +1993,7 @@
 
 @media (max-width: 900px) {
   .public .bill-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -3367,5 +3369,65 @@
 
   .public .member-group h2 {
     font-size: 1.2rem;
+  }
+}
+
+/* Vote tables on phones: each vote becomes a short block (date and vote on one line,
+ * then the question, then the result) instead of four squeezed columns. */
+@media (max-width: 560px) {
+  .public .data-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .public .data-table,
+  .public .data-table tbody {
+    display: block;
+  }
+
+  .public .data-table tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 4px 12px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .public .data-table tbody tr:last-child {
+    border-bottom: 0;
+  }
+
+  .public .data-table td {
+    display: block;
+    padding: 0;
+    border: 0;
+  }
+
+  .public .data-table td:nth-child(1) {
+    grid-column: 1;
+    grid-row: 1;
+    color: var(--muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  .public .data-table td:nth-child(3) {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .public .data-table td:nth-child(2),
+  .public .data-table td:nth-child(4) {
+    grid-column: 1 / -1;
+  }
+
+  .public .data-table td[data-label]::before {
+    content: attr(data-label) ': ';
+    color: var(--muted);
+    font-weight: 600;
   }
 }
