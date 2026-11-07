@@ -2,15 +2,15 @@
 
 The AWS CDK app in this folder creates everything CivicScope needs in `us-east-1`:
 
-| Part             | What it is                                                                                                                                                                                           |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Network          | A VPC across two zones: public subnets (NAT only), app subnets, isolated database subnets                                                                                                            |
-| Database         | RDS MySQL 8.4, `db.t4g.small`, encrypted, TLS required, Multi-AZ (`multiAz` context), 14 days of point-in-time backups, plus a monthly AWS Backup copy kept for a year. Deletion protection is on    |
-| Site             | Next.js on ECS Fargate (2 to 6 tasks), behind a **private** load balancer that only CloudFront can reach (VPC origin)                                                                                |
-| CDN and firewall | CloudFront with AWS WAF: Amazon IP reputation, common rules, known bad inputs, SQL injection, and per-IP rate limits (sign-in 100, search 600, everything 3,000 per 5 minutes)                       |
-| Jobs             | The worker image runs on a schedule: FEC daily, Congress daily, legislators weekly, an hourly check for failed or stuck ingests, and daily follow alerts (once turned on)                            |
-| Alarms           | One SNS topic (emailed to `alertEmail`): an ingest alert in the logs, a worker task that exits with an error, site 5xx errors, an unhealthy web task, high web or database CPU, low database storage |
-| Secrets          | Secrets Manager: the database owner, the least-privilege app account, and an app secret for keys                                                                                                     |
+| Part             | What it is                                                                                                                                                                                                              |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Network          | A VPC across two zones: public subnets (NAT only), app subnets, isolated database subnets                                                                                                                               |
+| Database         | RDS MySQL 8.4, `db.t4g.small`, encrypted, TLS required, Multi-AZ optional (`multiAz` context, off for now), 14 days of point-in-time backups, plus a monthly AWS Backup copy kept for a year. Deletion protection is on |
+| Site             | Next.js on ECS Fargate (1 to 4 tasks, `webTasks` context), behind a **private** load balancer that only CloudFront can reach (VPC origin)                                                                               |
+| CDN and firewall | CloudFront with AWS WAF: Amazon IP reputation, common rules, known bad inputs, SQL injection, and per-IP rate limits (sign-in 100, search 600, everything 3,000 per 5 minutes)                                          |
+| Jobs             | The worker image runs on a schedule: FEC daily, Congress daily, legislators weekly, a check every six hours for failed or stuck ingests, and daily follow alerts (once turned on)                                       |
+| Alarms           | One SNS topic (emailed to `alertEmail`): an ingest alert in the logs, a worker task that exits with an error, site 5xx errors, an unhealthy web task, high web or database CPU, low database storage                    |
+| Secrets          | Secrets Manager: the database owner, the least-privilege app account, and an app secret for keys                                                                                                                        |
 
 ## First deploy
 
@@ -149,6 +149,19 @@ Before launch, then every three months:
 
 ## Costs, roughly
 
-The fixed monthly cost with Multi-AZ is a little under $200: the database (about $50, double with
-Multi-AZ), two web tasks (about $35), the NAT gateway (about $35), the load balancer (about $20),
-WAF (about $10 plus requests) and CloudFront traffic. Single-AZ while building saves about $25.
+With the defaults in `cdk.json` (single-zone database, one web task) the fixed monthly cost
+is about $130 to $140: the NAT gateway (about $35 plus data), the database (about $26), the load
+balancer (about $20), one web task (about $18), WAF (about $13 plus requests), plus small
+amounts for the worker tasks, logs, secrets, image storage, backups and CloudFront traffic.
+At launch, `"civicscope:multiAz": true` adds about $25 and `"civicscope:webTasks": 2` about $18.
+
+## Pausing the site
+
+Set `"civicscope:paused": true` in `cdk.json` and merge it. The deploy stops the web tasks
+and the scheduled imports, and visitors see a short "CivicScope is paused" page. Deploys keep
+shipping new images but skip migrations while paused. That saves the web and worker tasks
+(about $20 to $40 a month); the database, NAT gateway, load balancer and WAF keep billing,
+so a paused month is still about $95. Stopping the database as well
+(`aws rds stop-db-instance --db-instance-identifier <DbInstanceId>`) saves about $23 more,
+but AWS starts it again by itself after seven days. Set the flag back to `false` and merge to
+unpause: the deploy migrates and turns the site back on.

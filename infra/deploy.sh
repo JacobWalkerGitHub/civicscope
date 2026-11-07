@@ -29,6 +29,15 @@ for target in web worker; do
   docker push "$REGISTRY/civicscope-$target:$TAG"
 done
 cd infra
+# Paused in cdk.json ("civicscope:paused": true): ship the new images but keep the site
+# showing its paused notice and the schedules off. Migrations wait for the unpause, which
+# goes through the first-deploy path below (the site has no running tasks by then).
+if [ "$(node -p "String(require('./cdk.json').context['civicscope:paused'])")" = "true" ]; then
+  echo "The site is paused in cdk.json: deploying $TAG with the site off..."
+  pnpm exec cdk deploy --require-approval "$APPROVAL" -c "civicscope:imageTag=$TAG"
+  echo "Done: $TAG is in place; the site stays paused."
+  exit 0
+fi
 # The site isn't running yet (first deploy, or an earlier one that stopped partway):
 # put the new images in place with the site still off, migrate, then turn it on.
 # Otherwise new web tasks would wait on a database with no tables or app account.

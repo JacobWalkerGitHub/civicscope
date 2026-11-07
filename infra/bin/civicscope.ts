@@ -16,6 +16,7 @@ new CivicScopeStack(app, 'CivicScope', {
   imageTag: String(ctx('imageTag') ?? 'bootstrap'),
   paused: ctx('paused') === true || ctx('paused') === 'true',
   multiAz: ctx('multiAz') !== false && ctx('multiAz') !== 'false',
+  webTasks: Number(ctx('webTasks') ?? 1),
   fecCycle: Number(ctx('fecCycle') ?? 2028),
   congress: Number(ctx('congress') ?? 119),
   alertsFromEmail: ctx('alertsFromEmail') || undefined,
