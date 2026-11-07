@@ -2,7 +2,9 @@
   "app": "pnpm exec tsx bin/civicscope.ts",
   "context": {
     "civicscope:imageTag": "bootstrap",
-    "civicscope:multiAz": true,
+    "civicscope:paused": false,
+    "civicscope:multiAz": false,
+    "civicscope:webTasks": 1,
     "civicscope:fecCycle": 2028,
     "civicscope:congress": 119
   }

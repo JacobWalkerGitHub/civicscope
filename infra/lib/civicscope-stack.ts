@@ -47,6 +47,8 @@ export interface CivicScopeStackProps extends StackProps {
   paused?: boolean;
   /** A standby database in a second zone. Plan: off while building, on at launch. */
   multiAz: boolean;
+  /** Web tasks always running (autoscaling adds more under load, up to 4 or this). */
+  webTasks: number;
   fecCycle: number;
   congress: number;
   /**
@@ -88,6 +90,9 @@ export class CivicScopeStack extends Stack {
         { name: 'data', subnetType: ec2.SubnetType.PRIVATE_ISOLATED, cidrMask: 24 },
       ],
     });
+    // Free: image layers from ECR (stored in S3) and other S3 traffic skip the NAT
+    // gateway, which charges for every gigabyte it carries.
+    vpc.addGatewayEndpoint('S3', { service: ec2.GatewayVpcEndpointAwsService.S3 });
 
     // ---------------------------------------------------------------- alarms
     const alarmTopic = new sns.Topic(this, 'Alarms', { displayName: 'CivicScope alarms' });
@@ -200,7 +205,8 @@ export class CivicScopeStack extends Stack {
     // ---------------------------------------------------------------- shared task settings
     const cluster = new ecs.Cluster(this, 'Cluster', {
       vpc,
-      containerInsightsV2: ecs.ContainerInsights.ENABLED,
+      // Off to save cost: the alarms below use the free ECS and load balancer metrics.
+      containerInsightsV2: ecs.ContainerInsights.DISABLED,
     });
     const dbEnv = {
       DB_HOST: db.dbInstanceEndpointAddress,
@@ -282,7 +288,7 @@ export class CivicScopeStack extends Stack {
     const service = new ecs.FargateService(this, 'WebService', {
       cluster,
       taskDefinition: webTask,
-      desiredCount: bootstrap ? 0 : 2,
+      desiredCount: bootstrap ? 0 : props.webTasks,
       minHealthyPercent: 100,
       maxHealthyPercent: 200,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
@@ -299,10 +305,25 @@ export class CivicScopeStack extends Stack {
       deregistrationDelay: Duration.seconds(30),
     });
     const scaling = service.autoScaleTaskCount({
-      minCapacity: bootstrap ? 0 : 2,
-      maxCapacity: bootstrap ? 0 : 6,
+      minCapacity: bootstrap ? 0 : props.webTasks,
+      maxCapacity: bootstrap ? 0 : Math.max(4, props.webTasks),
     });
     scaling.scaleOnCpuUtilization('Cpu', { targetUtilizationPercent: 60 });
+    // While paused, CloudFront shows visitors a short notice instead of an error page.
+    if (props.paused && props.imageTag !== 'bootstrap') {
+      listener.addAction('PausedNotice', {
+        priority: 1,
+        conditions: [elbv2.ListenerCondition.pathPatterns(['/*'])],
+        action: elbv2.ListenerAction.fixedResponse(503, {
+          contentType: 'text/html',
+          messageBody:
+            '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width">' +
+            '<title>CivicScope is paused</title><body style="font-family:system-ui,sans-serif;' +
+            'max-width:32rem;margin:4rem auto;padding:0 1rem"><h1>CivicScope is paused</h1>' +
+            '<p>The site is offline for now. Please check back later.</p></body>',
+        }),
+      });
+    }
     db.connections.allowDefaultPortFrom(webSecurityGroup, 'web tasks');
 
     // ---------------------------------------------------------------- firewall
@@ -529,7 +550,8 @@ export class CivicScopeStack extends Stack {
     schedule('OpenStatesDaily', { hour: '12', minute: '0' }, ['ingest:openstates']);
     // Governors and state legislators in office (Open States' public files, no key).
     schedule('StateOfficialsDaily', { hour: '13', minute: '0' }, ['ingest:state-officials']);
-    schedule('IngestCheckHourly', { minute: '30' }, ['check:ingest', '--hours', '1']);
+    // Every six hours, not hourly: each run starts a task and pulls the worker image.
+    schedule('IngestCheck', { hour: '*/6', minute: '30' }, ['check:ingest', '--hours', '6']);
     // Follow alerts, after the day's imports (10:00 to about 14:00 UTC), so mid-morning
     // on the East Coast.
     if (sesSend) {

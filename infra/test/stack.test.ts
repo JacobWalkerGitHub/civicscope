@@ -7,6 +7,7 @@ const template = Template.fromStack(
   new CivicScopeStack(new App(), 'Test', {
     imageTag: 'test',
     multiAz: true,
+    webTasks: 2,
     fecCycle: 2028,
     congress: 119,
     alertEmail: 'alerts@example.com',
@@ -77,6 +78,14 @@ describe('CivicScope stack', () => {
     });
   });
 
+  it('keeps image downloads off the NAT gateway with a free S3 endpoint', () => {
+    template.hasResourceProperties('AWS::EC2::VPCEndpoint', {
+      VpcEndpointType: 'Gateway',
+      ServiceName: Match.objectLike({ 'Fn::Join': Match.arrayWith([Match.arrayWith(['.s3'])]) }),
+    });
+    template.hasResourceProperties('AWS::ECS::Service', { DesiredCount: 2 });
+  });
+
   it('gives the web tasks only the app database account, never the schema owner', () => {
     const defs = template.findResources('AWS::ECS::TaskDefinition');
     const web = Object.entries(defs).find(([id]) => id.startsWith('WebTask'))![1];
@@ -94,6 +103,7 @@ describe('bootstrap deploy', () => {
       new CivicScopeStack(new App(), 'Boot', {
         imageTag: 'bootstrap',
         multiAz: false,
+        webTasks: 1,
         fecCycle: 2028,
         congress: 119,
       }),
@@ -113,6 +123,7 @@ describe('paused deploy', () => {
         imageTag: 'abc1234',
         paused: true,
         multiAz: false,
+        webTasks: 1,
         fecCycle: 2028,
         congress: 119,
       }),
@@ -124,11 +135,30 @@ describe('paused deploy', () => {
     }
   });
 
+  it('shows a paused notice instead of the site', () => {
+    const t = Template.fromStack(
+      new CivicScopeStack(new App(), 'PausedNotice', {
+        imageTag: 'abc1234',
+        paused: true,
+        multiAz: false,
+        webTasks: 1,
+        fecCycle: 2028,
+        congress: 119,
+      }),
+    );
+    t.hasResourceProperties('AWS::ElasticLoadBalancingV2::ListenerRule', {
+      Priority: 1,
+      Actions: [Match.objectLike({ Type: 'fixed-response' })],
+    });
+    template.resourceCountIs('AWS::ElasticLoadBalancingV2::ListenerRule', 0);
+  });
+
   it('sends follow alerts only when a sender address is set, and only from it', () => {
     const withAlerts = Template.fromStack(
       new CivicScopeStack(new App(), 'Alerts', {
         imageTag: 'test',
         multiAz: false,
+        webTasks: 1,
         fecCycle: 2028,
         congress: 119,
         alertsFromEmail: 'alerts@example.org',
