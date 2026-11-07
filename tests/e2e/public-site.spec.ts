@@ -293,3 +293,61 @@ test('unpublishing takes a candidate off the public site at once', async ({ page
   await page.goto(`/races/${raceId}`);
   await expect(page.getByText('No candidates are published for this race yet.')).toBeVisible();
 });
+
+test('party labels stay hidden until a visitor turns them on past a reminder', async ({ page }) => {
+  await page.goto('/politicians/candidates');
+  const party = page.getByRole('switch', { name: 'Show party' });
+  await expect(party).toHaveAttribute('aria-checked', 'false');
+  await expect(page.getByLabel('Party on the ballot')).toHaveCount(0);
+  await expect(page.locator('.party-chip')).toHaveCount(0);
+
+  // Turning it on asks first; keeping it hidden changes nothing.
+  await party.click();
+  const reminder = page.getByRole('dialog', { name: 'Before you turn on party labels' });
+  await expect(reminder).toContainText('policies');
+  await expectNoSeriousA11yIssues(page);
+  await reminder.getByRole('button', { name: 'Keep party hidden' }).click();
+  await expect(reminder).toBeHidden();
+  await expect(party).toHaveAttribute('aria-checked', 'false');
+
+  await party.click();
+  await reminder.getByRole('button', { name: 'Show party anyway' }).click();
+  await expect(party).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByLabel('Party on the ballot')).toBeVisible();
+
+  // The choice carries to the other people lists, and turns off without a reminder.
+  await page.goto('/politicians');
+  await expect(page.getByRole('switch', { name: 'Show party' })).toHaveAttribute(
+    'aria-checked',
+    'true',
+  );
+  await page.getByRole('switch', { name: 'Show party' }).click();
+  await expect(page.getByRole('switch', { name: 'Show party' })).toHaveAttribute(
+    'aria-checked',
+    'false',
+  );
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+});
+
+test('people lists can be grouped by state, and filters fold away on phones', async ({ page }) => {
+  await page.goto('/politicians/candidates');
+  await page.getByRole('link', { name: 'By state' }).click();
+  await expect(page).toHaveURL(/view=state/);
+  await expect(page.getByRole('link', { name: 'By state' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const filters = page.getByRole('button', { name: 'Filters' });
+  await expect(filters).toBeVisible();
+  await expect(page.getByLabel('Election year')).toBeHidden();
+  await filters.click();
+  await expect(page.getByLabel('Election year')).toBeVisible();
+  // The view choice survives applying filters.
+  await page.getByRole('button', { name: 'Apply' }).click();
+  await expect(page).toHaveURL(/view=state/);
+  expect(
+    await page.evaluate<boolean>('document.documentElement.scrollWidth <= window.innerWidth'),
+  ).toBe(true);
+});

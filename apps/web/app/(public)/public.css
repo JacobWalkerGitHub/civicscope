@@ -1976,6 +1976,8 @@
 
 .public .bill-main {
   display: grid;
+  /* minmax(0, …) so a wide table scrolls inside its box instead of widening the page. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 28px;
   min-width: 0;
 }
@@ -1991,7 +1993,7 @@
 
 @media (max-width: 900px) {
   .public .bill-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -2441,16 +2443,16 @@
   min-width: 0;
 }
 
-.public .candidate-card h2 {
+.public .candidate-card :is(h2, h3) {
   margin: 0 0 2px;
 }
 
-.public .candidate-card h2 a {
+.public .candidate-card :is(h2, h3) a {
   color: var(--ink);
   text-decoration: none;
 }
 
-.public .candidate-card h2 a:hover {
+.public .candidate-card :is(h2, h3) a:hover {
   color: var(--accent);
 }
 
@@ -3064,4 +3066,368 @@
   padding-top: 6px;
   color: var(--accent);
   font-weight: 600;
+}
+
+/* ---------------------------------------------------------------------------------
+ * People lists (Congress and Candidates): how to arrange the list, and the party
+ * labels switch. Party labels are off unless a visitor turns them on; with them off,
+ * no party name or color appears.
+ */
+.public .view-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin: 16px 0 4px;
+}
+
+.public .segmented {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+
+.public .segmented a {
+  padding: 6px 14px;
+  border-radius: 999px;
+  color: var(--ink-soft);
+  font-weight: 600;
+  font-size: 0.92rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.public .segmented a[aria-current='page'] {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+}
+
+.public button.party-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 4px;
+  border: 0;
+  background: none;
+  color: var(--ink-soft);
+  font-weight: 600;
+  font-size: 0.92rem;
+  box-shadow: none;
+}
+
+.public button.party-switch:hover {
+  background: none;
+  color: var(--ink);
+}
+
+.public .party-switch-track {
+  position: relative;
+  width: 40px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--line-strong);
+  transition: background 0.15s;
+}
+
+.public .party-switch-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 25%);
+  transition: transform 0.15s;
+}
+
+.public .party-switch[aria-checked='true'] .party-switch-track {
+  background: var(--accent);
+}
+
+.public .party-switch[aria-checked='true'] .party-switch-thumb {
+  transform: translateX(16px);
+}
+
+.public .party-dialog {
+  width: min(440px, calc(100vw - 32px));
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-lg);
+}
+
+.public .party-dialog::backdrop {
+  background: rgb(15 23 42 / 55%);
+}
+
+.public .party-dialog h2 {
+  margin: 0 0 12px;
+  font-size: 1.25rem;
+}
+
+.public .party-dialog p {
+  margin: 0 0 10px;
+  color: var(--ink-soft);
+}
+
+.public .party-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.public .party-dialog-actions button {
+  flex: 1 1 auto;
+}
+
+.public .party-dialog-actions button.button-quiet {
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: none;
+}
+
+.public .party-dialog-actions button.button-quiet:hover {
+  background: var(--surface-2);
+}
+
+/* Party colors, used only with party labels on. */
+.public .party-dem {
+  --party: #1d4ed8;
+}
+.public .party-rep {
+  --party: #b91c1c;
+}
+.public .party-ind {
+  --party: #6d28d9;
+}
+.public .party-lib {
+  --party: #a16207;
+}
+.public .party-grn {
+  --party: #15803d;
+}
+.public .party-other {
+  --party: #4b5563;
+}
+
+.public .chip.party-chip {
+  border-color: var(--party);
+  background: var(--party);
+  color: #fff;
+  font-weight: 600;
+}
+
+.public .party-card {
+  box-shadow: inset 4px 0 0 var(--party);
+}
+
+/* State headings in the "By state" view, and the jump links to them. */
+.public .state-heading {
+  margin: 0 0 10px;
+  scroll-margin-top: 80px;
+}
+
+.public .jump-states {
+  gap: 4px 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The filter form folds behind a button on phones; on wider screens it always shows. */
+.public .filter-panel-toggle {
+  display: none;
+}
+
+@media (max-width: 560px) {
+  .public button.filter-panel-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    padding: 8px 14px;
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--ink);
+    font-weight: 600;
+    box-shadow: none;
+  }
+
+  .public .filter-panel-toggle svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+  }
+
+  .public .filter-panel-count {
+    padding: 0 8px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 0.8rem;
+  }
+
+  .public .filter-panel:not([data-open]) .filter-panel-body {
+    display: none;
+  }
+
+  .public .filter-panel .filter-bar {
+    padding: 14px;
+    gap: 10px;
+  }
+
+  .public .filter-bar :is(select, input) {
+    padding: 8px 10px;
+  }
+
+  /* Outcome chips: one row that scrolls sideways instead of stacking. */
+  .public .chip-filters {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin-inline: -16px;
+    padding: 2px 16px 6px;
+    scrollbar-width: none;
+  }
+
+  .public .chip-filters a {
+    flex: none;
+    padding: 5px 12px;
+    font-size: 0.88rem;
+  }
+
+  .public .view-bar {
+    margin-top: 12px;
+  }
+
+  .public .segmented a {
+    padding: 6px 12px;
+  }
+
+  /* Candidates: one compact list, like the Congress list, instead of tall cards. */
+  .public .candidate-grid {
+    gap: 0;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+    overflow: hidden;
+  }
+
+  .public .candidate-grid > li + li {
+    border-top: 1px solid var(--line);
+  }
+
+  .public .candidate-card {
+    gap: 12px;
+    padding: 12px 14px;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .public .candidate-card.party-card {
+    box-shadow: inset 4px 0 0 var(--party);
+  }
+
+  .public .candidate-card .thumb {
+    width: 40px;
+    height: 40px;
+    font-size: 0.8rem;
+  }
+
+  .public .candidate-card :is(h2, h3) {
+    font-size: 1rem;
+  }
+
+  .public .candidate-card .muted {
+    margin: 0 0 6px;
+  }
+
+  .public .candidate-card .badge-row {
+    gap: 4px 6px;
+  }
+
+  .public .result-count {
+    margin: 12px 0 10px;
+    font-size: 0.92rem;
+  }
+
+  .public .member-group {
+    margin-top: 20px;
+  }
+
+  .public .member-group h2 {
+    font-size: 1.2rem;
+  }
+}
+
+/* Vote tables on phones: each vote becomes a short block (date and vote on one line,
+ * then the question, then the result) instead of four squeezed columns. */
+@media (max-width: 560px) {
+  .public .data-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .public .data-table,
+  .public .data-table tbody {
+    display: block;
+  }
+
+  .public .data-table tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 4px 12px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .public .data-table tbody tr:last-child {
+    border-bottom: 0;
+  }
+
+  .public .data-table td {
+    display: block;
+    padding: 0;
+    border: 0;
+  }
+
+  .public .data-table td:nth-child(1) {
+    grid-column: 1;
+    grid-row: 1;
+    color: var(--muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  .public .data-table td:nth-child(3) {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .public .data-table td:nth-child(2),
+  .public .data-table td:nth-child(4) {
+    grid-column: 1 / -1;
+  }
+
+  .public .data-table td[data-label]::before {
+    content: attr(data-label) ': ';
+    color: var(--muted);
+    font-weight: 600;
+  }
 }

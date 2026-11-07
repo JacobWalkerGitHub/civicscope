@@ -13,6 +13,10 @@ import { STATE_OFFICE_ROLES, stateNameFor, type StateOfficeRole } from '@civicsc
 import { Avatar, PageIntro, SourceNote } from '@/components/public/ui';
 import { getDb } from '@/lib/db';
 import { formatDate, stateChamberName, stateSeatLabel } from '@/lib/labels';
+import { PartyChip, ViewBar } from '@/components/public/view-bar';
+import { FilterPanel } from '@/components/public/filter-panel';
+import { partyTone } from '@/lib/party';
+import { partyViewOn } from '@/lib/party-view';
 import { PoliticianTabs } from '../tabs';
 
 export const metadata: Metadata = {
@@ -49,6 +53,7 @@ export default async function StateOfficialsPage({
   searchParams: Promise<Search>;
 }) {
   const sp = await searchParams;
+  const showParty = await partyViewOn();
   const role = one(sp.office);
   const st = one(sp.state).toUpperCase();
   const filters: StateOfficialFilters = {
@@ -57,7 +62,8 @@ export default async function StateOfficialsPage({
     role: (STATE_OFFICE_ROLES as readonly string[]).includes(role)
       ? (role as StateOfficeRole)
       : undefined,
-    party: one(sp.party) || undefined,
+    // With party labels off, party is not shown or filtered on anywhere.
+    party: (showParty && one(sp.party)) || undefined,
   };
   const db = getDb();
   const [{ rows, capped, governorsOnly, parties }, coverage] = await Promise.all([
@@ -89,53 +95,62 @@ export default async function StateOfficialsPage({
       </PageIntro>
       <PoliticianTabs current="state" />
 
-      <form className="filter-bar" method="get" role="search" aria-label="Filter state officials">
-        <div className="field grow">
-          <label htmlFor="s-q">Name</label>
-          <input id="s-q" type="search" name="q" defaultValue={filters.q ?? ''} />
-        </div>
-        <div className="field">
-          <label htmlFor="s-state">State</label>
-          <select id="s-state" name="state" defaultValue={filters.state ?? ''}>
-            <option value="">All states</option>
-            {byStateName.map((s) => (
-              <option key={s.code} value={s.code}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="field">
-          <label htmlFor="s-office">Office</label>
-          <select id="s-office" name="office" defaultValue={filters.role ?? ''}>
-            <option value="">All offices</option>
-            {OFFICE_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="field">
-          <label htmlFor="s-party">Party</label>
-          <select id="s-party" name="party" defaultValue={filters.party ?? ''}>
-            <option value="">Any party</option>
-            {parties.map((p) => (
-              <option key={p} value={p}>
-                {p}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="filter-actions">
-          <button type="submit">Apply</button>
-          {filtered && (
-            <Link href="/politicians/state" className="button-quiet">
-              Clear
-            </Link>
+      <ViewBar partyOn={showParty} />
+
+      <FilterPanel
+        id="s-filters"
+        active={[filters.q, filters.state, filters.role, filters.party].filter(Boolean).length}
+      >
+        <form className="filter-bar" method="get" role="search" aria-label="Filter state officials">
+          <div className="field grow">
+            <label htmlFor="s-q">Name</label>
+            <input id="s-q" type="search" name="q" defaultValue={filters.q ?? ''} />
+          </div>
+          <div className="field">
+            <label htmlFor="s-state">State</label>
+            <select id="s-state" name="state" defaultValue={filters.state ?? ''}>
+              <option value="">All states</option>
+              {byStateName.map((s) => (
+                <option key={s.code} value={s.code}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="s-office">Office</label>
+            <select id="s-office" name="office" defaultValue={filters.role ?? ''}>
+              <option value="">All offices</option>
+              {OFFICE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          {showParty && (
+            <div className="field">
+              <label htmlFor="s-party">Party</label>
+              <select id="s-party" name="party" defaultValue={filters.party ?? ''}>
+                <option value="">Any party</option>
+                {parties.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+            </div>
           )}
-        </div>
-      </form>
+          <div className="filter-actions">
+            <button type="submit">Apply</button>
+            {filtered && (
+              <Link href="/politicians/state" className="button-quiet">
+                Clear
+              </Link>
+            )}
+          </div>
+        </form>
+      </FilterPanel>
 
       <p role="status" className="result-count">
         {!imported
@@ -157,7 +172,7 @@ export default async function StateOfficialsPage({
           <ul className="member-grid">
             {g.list.map((m) => (
               <li key={m.id}>
-                <OfficialCard m={m} />
+                <OfficialCard m={m} showParty={showParty} />
               </li>
             ))}
           </ul>
@@ -190,14 +205,19 @@ export default async function StateOfficialsPage({
   );
 }
 
-function OfficialCard({ m }: { m: StateOfficialView }) {
+function OfficialCard({ m, showParty }: { m: StateOfficialView; showParty: boolean }) {
   return (
-    <Link href={`/politicians/state/${stateOfficialSlug(m.osPersonId)}`} className="member-card">
+    <Link
+      href={`/politicians/state/${stateOfficialSlug(m.osPersonId)}`}
+      className={`member-card${
+        showParty && m.partyName ? ` party-card party-${partyTone(m.partyName)}` : ''
+      }`}
+    >
       <Avatar name={m.name} photoId={m.photoId} />
       <span className="member-card-body">
         <span className="member-name">{m.name}</span>
         <span className="member-seat">{stateSeatLabel(m.role, m.state, m.district)}</span>
-        {m.partyName && <span className="chip">{m.partyName}</span>}
+        {showParty && m.partyName && <PartyChip name={m.partyName} />}
       </span>
     </Link>
   );

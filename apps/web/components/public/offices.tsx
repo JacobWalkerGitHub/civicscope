@@ -143,10 +143,13 @@ export function ElectionCards({
   elections,
   raceHref,
   headingId = 'elections-h',
+  showParty = true,
 }: {
   elections: ElectionOutcome[];
   raceHref: (id: number) => string;
   headingId?: string;
+  /** False when the visitor has party labels off. */
+  showParty?: boolean;
 }) {
   return (
     <section aria-labelledby={headingId}>
@@ -166,10 +169,13 @@ export function ElectionCards({
                 <span className="small">
                   {ELECTION_TYPE_LABELS[e.electionType]} · {formatDate(e.electionDate)}
                 </span>
-                <span className="small muted">
-                  {e.partyName ?? 'No party listed'}
-                  {e.isIncumbent && ' · Incumbent'}
-                </span>
+                {(showParty || e.isIncumbent) && (
+                  <span className="small muted">
+                    {showParty && (e.partyName ?? 'No party listed')}
+                    {showParty && e.isIncumbent && ' · '}
+                    {e.isIncumbent && 'Incumbent'}
+                  </span>
+                )}
                 <span className="election-card-more small">Full race →</span>
               </Link>
             </li>
