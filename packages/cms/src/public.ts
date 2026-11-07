@@ -13,6 +13,7 @@ import { todayIso, type CitationSubject } from '@civicscope/core';
 import { schema, type Db } from '@civicscope/db';
 import { getCongressRecord } from './congress-import';
 import { getFecTotals } from './fec-totals';
+import { getOfficeTimeline } from './offices-held';
 import { getStateVotes } from './openstates';
 import { isPromise, promiseRecordsFor } from './promises';
 
@@ -177,7 +178,7 @@ export async function getPublicPerson(db: Db, slug: string, opts: ViewOptions = 
     { type: 'candidacy', ids: candidacies.map((c) => c.id) },
     { type: 'claim', ids: claims.map((c) => c.id) },
   ]);
-  const [stateVotes, congress, money, promiseRecords] = await Promise.all([
+  const [stateVotes, congress, money, promiseRecords, offices] = await Promise.all([
     getStateVotes(db, p.id),
     getCongressRecord(db, p.id, 20, { publicOnly: !opts.preview }),
     getFecTotals(db, p.id),
@@ -187,8 +188,19 @@ export async function getPublicPerson(db: Db, slug: string, opts: ViewOptions = 
       claims.filter(isPromise).map((c) => c.id),
       { publicOnly: !opts.preview },
     ),
+    getOfficeTimeline(db, p.id, { preview: opts.preview }),
   ]);
-  return { person: p, candidacies, claims, citations, stateVotes, congress, money, promiseRecords };
+  return {
+    person: p,
+    candidacies,
+    claims,
+    citations,
+    stateVotes,
+    congress,
+    money,
+    promiseRecords,
+    offices,
+  };
 }
 
 export async function getPublicRace(db: Db, id: number, opts: ViewOptions = {}) {
@@ -199,6 +211,8 @@ export async function getPublicRace(db: Db, id: number, opts: ViewOptions = {}) 
       seats: race.seats,
       isSpecial: race.isSpecial,
       status: race.status,
+      termStartsOn: race.termStartsOn,
+      termStartSourceUrl: race.termStartSourceUrl,
       publishState: race.publishState,
       primaryPartyName: party.name,
       electionId: election.id,

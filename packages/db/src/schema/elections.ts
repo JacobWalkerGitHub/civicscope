@@ -104,6 +104,13 @@ export const race = mysqlTable(
     isSpecial: boolean('is_special').notNull().default(false),
     status: mysqlEnum('status', RACE_STATUSES).notNull().default('scheduled'),
     /**
+     * The day the winner takes office, as an official source states it (the state
+     * constitution, a statute, or the election authority). Never worked out by CivicScope,
+     * so it is only shown with the source it came from.
+     */
+    termStartsOn: date('term_starts_on', { mode: 'string' }),
+    termStartSourceUrl: varchar('term_start_source_url', { length: 2048 }),
+    /**
      * Identifies the contest for uniqueness. MySQL treats NULLs as distinct in unique
      * indexes, so a plain unique index on the nullable district/party columns would
      * allow two identical statewide races.
@@ -129,6 +136,10 @@ export const race = mysqlTable(
     index('race_office_idx').on(t.officeId),
     index('race_district_idx').on(t.districtId),
     check('race_seats_positive', sql`${t.seats} >= 1`),
+    check(
+      'race_term_start_sourced',
+      sql`(${t.termStartsOn} IS NULL) = (${t.termStartSourceUrl} IS NULL)`,
+    ),
     check(
       'race_party_rule',
       sql`(${t.partyId} IS NOT NULL) = (${t.electionType} IN (${sqlList(PRIMARY_ELECTION_TYPES)}) AND ${t.primarySystem} IN (${sqlList(PARTISAN_PRIMARY_SYSTEMS)}))`,

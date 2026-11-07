@@ -71,3 +71,8 @@ database tables are kept, unused, until a later migration drops them.
 Public pages include `/search` (candidates, races, issues and entry text), `/issues`, and a
 side-by-side comparison for each race at `/races/<id>/compare` (see ADR 0009). Candidate profiles
 show each campaign promise beside the bills and votes an editor linked to it (see ADR 0003).
+Profiles and politician pages show the office a person holds now (from Congress.gov and Open
+States records only) and an office they have won and will take (a published candidacy whose
+sourced status is "won" in a general election). The day they take office shows only when an
+editor enters it on the race with the official source that sets it. Politician pages also list
+a card per election, each linking to its race.

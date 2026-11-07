@@ -30,6 +30,8 @@ export const RACE_EDITABLE = [
   'seats',
   'isSpecial',
   'status',
+  'termStartsOn',
+  'termStartSourceUrl',
 ] as const;
 
 async function loadElection(tx: Tx | Db, id: number): Promise<Election> {

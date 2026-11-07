@@ -11,6 +11,8 @@ export interface RaceValues {
   seats: number;
   isSpecial: boolean;
   status: string;
+  termStartsOn: string | null;
+  termStartSourceUrl: string | null;
 }
 
 export function RaceForm({
@@ -95,6 +97,20 @@ export function RaceForm({
         name="isSpecial"
         label="Special election (fills a vacancy)"
         defaultChecked={race?.isSpecial}
+      />
+      <TextField
+        name="termStartsOn"
+        label="Winner’s term begins"
+        type="date"
+        defaultValue={race?.termStartsOn ?? undefined}
+        hint="Optional. Shown on the winner's profile as the day they take office. Leave blank until an official source states it."
+      />
+      <TextField
+        name="termStartSourceUrl"
+        label="Source for the term start date"
+        type="url"
+        defaultValue={race?.termStartSourceUrl ?? undefined}
+        hint="The https:// address of the constitution, statute or election authority page that sets it. Required with a date."
       />
     </ActionForm>
   );
