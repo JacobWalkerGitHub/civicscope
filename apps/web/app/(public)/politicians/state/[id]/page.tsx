@@ -8,6 +8,8 @@ import {
   publishedPersonFor,
 } from '@civicscope/cms';
 import { ElectionCards, OfficeNowNext } from '@/components/public/offices';
+import { PartyChip, ViewBar } from '@/components/public/view-bar';
+import { partyViewOn } from '@/lib/party-view';
 import { ReportLink } from '@/components/public/sources';
 import { Avatar } from '@/components/public/ui';
 import { getDb } from '@/lib/db';
@@ -40,6 +42,7 @@ const RESULTS: Record<string, string> = { pass: 'Passed', fail: 'Failed' };
 export default async function StateOfficialPage({ params }: { params: Params }) {
   const data = await load(params);
   if (!data) notFound();
+  const showParty = await partyViewOn();
   const { offices, personSlug } = data;
   const now = offices[0]!;
   const current = offices.filter((o) => !o.leftOn);
@@ -60,7 +63,7 @@ export default async function StateOfficialPage({ params }: { params: Params }) 
           <h1>{now.name}</h1>
           <p className="person-seat">
             {stateSeatLabel(now.role, now.state, now.district)}
-            {now.partyName && <span className="chip">{now.partyName}</span>}
+            {showParty && now.partyName && <PartyChip name={now.partyName} />}
           </p>
           {current.length === 0 && (
             <p className="notice">
@@ -81,6 +84,7 @@ export default async function StateOfficialPage({ params }: { params: Params }) 
           </div>
         </div>
       </header>
+      <ViewBar partyOn={showParty} />
 
       {timeline && (
         <OfficeNowNext timeline={timeline} raceHref={(id) => `/races/${id}`} linkCurrent={false} />
@@ -89,7 +93,11 @@ export default async function StateOfficialPage({ params }: { params: Params }) 
       <div className="bill-layout">
         <div className="bill-main">
           {timeline && timeline.elections.length > 0 && (
-            <ElectionCards elections={timeline.elections} raceHref={(id) => `/races/${id}`} />
+            <ElectionCards
+              elections={timeline.elections}
+              raceHref={(id) => `/races/${id}`}
+              showParty={showParty}
+            />
           )}
           {now.role !== 'governor' && (
             <section aria-labelledby="votes-h">
@@ -147,7 +155,7 @@ export default async function StateOfficialPage({ params }: { params: Params }) 
                               </span>
                             </td>
                             <td>{capital(v.option)}</td>
-                            <td>
+                            <td data-label="Result">
                               {RESULTS[v.result] ?? capital(v.result)}{' '}
                               <span className="muted">
                                 ({v.yes}–{v.no}
@@ -191,8 +199,12 @@ export default async function StateOfficialPage({ params }: { params: Params }) 
                   <strong>{stateSeatLabel(o.role, o.state, o.district)}</strong>
                   <br />
                   <span className="small">
-                    {o.partyName ?? 'Party not listed'}
-                    {o.termStart && <> · Term {formatDate(o.termStart)}</>}
+                    {showParty && (o.partyName ?? 'Party not listed')}
+                    {o.termStart && (
+                      <>
+                        {showParty ? ' · ' : ''}Term {formatDate(o.termStart)}
+                      </>
+                    )}
                     {o.termEnd && <> to {formatDate(o.termEnd)}</>}
                   </span>
                   <br />

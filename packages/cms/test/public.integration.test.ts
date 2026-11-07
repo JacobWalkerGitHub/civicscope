@@ -255,6 +255,8 @@ describe('candidate directory', () => {
     expect(await count({ jurisdictionId: tn!.id })).toBe(0);
     expect(await count({ level: 'state' })).toBe(1);
     expect(await count({ level: 'federal' })).toBe(0);
+    const byState = await listPublicCandidates(db, { byState: true }, 1, '2026-11-02');
+    expect(byState.rows.map((r) => r.ballotName)).toEqual(['Ada Visible']);
     expect((await listPublicCandidates(db, {}, 1, '2028-01-01')).total).toBe(0);
     expect((await listPublicCandidates(db, { includePast: true }, 1, '2028-01-01')).total).toBe(1);
 
