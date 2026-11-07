@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { Fragment } from 'react';
 import {
   CANDIDATE_OUTCOMES,
   directoryFilterOptions,
@@ -10,9 +11,13 @@ import {
 } from '@civicscope/cms';
 import { StatusBadge, statusTone } from '@/components/public/badges';
 import { Thumb } from '@/components/public/sources';
+import { FilterPanel } from '@/components/public/filter-panel';
 import { PageIntro, Pager } from '@/components/public/ui';
 import { getDb } from '@/lib/db';
 import { ELECTION_TYPE_LABELS, formatDate } from '@/lib/labels';
+import { PartyChip, ViewBar } from '@/components/public/view-bar';
+import { partyTone } from '@/lib/party';
+import { partyViewOn } from '@/lib/party-view';
 import { PoliticianTabs } from '../tabs';
 
 export const metadata: Metadata = {
@@ -40,16 +45,20 @@ export default async function CandidatesPage({ searchParams }: { searchParams: P
   const outcome = one(sp.outcome);
   // All elections by default; "upcoming" narrows to elections still ahead.
   const when = one(sp.when) === 'upcoming' ? 'upcoming' : 'all';
+  const showParty = await partyViewOn();
+  const view = one(sp.view) === 'state' ? 'state' : 'list';
   const filters: DirectoryFilters = {
     q: one(sp.q) || undefined,
     jurisdictionId: positiveInt(one(sp.state)),
-    partyId: positiveInt(one(sp.party)),
+    // With party labels off, party is not shown or filtered on anywhere.
+    partyId: showParty ? positiveInt(one(sp.party)) : undefined,
     level: level in LEVELS ? (level as keyof typeof LEVELS) : undefined,
     includePast: when === 'all' || one(sp.past) === '1',
     outcome: (CANDIDATE_OUTCOMES as readonly string[]).includes(outcome)
       ? (outcome as CandidateOutcome)
       : undefined,
     year: positiveInt(one(sp.year)),
+    byState: view === 'state',
   };
   const db = getDb();
   const [{ rows, total, page }, options] = await Promise.all([
@@ -57,7 +66,7 @@ export default async function CandidatesPage({ searchParams }: { searchParams: P
     directoryFilterOptions(db),
   ]);
   const pages = Math.max(1, Math.ceil(total / DIRECTORY_PAGE_SIZE));
-  const keys = ['q', 'state', 'level', 'party', 'outcome', 'year', 'when'];
+  const keys = ['q', 'state', 'level', 'party', 'outcome', 'year', 'when', 'view'];
   const href = (changes: Record<string, string | undefined>) => {
     const params = new URLSearchParams();
     for (const key of keys) {
@@ -68,7 +77,16 @@ export default async function CandidatesPage({ searchParams }: { searchParams: P
     const qs = params.toString();
     return qs ? `/politicians/candidates?${qs}` : '/politicians/candidates';
   };
-  const filtered = keys.some((k) => one(sp[k]));
+  const filtered = keys.some((k) => k !== 'view' && one(sp[k]));
+  // In the state view, consecutive rows from the same state share a heading. A state
+  // can carry over from one page to the next.
+  const Name = view === 'state' ? 'h3' : 'h2';
+  const groups: { state: string; rows: typeof rows }[] = [];
+  for (const r of rows) {
+    const last = groups.at(-1);
+    if (view === 'state' && last?.state === r.jurisdictionName) last.rows.push(r);
+    else groups.push({ state: r.jurisdictionName, rows: [r] });
+  }
 
   return (
     <>
@@ -98,106 +116,156 @@ export default async function CandidatesPage({ searchParams }: { searchParams: P
         ))}
       </nav>
 
-      <form className="filter-bar" method="get" role="search" aria-label="Filter candidates">
-        {filters.outcome && <input type="hidden" name="outcome" value={filters.outcome} />}
-        <div className="field grow">
-          <label htmlFor="f-q">Name</label>
-          <input id="f-q" type="search" name="q" defaultValue={filters.q ?? ''} />
-        </div>
-        <div className="field">
-          <label htmlFor="f-year">Election year</label>
-          <select id="f-year" name="year" defaultValue={filters.year ?? ''}>
-            <option value="">All years</option>
-            {options.years.map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="field">
-          <label htmlFor="f-state">State</label>
-          <select id="f-state" name="state" defaultValue={filters.jurisdictionId ?? ''}>
-            <option value="">All states</option>
-            {options.states.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="field">
-          <label htmlFor="f-level">Level</label>
-          <select id="f-level" name="level" defaultValue={filters.level ?? ''}>
-            <option value="">All levels</option>
-            {Object.entries(LEVELS).map(([value, label]) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="field">
-          <label htmlFor="f-party">Party on the ballot</label>
-          <select id="f-party" name="party" defaultValue={filters.partyId ?? ''}>
-            <option value="">Any party</option>
-            {options.parties.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <label className="inline">
-          <input
-            type="checkbox"
-            name="when"
-            value="upcoming"
-            defaultChecked={when === 'upcoming'}
-          />
-          Upcoming elections only
-        </label>
-        <div className="filter-actions">
-          <button type="submit">Apply</button>
-          {filtered && (
-            <Link href="/politicians/candidates" className="button-quiet">
-              Clear
-            </Link>
+      <ViewBar
+        view={view}
+        listHref={href({ view: undefined, page: undefined })}
+        stateHref={href({ view: 'state', page: undefined })}
+        listLabel="A to Z"
+        partyOn={showParty}
+      />
+
+      <FilterPanel
+        id="f-filters"
+        active={
+          [
+            filters.q,
+            filters.jurisdictionId,
+            filters.level,
+            filters.partyId,
+            filters.year,
+            when === 'upcoming',
+          ].filter(Boolean).length
+        }
+      >
+        <form className="filter-bar" method="get" role="search" aria-label="Filter candidates">
+          {filters.outcome && <input type="hidden" name="outcome" value={filters.outcome} />}
+          {view === 'state' && <input type="hidden" name="view" value="state" />}
+          <div className="field grow">
+            <label htmlFor="f-q">Name</label>
+            <input id="f-q" type="search" name="q" defaultValue={filters.q ?? ''} />
+          </div>
+          <div className="field">
+            <label htmlFor="f-year">Election year</label>
+            <select id="f-year" name="year" defaultValue={filters.year ?? ''}>
+              <option value="">All years</option>
+              {options.years.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="f-state">State</label>
+            <select id="f-state" name="state" defaultValue={filters.jurisdictionId ?? ''}>
+              <option value="">All states</option>
+              {options.states.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="f-level">Level</label>
+            <select id="f-level" name="level" defaultValue={filters.level ?? ''}>
+              <option value="">All levels</option>
+              {Object.entries(LEVELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+          {showParty && (
+            <div className="field">
+              <label htmlFor="f-party">Party on the ballot</label>
+              <select id="f-party" name="party" defaultValue={filters.partyId ?? ''}>
+                <option value="">Any party</option>
+                {options.parties.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           )}
-        </div>
-      </form>
+          <label className="inline">
+            <input
+              type="checkbox"
+              name="when"
+              value="upcoming"
+              defaultChecked={when === 'upcoming'}
+            />
+            Upcoming elections only
+          </label>
+          <div className="filter-actions">
+            <button type="submit">Apply</button>
+            {filtered && (
+              <Link
+                href={
+                  view === 'state'
+                    ? '/politicians/candidates?view=state'
+                    : '/politicians/candidates'
+                }
+                className="button-quiet"
+              >
+                Clear
+              </Link>
+            )}
+          </div>
+        </form>
+      </FilterPanel>
 
       <p role="status" className="result-count">
         {total === 0
           ? 'No candidates match.'
-          : `${total} candidac${total === 1 ? 'y' : 'ies'}, listed alphabetically by last name.`}
+          : `${total} candidac${total === 1 ? 'y' : 'ies'}, listed ${
+              view === 'state' ? 'by state, then ' : ''
+            }alphabetically by last name.`}
       </p>
-      {rows.length > 0 && (
-        <ul className="candidate-grid">
-          {rows.map((r) => (
-            <li key={r.candidacyId} className={`candidate-card card-${statusTone(r.status)}`}>
-              <Thumb photoId={r.photoId} name={r.ballotName} />
-              <div className="candidate-card-body">
-                <h2 className="h3">
-                  <Link href={`/candidates/${r.personSlug}`}>{r.ballotName}</Link>
-                </h2>
-                <p className="candidate-race">
-                  <Link href={`/races/${r.raceId}`}>{r.raceName}</Link>
-                </p>
-                <p className="muted small">
-                  {r.jurisdictionName} · {ELECTION_TYPE_LABELS[r.electionType]} ·{' '}
-                  {formatDate(r.electionDate)}
-                </p>
-                <div className="badge-row">
-                  <StatusBadge status={r.status} />
-                  {r.partyName && <span className="chip">{r.partyName}</span>}
-                  {r.isIncumbent && <span className="chip">Incumbent</span>}
+      {groups.map((g, i) => {
+        const list = (
+          <ul className="candidate-grid">
+            {g.rows.map((r) => (
+              <li
+                key={r.candidacyId}
+                className={`candidate-card card-${statusTone(r.status)}${
+                  showParty && r.partyName ? ` party-card party-${partyTone(r.partyName)}` : ''
+                }`}
+              >
+                <Thumb photoId={r.photoId} name={r.ballotName} />
+                <div className="candidate-card-body">
+                  <Name className="h3">
+                    <Link href={`/candidates/${r.personSlug}`}>{r.ballotName}</Link>
+                  </Name>
+                  <p className="candidate-race">
+                    <Link href={`/races/${r.raceId}`}>{r.raceName}</Link>
+                  </p>
+                  <p className="muted small">
+                    {view === 'state' ? '' : `${r.jurisdictionName} · `}
+                    {ELECTION_TYPE_LABELS[r.electionType]} · {formatDate(r.electionDate)}
+                  </p>
+                  <div className="badge-row">
+                    <StatusBadge status={r.status} />
+                    {showParty && r.partyName && <PartyChip name={r.partyName} />}
+                    {r.isIncumbent && <span className="chip">Incumbent</span>}
+                  </div>
                 </div>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
+              </li>
+            ))}
+          </ul>
+        );
+        if (view !== 'state') return <Fragment key="all">{list}</Fragment>;
+        return (
+          <section key={`${g.state}-${i}`} className="member-group" aria-labelledby={`cg-${i}`}>
+            <h2 id={`cg-${i}`} className="state-heading">
+              {g.state}
+            </h2>
+            {list}
+          </section>
+        );
+      })}
       <Pager
         page={page}
         pages={pages}

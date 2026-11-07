@@ -317,6 +317,8 @@ export interface DirectoryFilters {
   outcome?: CandidateOutcome;
   /** Elections held in this year. */
   year?: number;
+  /** Order by state first, so a page can group candidates under each state. */
+  byState?: boolean;
 }
 
 export const CANDIDATE_OUTCOMES = ['won', 'lost', 'running', 'withdrawn'] as const;
@@ -344,7 +346,8 @@ export const DIRECTORY_PAGE_SIZE = 50;
 
 /**
  * The public candidate directory: one row per public candidacy in a public race,
- * alphabetical by last name. Filters combine with AND.
+ * alphabetical by last name (within each state, when `byState` is set). Filters combine
+ * with AND.
  */
 export async function listPublicCandidates(
   db: Db,
@@ -407,7 +410,12 @@ export async function listPublicCandidates(
     .where(where);
   const safePage = Math.max(1, Math.floor(page) || 1);
   const rows = await base
-    .orderBy(asc(person.sortName), asc(election.date), asc(candidacy.id))
+    .orderBy(
+      ...(filters.byState ? [asc(jurisdiction.name)] : []),
+      asc(person.sortName),
+      asc(election.date),
+      asc(candidacy.id),
+    )
     .limit(DIRECTORY_PAGE_SIZE)
     .offset((safePage - 1) * DIRECTORY_PAGE_SIZE);
   return { rows, total: Number(countRow?.n ?? 0), page: safePage };
