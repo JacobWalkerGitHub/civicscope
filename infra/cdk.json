@@ -3,6 +3,7 @@
   "context": {
     "civicscope:imageTag": "bootstrap",
     "civicscope:paused": false,
+    "civicscope:shutdown": true,
     "civicscope:multiAz": false,
     "civicscope:webTasks": 1,
     "civicscope:fecCycle": 2028,

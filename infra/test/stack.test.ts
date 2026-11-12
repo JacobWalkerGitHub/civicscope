@@ -116,6 +116,35 @@ describe('bootstrap deploy', () => {
   });
 });
 
+describe('shutdown', () => {
+  it('runs nothing and lets the database be deleted, keeping a final snapshot', () => {
+    const t = Template.fromStack(
+      new CivicScopeStack(new App(), 'Shutdown', {
+        imageTag: 'abc1234',
+        shutdown: true,
+        multiAz: false,
+        webTasks: 1,
+        fecCycle: 2028,
+        congress: 119,
+      }),
+    );
+    t.hasResourceProperties('AWS::ECS::Service', { DesiredCount: 0 });
+    for (const rule of Object.values(t.findResources('AWS::Events::Rule'))) {
+      if (rule.Properties.ScheduleExpression) expect(rule.Properties.State).toBe('DISABLED');
+    }
+    t.hasResource('AWS::RDS::DBInstance', {
+      Properties: Match.objectLike({ DeletionProtection: false }),
+      DeletionPolicy: 'Snapshot',
+    });
+    t.hasResource('AWS::SecretsManager::Secret', {
+      Properties: Match.objectLike({
+        Description: Match.stringLikeRegexp('^CivicScope app settings'),
+      }),
+      DeletionPolicy: 'Retain',
+    });
+  });
+});
+
 describe('paused deploy', () => {
   it('registers the new images but keeps the site and schedules off', () => {
     const t = Template.fromStack(

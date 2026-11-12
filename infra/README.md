@@ -165,3 +165,27 @@ so a paused month is still about $95. Stopping the database as well
 (`aws rds stop-db-instance --db-instance-identifier <DbInstanceId>`) saves about $23 more,
 but AWS starts it again by itself after seven days. Set the flag back to `false` and merge to
 unpause: the deploy migrates and turns the site back on.
+
+## Shutting down
+
+To stop paying for the site altogether, set `"civicscope:shutdown": true` in `cdk.json` and
+merge it. From then on merges don't deploy. Then open **Actions → Shut down → Run workflow**
+and type `DELETE CivicScope`. The workflow redeploys the stack with nothing running and the
+database's deletion protection off, then deletes the stack. CloudFormation takes a final
+snapshot of the database before deleting it.
+
+These are kept, so the site can come back, and cost a few dollars a month in all:
+
+| Kept                                              | Roughly          | Where in the console       |
+| ------------------------------------------------- | ---------------- | -------------------------- |
+| Final database snapshot (20 GB)                   | $2 a month       | RDS → Snapshots            |
+| Monthly AWS Backup copies (expire after a year)   | $1 to $2 a month | AWS Backup → Backup vaults |
+| App secret (API keys, sign-in encryption key)     | $0.40 a month    | Secrets Manager            |
+| Image repositories `civicscope-web` and `-worker` | under $1 a month | ECR                        |
+| Web and worker log groups                         | cents            | CloudWatch → Log groups    |
+| CDK's own `CDKToolkit` stack and bucket           | cents            | CloudFormation, S3         |
+
+Delete any of them by hand in the console to get to $0, but the snapshot and backups are the
+only copy of the site's data. To bring the site back, set the flag back to `false`, restore
+the database from the snapshot (it gets a new endpoint, which the stack has to point at) and
+deploy; plan on about an hour.

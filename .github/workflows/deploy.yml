@@ -38,6 +38,14 @@ jobs:
         with:
           # The exact commit CI tested, not whatever main is by the time this starts.
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      # Shut down (infra/cdk.json): a merge must not bring the site back. The Shut down
+      # workflow deletes it; set "civicscope:shutdown" back to false to deploy again.
+      - name: Stop if the site is shut down
+        run: |
+          if [ "$(jq -r '.context["civicscope:shutdown"]' infra/cdk.json)" = "true" ]; then
+            echo "::error::CivicScope is shut down (civicscope:shutdown in infra/cdk.json). Nothing was deployed."
+            exit 1
+          fi
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:

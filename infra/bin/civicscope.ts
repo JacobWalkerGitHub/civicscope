@@ -20,4 +20,5 @@ new CivicScopeStack(app, 'CivicScope', {
   fecCycle: Number(ctx('fecCycle') ?? 2028),
   congress: Number(ctx('congress') ?? 119),
   alertsFromEmail: ctx('alertsFromEmail') || undefined,
+  shutdown: ctx('shutdown') === true || ctx('shutdown') === 'true',
 });
