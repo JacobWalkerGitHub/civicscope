@@ -1,0 +1,97 @@
+name: Shut down
+
+# Deletes CivicScope from AWS so it stops billing. Run it by hand from the Actions tab
+# ("Shut down" → Run workflow), typing DELETE CivicScope to confirm, once
+# "civicscope:shutdown" is true in infra/cdk.json (which also stops merges deploying).
+#
+# 1. Redeploys the stack with nothing running and the database's deletion protection off.
+# 2. Deletes the stack. CloudFormation snapshots the database before deleting it.
+#
+# Kept afterwards, for bringing the site back (a few dollars a month in all): the final
+# database snapshot, the monthly AWS Backup copies (each expires a year after it was made),
+# the app secret, the two image repositories and the log groups. infra/README.md
+# ("Shutting down") lists them and how to delete them too.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type DELETE CivicScope to delete the site from AWS
+        required: true
+
+permissions:
+  contents: read
+  id-token: write # signs in to AWS as the deploy role, with no stored AWS keys
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    if: vars.AWS_DEPLOY_ROLE_ARN != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: production
+    steps:
+      - name: Check the confirmation
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          if [ "$CONFIRM" != "DELETE CivicScope" ]; then
+            echo "::error::Type DELETE CivicScope exactly to confirm. Nothing was changed."
+            exit 1
+          fi
+      - uses: actions/checkout@v4
+      - name: Check cdk.json
+        run: |
+          if [ "$(jq -r '.context["civicscope:shutdown"]' infra/cdk.json)" != "true" ]; then
+            echo "::error::Set \"civicscope:shutdown\": true in infra/cdk.json and merge that first. Nothing was changed."
+            exit 1
+          fi
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+          role-session-name: civicscope-shutdown
+      - name: Stop everything and turn off the database's deletion protection
+        working-directory: infra
+        run: |
+          export CDK_DEFAULT_ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+          export CDK_DEFAULT_REGION=us-east-1
+          pnpm exec cdk deploy CivicScope --require-approval never
+
+  delete:
+    needs: prepare
+    runs-on: ubuntu-latest
+    # A fresh AWS sign-in (it lasts an hour). CloudFormation keeps deleting in AWS even if
+    # this job stops waiting; running the workflow again picks up where it left off.
+    timeout-minutes: 60
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+          role-session-name: civicscope-shutdown
+      - name: Delete the stack (the database is snapshotted first)
+        working-directory: infra
+        run: |
+          export CDK_DEFAULT_ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+          export CDK_DEFAULT_REGION=us-east-1
+          pnpm exec cdk destroy CivicScope --force
+      - name: Summary
+        run: |
+          echo "CivicScope's AWS stack is deleted. The final database snapshot is in RDS → Snapshots." >> "$GITHUB_STEP_SUMMARY"

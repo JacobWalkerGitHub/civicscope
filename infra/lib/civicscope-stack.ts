@@ -56,6 +56,13 @@ export interface CivicScopeStackProps extends StackProps {
    * domain must be verified in SES). Without it the Follow buttons stay hidden.
    */
   alertsFromEmail?: string;
+  /**
+   * Getting ready to delete the whole stack (.github/workflows/shutdown.yml): runs nothing,
+   * like paused, and turns off the database's deletion protection so CloudFormation can
+   * delete it, taking a final snapshot first. The app secret (API keys and the sign-in
+   * encryption key) is kept, so the site can be brought back from that snapshot.
+   */
+  shutdown?: boolean;
 }
 
 const DB_NAME = 'civicscope';
@@ -76,7 +83,8 @@ const CLOUDFRONT_ORIGIN_FACING_US_EAST_1 = 'pl-3b927c52';
 export class CivicScopeStack extends Stack {
   constructor(scope: Construct, id: string, props: CivicScopeStackProps) {
     super(scope, id, props);
-    const bootstrap = props.imageTag === 'bootstrap' || props.paused === true;
+    const bootstrap =
+      props.imageTag === 'bootstrap' || props.paused === true || props.shutdown === true;
 
     // ---------------------------------------------------------------- network
     const vpc = new ec2.Vpc(this, 'Vpc', {
@@ -130,6 +138,9 @@ export class CivicScopeStack extends Stack {
         BOOTSTRAP_ADMIN_PASSWORD: cdkUnset(),
       },
     });
+    // Kept when the stack is deleted for a shutdown (about $0.40 a month), because the
+    // sign-in encryption key in it can't be recreated.
+    if (props.shutdown) appSecret.applyRemovalPolicy(RemovalPolicy.RETAIN);
 
     // ---------------------------------------------------------------- database
     const parameterGroup = new rds.ParameterGroup(this, 'DbParams', {
@@ -169,7 +180,7 @@ export class CivicScopeStack extends Stack {
       preferredBackupWindow: '07:00-08:00',
       preferredMaintenanceWindow: 'sun:08:30-sun:09:30',
       autoMinorVersionUpgrade: true,
-      deletionProtection: true,
+      deletionProtection: !props.shutdown,
       removalPolicy: RemovalPolicy.SNAPSHOT,
       cloudwatchLogsExports: ['error', 'slowquery'],
       cloudwatchLogsRetention: logs.RetentionDays.THREE_MONTHS,
